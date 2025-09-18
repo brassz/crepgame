@@ -26,8 +26,8 @@ function CInterface(){
     this._init = function(){
         
         var oMoneyBg = createBitmap(s_oSpriteLibrary.getSprite('but_bg'));
-        oMoneyBg.x = 251;
-        oMoneyBg.y = 603;
+        oMoneyBg.x = 310; // bloco "DINHEIRO" mais à esquerda
+        oMoneyBg.y = 610;
         s_oStage.addChild(oMoneyBg);
         
         var oMoneyText = new CTLText(s_oStage, 
@@ -41,7 +41,7 @@ function CInterface(){
 
         
         _oMoneyAmountText = new CTLText(s_oStage, 
-                    260, 636, 140, 16, 
+                    319, 643, 140, 16, 
                     16, "center", "#fff", FONT1, 1,
                     0, 0,
                     " ",
@@ -50,8 +50,8 @@ function CInterface(){
 
         
         var oCurBetBg = createBitmap(s_oSpriteLibrary.getSprite('but_bg'));
-        oCurBetBg.x = 410;
-        oCurBetBg.y = 603;
+        oCurBetBg.x = 510; // "APOSTA ATUAL" centralizado no rodapé
+        oCurBetBg.y = 610;
         s_oStage.addChild(oCurBetBg);
         
         var oCurBetText = new CTLText(s_oStage, 
@@ -64,7 +64,7 @@ function CInterface(){
                     
         
         _oBetAmountText = new CTLText(s_oStage, 
-                    419, 636, 140, 16, 
+                    519, 643, 140, 16, 
                     16, "center", "#fff", FONT1, 1,
                     0, 0,
                     " ",
@@ -74,8 +74,8 @@ function CInterface(){
 
         
         _oDisplayBg = createBitmap(s_oSpriteLibrary.getSprite('but_bets'));
-        _oDisplayBg.x = 575;
-        _oDisplayBg.y = 610;
+        _oDisplayBg.x = 710; // "APOSTA MIN/MAX" mais à direita
+        _oDisplayBg.y = 617;
         s_oStage.addChild(_oDisplayBg);
 
         _oMsgTitle = new CTLText(s_oStage, 
@@ -118,11 +118,11 @@ function CInterface(){
         
         _szLastMsgHelp = TEXT_WAITING_BET;
 
-        _oRollBut = new CTextButton(1030,162,s_oSpriteLibrary.getSprite('roll_but'),"  "+TEXT_ROLL,FONT1,"#fff",22,"right",s_oStage);
+        _oRollBut = new CTextButton(1040,150,s_oSpriteLibrary.getSprite('roll_but'),"  "+TEXT_ROLL,FONT1,"#fff",22,"right",s_oStage);
         _oRollBut.disable();
         _oRollBut.addEventListener(ON_MOUSE_UP, this._onRoll, this);
       
-        _oClearAllBet = new CGfxButton(764,636,s_oSpriteLibrary.getSprite('but_clear_all'),s_oStage);
+        _oClearAllBet = new CGfxButton(930,642,s_oSpriteLibrary.getSprite('but_clear_all'),s_oStage);
         _oClearAllBet.addEventListener(ON_MOUSE_UP, this._onClearAllBet, this);
        
         this._initFichesBut();

@@ -72,9 +72,9 @@ function CFichesController(oContainer){
         this._removeFichesPile(_aMcFichesInPos[szNameAttach]);
         _aMcFichesInPos[szNameAttach] = new Array();
 
-        // Posição específica para o botão "APOSTE AQUI" (640, 450)
-        var iXPos = 640; // Posição X do botão
-        var iYPos = 450; // Posição Y do botão
+        // Posição específica para o botão "APOSTE AQUI" (alinhado ao botão visível)
+        var iXPos = 650; // Posição X do botão
+        var iYPos = 460; // Posição Y do botão
         for(var k=0;k<aFiches.length;k++){
                 aMcFiches.push(this._attachFichesPile(aFiches[k],szNameAttach,iXPos,iYPos));
                 iYPos-=5;
