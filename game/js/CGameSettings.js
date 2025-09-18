@@ -35,17 +35,17 @@ function CGameSettings(){
             _aAttachFiches["win_bet"+aData[i].value] = {x:aData[i].x,y:aData[i].y+116};
         }
 
-        _aAttachFiches["any11_7"] = {x:1032,y:582};
-        _aAttachFiches["any_craps_7"] = {x:1032,y:631};
+        _aAttachFiches["any11_7"] = {x:900,y:520};  // Dentro dos limites
+        _aAttachFiches["any_craps_7"] = {x:900,y:560};  // Dentro dos limites
             
-        _aAttachFiches["seven_bet"] = {x:1032,y:356};
-        _aAttachFiches["hardway6"] = {x:955,y:400};
-        _aAttachFiches["hardway10"] = {x:1112,y:400};
-        _aAttachFiches["hardway8"] = {x:955,y:460};
-        _aAttachFiches["hardway4"] = {x:1112,y:460};
-        _aAttachFiches["horn3"] = {x:930,y:520};
-        _aAttachFiches["horn2"] = {x:1032,y:520};
-        _aAttachFiches["horn12"] = {x:1134,y:520};
+        _aAttachFiches["seven_bet"] = {x:900,y:300};  // Dentro dos limites
+        _aAttachFiches["hardway6"] = {x:850,y:340};  // Dentro dos limites
+        _aAttachFiches["hardway10"] = {x:950,y:340};  // Dentro dos limites
+        _aAttachFiches["hardway8"] = {x:850,y:400};  // Dentro dos limites
+        _aAttachFiches["hardway4"] = {x:950,y:400};  // Dentro dos limites
+        _aAttachFiches["horn3"] = {x:850,y:460};  // Dentro dos limites
+        _aAttachFiches["horn2"] = {x:900,y:460};  // Dentro dos limites
+        _aAttachFiches["horn12"] = {x:950,y:460};  // Dentro dos limites
         
         // Posições para as novas apostas específicas
         _aAttachFiches["bet_4_10"] = {x:400,y:450};
@@ -53,8 +53,8 @@ function CGameSettings(){
         _aAttachFiches["bet_5_9"] = {x:800,y:450};
         
         
-        _aAttachFiches["oDealerWin"] = {x:CANVAS_WIDTH/2,y:-232};
-        _aAttachFiches["oReceiveWin"] = {x:CANVAS_WIDTH/2,y:CANVAS_HEIGHT + 100};
+        _aAttachFiches["oDealerWin"] = {x:640,y:-232};  // Centralizado
+        _aAttachFiches["oReceiveWin"] = {x:640,y:868};  // Centralizado (768 + 100)
     };
     
     this._initBetMultiplier = function(){
