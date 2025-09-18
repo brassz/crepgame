@@ -16,7 +16,7 @@ function CMsgBox(){
          
          
         _oMsgText = new CTLText(_oGroup, 
-                    CANVAS_WIDTH / 2-240, 240, 480, 290, 
+                    400, 240, 480, 290,  // Centralizado dentro dos limites
                     24, "center", "#fff", FONT1, 1,
                     0, 0,
                     " ",

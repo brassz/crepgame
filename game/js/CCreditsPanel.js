@@ -20,20 +20,20 @@ function CCreditsPanel(){
 
         var oSprite = s_oSpriteLibrary.getSprite('msg_box');
         _oBg = createBitmap(oSprite);
-        _oBg.x = CANVAS_WIDTH/2;
-        _oBg.y = CANVAS_HEIGHT/2;
+        _oBg.x = 640;  // Centralizado dentro dos limites
+        _oBg.y = 384;  // Centralizado dentro dos limites
         _oBg.regX = oSprite.width/2;
         _oBg.regY = oSprite.height/2;
         _oContainer.addChild(_oBg);
         
         _oHitArea = new createjs.Shape();
-        _oHitArea.graphics.beginFill("#0f0f0f").drawRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+        _oHitArea.graphics.beginFill("#0f0f0f").drawRect(0, 0, 1280, 768);  // Tamanho fixo
         _oHitArea.alpha = 0.01;
         _oListener = _oHitArea.on("click", this._onLogoButRelease);
         _oContainer.addChild(_oHitArea);
                 
         var oSprite = s_oSpriteLibrary.getSprite('but_exit');
-        _pStartPosExit = {x: CANVAS_WIDTH/2 +234, y: 254};
+        _pStartPosExit = {x: 874, y: 254};  // Posição fixa
         _oButExit = new CGfxButton(_pStartPosExit.x, _pStartPosExit.y, oSprite, _oContainer);
         _oButExit.addEventListener(ON_MOUSE_UP, this.unload, this);
         
@@ -43,12 +43,12 @@ function CCreditsPanel(){
         var oLogo = createBitmap(oSprite);
         oLogo.regX = oSprite.width/2;
         oLogo.regY = oSprite.height/2;
-        oLogo.x = CANVAS_WIDTH/2;
-        oLogo.y = CANVAS_HEIGHT/2;
+        oLogo.x = 640;  // Centralizado dentro dos limites
+        oLogo.y = 384;  // Centralizado dentro dos limites
         _oContainer.addChild(oLogo);
         
         _oLink = new createjs.Text(TEXT_LINK,"30px Arial", "#ffffff");
-        _oLink.x = CANVAS_WIDTH/2;
+        _oLink.x = 640;  // Centralizado dentro dos limites
         _oLink.y = 500;
         _oLink.textAlign = "center";
         _oContainer.addChild(_oLink);

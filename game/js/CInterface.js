@@ -137,13 +137,13 @@ function CInterface(){
         s_oStage.addChild(_oBlock);
 
         var oSprite = s_oSpriteLibrary.getSprite('but_exit');
-        _pStartPosExit = {x:CANVAS_WIDTH - (oSprite.width/2) - 10,y:(oSprite.height/2) + 10};
+        _pStartPosExit = {x:1200,y:30};  // Posição fixa dentro dos limites
         _oButExit = new CGfxButton(_pStartPosExit.x,_pStartPosExit.y,oSprite,s_oStage);
         _oButExit.addEventListener(ON_MOUSE_UP, this._onExit, this);
         
         if(DISABLE_SOUND_MOBILE === false || s_bMobile === false){
             oSprite = s_oSpriteLibrary.getSprite('audio_icon');
-            _pStartPosAudio = {x: _pStartPosExit.x - oSprite.width/2 - 10, y: (oSprite.height/2) + 10};
+            _pStartPosAudio = {x: 1150, y: 30};  // Posição fixa dentro dos limites
             _oAudioToggle = new CToggle(_pStartPosAudio.x,_pStartPosAudio.y,oSprite,s_bAudioActive,s_oStage);
             _oAudioToggle.addEventListener(ON_MOUSE_UP, this._onAudioToggle, this);
         }
@@ -159,7 +159,7 @@ function CInterface(){
         
         if (_fRequestFullScreen && screenfull.isEnabled){
             oSprite = s_oSpriteLibrary.getSprite('but_fullscreen');
-            _pStartPosFullscreen = {x:10 + oSprite.width/4,y:(oSprite.height / 2) + 10};
+            _pStartPosFullscreen = {x:30,y:30};  // Posição fixa dentro dos limites
             _oButFullscreen = new CToggle(_pStartPosFullscreen.x,_pStartPosFullscreen.y,oSprite,s_bFullscreen,s_oStage);
             _oButFullscreen.addEventListener(ON_MOUSE_UP, this._onFullscreenRelease, this);
         }

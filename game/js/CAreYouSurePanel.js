@@ -17,8 +17,8 @@ function CAreYouSurePanel(oParentContainer) {
 
         var oMsgBox = s_oSpriteLibrary.getSprite('msg_box');
         _oBg = createBitmap(oMsgBox);
-        _oBg.x = CANVAS_WIDTH/2;
-        _oBg.y = CANVAS_HEIGHT/2;
+        _oBg.x = 640;  // Centralizado dentro dos limites
+        _oBg.y = 384;  // Centralizado dentro dos limites
         _oBg.regX = oMsgBox.width * 0.5;
         _oBg.regY = oMsgBox.height * 0.5;
         _oContainer.addChild(_oBg);
@@ -26,17 +26,17 @@ function CAreYouSurePanel(oParentContainer) {
         _oListener = _oBg.on("click", function () {});
 
         _oMsg = new CTLText(_oContainer, 
-                    CANVAS_WIDTH / 2-240, CANVAS_HEIGHT * 0.5-100, 480, 120, 
+                    400, 284, 480, 120,  // Centralizado dentro dos limites
                     60, "center", "#fff", FONT1, 1,
                     0, 0,
                     TEXT_ARE_SURE,
                     true, true, true,
                     false );
 
-        _oButYes = new CGfxButton(CANVAS_WIDTH / 2 + 186, _oMsg.getY() + 200, s_oSpriteLibrary.getSprite('but_yes'), _oContainer);
+        _oButYes = new CGfxButton(826, 484, s_oSpriteLibrary.getSprite('but_yes'), _oContainer);  // Posição fixa
         _oButYes.addEventListener(ON_MOUSE_UP, this._onButYes, this);
 
-        _oButNo = new CGfxButton(CANVAS_WIDTH / 2 - 186, _oMsg.getY() + 200, s_oSpriteLibrary.getSprite('but_not'), _oContainer);
+        _oButNo = new CGfxButton(454, 484, s_oSpriteLibrary.getSprite('but_not'), _oContainer);  // Posição fixa
         _oButNo.addEventListener(ON_MOUSE_UP, this._onButNo, this);
     };
 

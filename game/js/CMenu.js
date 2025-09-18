@@ -18,21 +18,21 @@ function CMenu(){
         s_oStage.addChild(_oBg);
 
         var oSprite = s_oSpriteLibrary.getSprite('but_play');
-        _pStartPosPlay = {x:(CANVAS_WIDTH/2),y:CANVAS_HEIGHT -110};
+        _pStartPosPlay = {x:640,y:650};  // Centralizado e dentro dos limites
         _oButPlay = new CGfxButton(_pStartPosPlay.x,_pStartPosPlay.y,oSprite,s_oStage);
         _oButPlay.addEventListener(ON_MOUSE_UP, this._onButPlayRelease, this);
         
         var oSprite = s_oSpriteLibrary.getSprite('but_credits');
         if(SHOW_CREDITS){
-            _pStartPosInfo = {x: CANVAS_WIDTH - (oSprite.height/2)- 10, y: (oSprite.height/2) + 10}; 
+            _pStartPosInfo = {x: 1200, y: 30};  // Posição fixa dentro dos limites
             _oButInfo = new CGfxButton(_pStartPosInfo.x,_pStartPosInfo.y,oSprite,s_oStage);
             _oButInfo.addEventListener(ON_MOUSE_UP, this._onCredits, this);
             
             var oSprite = s_oSpriteLibrary.getSprite('audio_icon');
-            _pStartPosAudio = {x: _pStartPosInfo.x - (oSprite.width / 2) - 10, y: (oSprite.height / 2) + 10};
+            _pStartPosAudio = {x: 1150, y: 30};  // Posição fixa dentro dos limites
         }else{
             var oSprite = s_oSpriteLibrary.getSprite('audio_icon');
-            _pStartPosAudio = {x: CANVAS_WIDTH - (oSprite.height/2)- 10, y: (oSprite.height/2) + 10}; 
+            _pStartPosAudio = {x: 1200, y: 30};  // Posição fixa dentro dos limites
         }
         
 
