@@ -485,8 +485,29 @@ function CGame(oData){
         _oInterface.setMoney(TOTAL_MONEY);
         _oInterface.setCurBet(0);
         
-        // Atualizar informações da sala
-        _oInterface.updateRoomInfo("Mesa Principal", 1, 8);
+        // Atualizar informações da sala (padrão: Mesa Principal com aposta mínima de 50 reais)
+        _oInterface.updateRoomInfo("principal", 1);
+    };
+    
+    this.changeRoom = function(sRoomType){
+        // Função para trocar de sala (útil para implementar seleção de salas)
+        var oRoomConfig = s_oRoomConfig.getRoomConfig(sRoomType);
+        
+        // Atualizar configurações globais baseadas na sala
+        MIN_BET = oRoomConfig.min_bet;
+        MAX_BET = oRoomConfig.max_bet; // null se não há limite
+        
+        // Atualizar interface com nova configuração da sala
+        _oInterface.updateRoomInfo(sRoomType, 1);
+        
+        // Limpar apostas atuais se necessário
+        if(_oMySeat.getCurBet() > 0){
+            _oMySeat.clearAllBets();
+            _aBetHistory = {};
+            _oInterface.setCurBet(0);
+        }
+        
+        console.log("Sala alterada para:", oRoomConfig.name, "Aposta mínima:", oRoomConfig.min_bet, "Aposta máxima:", oRoomConfig.max_bet || "Sem limite");
     };
     
     this._onShowBetOnTable = function(oParams){
@@ -511,7 +532,7 @@ function CGame(oData){
             return;
         }
         
-        if( (iCurBet + iFicheValue) > MAX_BET ){
+        if( MAX_BET && (iCurBet + iFicheValue) > MAX_BET ){
             _oMsgBox.show(TEXT_ERROR_MAX_BET_REACHED);
             return;
         }

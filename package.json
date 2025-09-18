@@ -1,0 +1,17 @@
+{
+  "name": "craps-game",
+  "version": "1.0.0",
+  "description": "Jogo de Craps Online",
+  "main": "game/index.html",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "echo 'No build step required'",
+    "start": "vercel dev"
+  },
+  "keywords": ["craps", "game", "casino", "dice"],
+  "author": "Seu Nome",
+  "license": "MIT",
+  "devDependencies": {
+    "vercel": "^32.0.0"
+  }
+}

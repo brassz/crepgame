@@ -97,7 +97,7 @@ function CInterface(){
                     oRoomInfoBg.x+114, oRoomInfoBg.y + 13, 130, 80, 
                     16, "center", "#fff", FONT1, 1,
                     0, 0,
-                    "SALA: Mesa Principal\nJOGADORES: 1/8\nAPOSTA MIN: " + MIN_BET + "\nAPOSTA MAX: " + MAX_BET,
+                    "SALA: " + s_oRoomConfig.getRoomName("principal") + "\nJOGADORES: 1/" + s_oRoomConfig.getRoomMaxPlayers("principal") + "\nAPOSTA MIN: " + s_oRoomConfig.getRoomMinBet("principal") + "\nAPOSTA MAX: Sem limite",
                     true, true, true,
                     false );
 
@@ -275,12 +275,13 @@ function CInterface(){
         _oHelpText.refreshText(_szLastMsgHelp);
     };
     
-    this.updateRoomInfo = function(sRoomName, iPlayers, iMaxPlayers){
+    this.updateRoomInfo = function(sRoomType, iPlayers){
         if(_oRoomInfoText){
-            var sRoomInfo = "SALA: " + sRoomName + "\n";
-            sRoomInfo += "JOGADORES: " + iPlayers + "/" + iMaxPlayers + "\n";
-            sRoomInfo += "APOSTA MIN: " + MIN_BET + "\n";
-            sRoomInfo += "APOSTA MAX: " + MAX_BET;
+            var oRoomConfig = s_oRoomConfig.getRoomConfig(sRoomType);
+            var sRoomInfo = "SALA: " + oRoomConfig.name + "\n";
+            sRoomInfo += "JOGADORES: " + iPlayers + "/" + oRoomConfig.max_players + "\n";
+            sRoomInfo += "APOSTA MIN: " + oRoomConfig.min_bet + "\n";
+            sRoomInfo += "APOSTA MAX: " + (oRoomConfig.max_bet ? oRoomConfig.max_bet : "Sem limite");
             _oRoomInfoText.refreshText(sRoomInfo);
         }
     };
