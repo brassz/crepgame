@@ -26,12 +26,12 @@ function CInterface(){
     this._init = function(){
         
         var oMoneyBg = createBitmap(s_oSpriteLibrary.getSprite('but_bg'));
-        oMoneyBg.x = 180;  // Movido mais para a esquerda
-        oMoneyBg.y = 680;  // Movido para baixo para dar mais espaço à mesa
+        oMoneyBg.x = 200;  // Dentro dos limites
+        oMoneyBg.y = 620;  // Dentro dos limites (768-148=620)
         s_oStage.addChild(oMoneyBg);
         
         var oMoneyText = new CTLText(s_oStage, 
-                    189, 693, 140, 16, 
+                    209, 633, 140, 16, 
                     16, "center", "#fff", FONT1, 1,
                     0, 0,
                     TEXT_MONEY,
@@ -41,7 +41,7 @@ function CInterface(){
 
         
         _oMoneyAmountText = new CTLText(s_oStage, 
-                    189, 713, 140, 16, 
+                    209, 653, 140, 16, 
                     16, "center", "#fff", FONT1, 1,
                     0, 0,
                     " ",
@@ -50,12 +50,12 @@ function CInterface(){
 
         
         var oCurBetBg = createBitmap(s_oSpriteLibrary.getSprite('but_bg'));
-        oCurBetBg.x = 340;  // Movido mais para a esquerda
-        oCurBetBg.y = 680;  // Movido para baixo
+        oCurBetBg.x = 380;  // Dentro dos limites
+        oCurBetBg.y = 620;  // Dentro dos limites
         s_oStage.addChild(oCurBetBg);
         
         var oCurBetText = new CTLText(s_oStage, 
-                    349, 693, 140, 16, 
+                    389, 633, 140, 16, 
                     16, "center", "#fff", FONT1, 1,
                     0, 0,
                     TEXT_CUR_BET,
@@ -64,7 +64,7 @@ function CInterface(){
                     
         
         _oBetAmountText = new CTLText(s_oStage, 
-                    349, 713, 140, 16, 
+                    389, 653, 140, 16, 
                     16, "center", "#fff", FONT1, 1,
                     0, 0,
                     " ",
@@ -74,8 +74,8 @@ function CInterface(){
 
         
         _oDisplayBg = createBitmap(s_oSpriteLibrary.getSprite('but_bets'));
-        _oDisplayBg.x = 500;  // Movido mais para a esquerda
-        _oDisplayBg.y = 680;  // Movido para baixo
+        _oDisplayBg.x = 560;  // Dentro dos limites
+        _oDisplayBg.y = 620;  // Dentro dos limites
         s_oStage.addChild(_oDisplayBg);
 
         _oMsgTitle = new CTLText(s_oStage, 
@@ -89,8 +89,8 @@ function CInterface(){
         
         // INFORMAÇÕES DA SALA - POSICIONADO NO ESPAÇO SUPERIOR CENTRAL
         var oRoomInfoBg = createBitmap(s_oSpriteLibrary.getSprite('display_bg'));
-        oRoomInfoBg.x = 320; // Bem centralizado
-        oRoomInfoBg.y = 20;  // Parte superior da mesa
+        oRoomInfoBg.x = 300; // Bem centralizado dentro dos limites
+        oRoomInfoBg.y = 30;  // Parte superior da mesa
         s_oStage.addChild(oRoomInfoBg);
         
         _oRoomInfoText = new CTLText(s_oStage, 
@@ -103,8 +103,8 @@ function CInterface(){
 
         // HELP TEXT - POSICIONADO AO LADO DAS INFORMAÇÕES DA SALA
         var oHelpBg = createBitmap(s_oSpriteLibrary.getSprite('display_bg'));
-        oHelpBg.x = 600;  // Lado direito das informações da sala
-        oHelpBg.y = 20;   // Mesma altura das informações da sala
+        oHelpBg.x = 580;  // Lado direito das informações da sala, dentro dos limites
+        oHelpBg.y = 30;   // Mesma altura das informações da sala
         s_oStage.addChild(oHelpBg);
         
         _oHelpText =  new CTLText(s_oStage, 
@@ -118,11 +118,11 @@ function CInterface(){
         
         _szLastMsgHelp = TEXT_WAITING_BET;
 
-        _oRollBut = new CTextButton(880,20,s_oSpriteLibrary.getSprite('roll_but'),"  "+TEXT_ROLL,FONT1,"#fff",22,"right",s_oStage);  // Alinhado com outros elementos superiores
+        _oRollBut = new CTextButton(860,30,s_oSpriteLibrary.getSprite('roll_but'),"  "+TEXT_ROLL,FONT1,"#fff",22,"right",s_oStage);  // Alinhado com outros elementos superiores
         _oRollBut.disable();
         _oRollBut.addEventListener(ON_MOUSE_UP, this._onRoll, this);
       
-        _oClearAllBet = new CGfxButton(680,680,s_oSpriteLibrary.getSprite('but_clear_all'),s_oStage);  // Movido para baixo junto com outros controles
+        _oClearAllBet = new CGfxButton(720,620,s_oSpriteLibrary.getSprite('but_clear_all'),s_oStage);  // Movido para baixo dentro dos limites
         _oClearAllBet.addEventListener(ON_MOUSE_UP, this._onClearAllBet, this);
        
         this._initFichesBut();
@@ -235,20 +235,20 @@ function CInterface(){
     
     this._initFichesBut = function(){
         var oFicheBg = createBitmap(s_oSpriteLibrary.getSprite('chip_box'));
-        oFicheBg.x = 50;   // Posicionado na lateral esquerda
-        oFicheBg.y = 300;  // Meio da tela verticalmente
+        oFicheBg.x = 30;   // Posicionado na lateral esquerda dentro dos limites
+        oFicheBg.y = 250;  // Meio da tela verticalmente
         s_oStage.addChild(oFicheBg);
         
-        //SET FICHES BUTTON - DISPOSTAS HORIZONTALMENTE PARA ECONOMIZAR ESPAÇO
-        var iCurX = 60;    // Começa na lateral esquerda
-        var iCurY = 350;   // Altura média
+        //SET FICHES BUTTON
+        var iCurX = 72;    // Começa na lateral esquerda
+        var iCurY = 300;   // Altura média
         _aFiches = new Array();
         for(var i=0;i<NUM_FICHES;i++){
             var oSprite = s_oSpriteLibrary.getSprite('fiche_'+i);
             _aFiches[i] = new CFicheBut(iCurX,iCurY,oSprite);
             _aFiches[i].addEventListenerWithParams(ON_MOUSE_UP, this._onFicheSelected, this,[i]);
             
-            iCurY += oSprite.height + 15;  // Espaçamento ainda mais reduzido
+            iCurY += oSprite.height + 12;  // Espaçamento reduzido mas dentro dos limites
         }
     };
     

@@ -39,8 +39,8 @@ function CDicesAnim(iX,iY){
         _aDicesAnimSprites = new Array();
         for(var i=0;i<NUM_DICE_ROLLING_FRAMES;i++){
             var oImage = createBitmap(s_oSpriteLibrary.getSprite('launch_dices_'+i)); 
-            oImage.x = 200;  // Mais centralizado
-            oImage.y = 120;  // Movido um pouco para cima
+            oImage.x = 180;  // Centralizado dentro dos limites
+            oImage.y = 130;  // Dentro dos limites
             oImage.visible = false;
             _oContainer.addChild(oImage);
             _aDicesAnimSprites.push(oImage);
@@ -63,8 +63,8 @@ function CDicesAnim(iX,iY){
         _oDiceASprite = createSprite(oSpriteSheet,"anim_1",80,34);
         _oDiceASprite.stop();
         _oDiceASprite.visible = false;
-        _oDiceASprite.x = 370;  // Ajustado
-        _oDiceASprite.y = 180;  // Ajustado
+        _oDiceASprite.x = 350;  // Dentro dos limites
+        _oDiceASprite.y = 190;  // Dentro dos limites
         _oContainer.addChild(_oDiceASprite);
         
         var oData = {   
@@ -81,12 +81,12 @@ function CDicesAnim(iX,iY){
         _oDiceBSprite = createSprite(oSpriteSheet,"anim_1",102,65);
         _oDiceBSprite.stop();
         _oDiceBSprite.visible = false;
-        _oDiceBSprite.x = 280;  // Ajustado
-        _oDiceBSprite.y = 220;  // Ajustado
+        _oDiceBSprite.x = 260;  // Dentro dos limites
+        _oDiceBSprite.y = 230;  // Dentro dos limites
         _oContainer.addChild(_oDiceBSprite);
         _oDiceBSprite.addEventListener("animationend", _oThis._onDiceBAnimEnded);
         
-        _oDiceTopDownView = new CDicesTopDownView(550,30,_oContainer);  // Mais centralizado
+        _oDiceTopDownView = new CDicesTopDownView(520,40,_oContainer);  // Dentro dos limites
     };
     
     this.unload =  function(){

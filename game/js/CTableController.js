@@ -26,22 +26,22 @@ function CTableController(){
         var oBmp;
         _aEnlights = new Array();
         
-        oBmp = new CEnlight(200,180,s_oSpriteLibrary.getSprite('enlight_pass_line'),_oContainer);  // Ajustado
+        oBmp = new CEnlight(200,180,s_oSpriteLibrary.getSprite('enlight_pass_line'),_oContainer);
         _aEnlights["pass_line"] = oBmp;
         
-        oBmp = new CEnlight(380,450,s_oSpriteLibrary.getSprite('enlight_dont_pass1'),_oContainer);  // Ajustado
+        oBmp = new CEnlight(350,420,s_oSpriteLibrary.getSprite('enlight_dont_pass1'),_oContainer);
         _aEnlights["dont_pass1"] = oBmp;
         
-        oBmp = new CEnlight(250,140,s_oSpriteLibrary.getSprite('enlight_dont_pass2'),_oContainer);  // Ajustado
+        oBmp = new CEnlight(250,140,s_oSpriteLibrary.getSprite('enlight_dont_pass2'),_oContainer);
         _aEnlights["dont_pass2"] = oBmp;    
         
-        oBmp = new CEnlight(300,140,s_oSpriteLibrary.getSprite('enlight_dont_come'),_oContainer);  // Ajustado
+        oBmp = new CEnlight(300,140,s_oSpriteLibrary.getSprite('enlight_dont_come'),_oContainer);
         _aEnlights["dont_come"] = oBmp; 
         
-        oBmp = new CEnlight(300,280,s_oSpriteLibrary.getSprite('enlight_come'),_oContainer);  // Ajustado
+        oBmp = new CEnlight(300,280,s_oSpriteLibrary.getSprite('enlight_come'),_oContainer);
         _aEnlights["come"] = oBmp; 
         
-        var aPos = [{value:4,x:380,y:140},{value:5,x:460,y:140},{value:6,x:540,y:140},{value:8,x:620,y:140},{value:9,x:700,y:140},{value:10,x:780,y:140}];  // Posições mais compactas
+        var aPos = [{value:4,x:380,y:140},{value:5,x:460,y:140},{value:6,x:540,y:140},{value:8,x:620,y:140},{value:9,x:700,y:140},{value:10,x:780,y:140}];  // Posições dentro dos limites
         for(var i=0;i<6;i++){
             oBmp = new CEnlight(aPos[i].x,aPos[i].y,s_oSpriteLibrary.getSprite('enlight_lay_bet'),_oContainer);
             _aEnlights["lay_bet"+aPos[i].value] = oBmp;
@@ -56,20 +56,20 @@ function CTableController(){
             _aEnlights["win_bet"+aPos[i].value] = oBmp;
         }
         
-        oBmp = new CEnlight(240,380,s_oSpriteLibrary.getSprite('enlight_big_6'),_oContainer);  // Ajustado
+        oBmp = new CEnlight(240,360,s_oSpriteLibrary.getSprite('enlight_big_6'),_oContainer);
         _aEnlights["big_6"] = oBmp; 
         
-        oBmp = new CEnlight(260,420,s_oSpriteLibrary.getSprite('enlight_big_8'),_oContainer);  // Ajustado
+        oBmp = new CEnlight(260,400,s_oSpriteLibrary.getSprite('enlight_big_8'),_oContainer);
         _aEnlights["big_8"] = oBmp; 
         
-        oBmp = new CEnlight(300,380,s_oSpriteLibrary.getSprite('enlight_field'),_oContainer);  // Ajustado
+        oBmp = new CEnlight(300,360,s_oSpriteLibrary.getSprite('enlight_field'),_oContainer);
         _aEnlights["field"] = oBmp; 
         
-        //ENLIGHT ANY 11 - MOVIDO MAIS PARA O CENTRO
-        var iXAny11 = 780;  // Movido mais para a esquerda
-        var iYAny11 = 380;  // Movido um pouco para cima
-        var iXAnyCraps = 810;  // Movido mais para a esquerda
-        var iYAnyCraps = 390;  // Movido um pouco para cima
+        //ENLIGHT ANY 11 - POSICIONADO DENTRO DOS LIMITES
+        var iXAny11 = 750;  // Dentro dos limites
+        var iYAny11 = 350;  // Dentro dos limites
+        var iXAnyCraps = 780;  // Dentro dos limites
+        var iYAnyCraps = 360;  // Dentro dos limites
         for(var i=0;i<7;i++){
             oBmp = new CEnlight(iXAny11,iYAny11,s_oSpriteLibrary.getSprite('enlight_circle'),_oContainer);
             _aEnlights["any11_"+i] = oBmp;
@@ -81,38 +81,38 @@ function CTableController(){
             iYAnyCraps += 34;
         }
         
-        oBmp = new CEnlight(850,520,s_oSpriteLibrary.getSprite('enlight_any11'),_oContainer);  // Movido para cima
+        oBmp = new CEnlight(800,480,s_oSpriteLibrary.getSprite('enlight_any11'),_oContainer);  // Dentro dos limites
         _aEnlights["any11_"+i] = oBmp; 
 
         //ENLIGHT ANY CRAPS
-        oBmp = new CEnlight(850,580,s_oSpriteLibrary.getSprite('enlight_any_craps'),_oContainer);  // Movido para cima
+        oBmp = new CEnlight(800,520,s_oSpriteLibrary.getSprite('enlight_any_craps'),_oContainer);  // Dentro dos limites
         _aEnlights["any_craps_"+i] = oBmp;
         
-        //ENLIGHT HARDWAYS - MOVIDO MAIS PARA O CENTRO
-        oBmp = new CEnlight(850,340,s_oSpriteLibrary.getSprite('enlight_proposition1'),_oContainer);  // Movido
+        //ENLIGHT HARDWAYS - POSICIONADO DENTRO DOS LIMITES
+        oBmp = new CEnlight(800,300,s_oSpriteLibrary.getSprite('enlight_proposition1'),_oContainer);
         _aEnlights["hardway6"] = oBmp; 
         
-        oBmp = new CEnlight(980,340,s_oSpriteLibrary.getSprite('enlight_proposition1'),_oContainer);  // Movido
+        oBmp = new CEnlight(900,300,s_oSpriteLibrary.getSprite('enlight_proposition1'),_oContainer);
         _aEnlights["hardway10"] = oBmp;
         
-        oBmp = new CEnlight(850,400,s_oSpriteLibrary.getSprite('enlight_proposition1'),_oContainer);  // Movido
+        oBmp = new CEnlight(800,360,s_oSpriteLibrary.getSprite('enlight_proposition1'),_oContainer);
         _aEnlights["hardway8"] = oBmp;
         
-        oBmp = new CEnlight(980,400,s_oSpriteLibrary.getSprite('enlight_proposition1'),_oContainer);  // Movido
+        oBmp = new CEnlight(900,360,s_oSpriteLibrary.getSprite('enlight_proposition1'),_oContainer);
         _aEnlights["hardway4"] = oBmp;
         
-        //ENLIGHT PROPOSITION 2 - MOVIDO MAIS PARA O CENTRO
-        oBmp = new CEnlight(850,460,s_oSpriteLibrary.getSprite('enlight_proposition2'),_oContainer);  // Movido
+        //ENLIGHT PROPOSITION 2 - POSICIONADO DENTRO DOS LIMITES
+        oBmp = new CEnlight(800,420,s_oSpriteLibrary.getSprite('enlight_proposition2'),_oContainer);
         _aEnlights["horn3"] = oBmp;
         
-        oBmp = new CEnlight(915,460,s_oSpriteLibrary.getSprite('enlight_proposition2'),_oContainer);  // Movido
+        oBmp = new CEnlight(850,420,s_oSpriteLibrary.getSprite('enlight_proposition2'),_oContainer);
         _aEnlights["horn2"] = oBmp;
         
-        oBmp = new CEnlight(980,460,s_oSpriteLibrary.getSprite('enlight_proposition2'),_oContainer);  // Movido
+        oBmp = new CEnlight(900,420,s_oSpriteLibrary.getSprite('enlight_proposition2'),_oContainer);
         _aEnlights["horn12"] = oBmp;
         
-        //ENLIGHT SEVEN BET - MOVIDO MAIS PARA O CENTRO
-        oBmp = new CEnlight(850,300,s_oSpriteLibrary.getSprite('enlight_seven'),_oContainer);  // Movido
+        //ENLIGHT SEVEN BET - POSICIONADO DENTRO DOS LIMITES
+        oBmp = new CEnlight(800,260,s_oSpriteLibrary.getSprite('enlight_seven'),_oContainer);
         _aEnlights["seven_bet"] = oBmp; 
         
     };
@@ -123,8 +123,8 @@ function CTableController(){
         
         var oBut;
         
-        // Criar único botão "APOSTE AQUI" melhor posicionado
-        var oMainBetButton = new CTextButton(500, 350, s_oSpriteLibrary.getSprite('but_bg'), "APOSTE AQUI", FONT1, "#fff", 18, "center", _oContainer);  // Posicionado no centro da mesa
+        // Criar único botão "APOSTE AQUI" no centro da mesa
+        var oMainBetButton = new CTextButton(450, 320, s_oSpriteLibrary.getSprite('but_bg'), "APOSTE AQUI", FONT1, "#fff", 18, "center", _oContainer);  // Centro da mesa
         oMainBetButton.addEventListener(ON_MOUSE_UP, this._onMainBetClick.bind(this), this);
         oMainBetButton.addEventListener(ON_MOUSE_OVER, this._onBetNumberOver.bind(this, {button: "main_bet"}), this);
         oMainBetButton.addEventListener(ON_MOUSE_OUT, this._onBetNumberOut.bind(this, {button: "main_bet"}), this);
