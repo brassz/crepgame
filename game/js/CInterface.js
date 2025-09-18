@@ -12,6 +12,7 @@ function CInterface(){
     var _oBetAmountText;
     var _oMsgTitle;
     var _oHelpText;
+    var _oRoomInfoText;
     var _oDisplayBg;
     var _oRollBut;
     var _oClearAllBet;
@@ -86,6 +87,21 @@ function CInterface(){
                     false );
 
         
+        // INFORMAÇÕES DA SALA - MOVIDO PARA O ESPAÇO VERDE DA MESA
+        var oRoomInfoBg = createBitmap(s_oSpriteLibrary.getSprite('display_bg'));
+        oRoomInfoBg.x = 450; // Posição no espaço verde da mesa
+        oRoomInfoBg.y = 50;  // Parte superior da mesa
+        s_oStage.addChild(oRoomInfoBg);
+        
+        _oRoomInfoText = new CTLText(s_oStage, 
+                    oRoomInfoBg.x+114, oRoomInfoBg.y + 13, 130, 80, 
+                    16, "center", "#fff", FONT1, 1,
+                    0, 0,
+                    "SALA: Mesa Principal\nJOGADORES: 1/8\nAPOSTA MIN: " + MIN_BET + "\nAPOSTA MAX: " + MAX_BET,
+                    true, true, true,
+                    false );
+
+        // HELP TEXT - MANTIDO NO CANTO DIREITO MAS AJUSTADO
         var oHelpBg = createBitmap(s_oSpriteLibrary.getSprite('display_bg'));
         oHelpBg.x = 880;
         oHelpBg.y = 210;
@@ -219,13 +235,13 @@ function CInterface(){
     
     this._initFichesBut = function(){
         var oFicheBg = createBitmap(s_oSpriteLibrary.getSprite('chip_box'));
-        oFicheBg.x = 82;
-        oFicheBg.y = 94;
+        oFicheBg.x = 50;  // Movido mais para a esquerda para dar espaço
+        oFicheBg.y = 120; // Movido um pouco para baixo
         s_oStage.addChild(oFicheBg);
         
         //SET FICHES BUTTON
-        var iCurX = 124;
-        var iCurY = 144;
+        var iCurX = 92;   // Ajustado conforme nova posição
+        var iCurY = 170;  // Ajustado conforme nova posição
         _aFiches = new Array();
         for(var i=0;i<NUM_FICHES;i++){
             var oSprite = s_oSpriteLibrary.getSprite('fiche_'+i);
@@ -257,6 +273,16 @@ function CInterface(){
     
     this.clearMsgHelp = function(){
         _oHelpText.refreshText(_szLastMsgHelp);
+    };
+    
+    this.updateRoomInfo = function(sRoomName, iPlayers, iMaxPlayers){
+        if(_oRoomInfoText){
+            var sRoomInfo = "SALA: " + sRoomName + "\n";
+            sRoomInfo += "JOGADORES: " + iPlayers + "/" + iMaxPlayers + "\n";
+            sRoomInfo += "APOSTA MIN: " + MIN_BET + "\n";
+            sRoomInfo += "APOSTA MAX: " + MAX_BET;
+            _oRoomInfoText.refreshText(sRoomInfo);
+        }
     };
     
     this._onBetRelease = function(oParams){

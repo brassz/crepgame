@@ -484,6 +484,9 @@ function CGame(oData){
         _oMySeat.setInfo(TOTAL_MONEY, _oTableController.getContainer());
         _oInterface.setMoney(TOTAL_MONEY);
         _oInterface.setCurBet(0);
+        
+        // Atualizar informações da sala
+        _oInterface.updateRoomInfo("Mesa Principal", 1, 8);
     };
     
     this._onShowBetOnTable = function(oParams){
