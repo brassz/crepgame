@@ -1,0 +1,19 @@
+{
+  "name": "craps-multiplayer-server",
+  "version": "1.0.0",
+  "description": "Servidor WebSocket para o jogo de Craps multiplayer",
+  "main": "websocket-server-example.js",
+  "scripts": {
+    "start": "node websocket-server-example.js",
+    "dev": "nodemon websocket-server-example.js"
+  },
+  "dependencies": {
+    "ws": "^8.14.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "keywords": ["websocket", "multiplayer", "craps", "casino", "game"],
+  "author": "Desenvolvedor do Sistema",
+  "license": "MIT"
+}

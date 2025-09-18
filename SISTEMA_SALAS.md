@@ -67,6 +67,7 @@ As informações da sala agora são exibidas no **espaço verde da mesa** (posi�
 3. **Interface Dinâmica**: Informações da mesa atualizadas automaticamente
 4. **Aposta Mínima Padronizada**: Mesa com aposta mínima de 50 reais
 5. **Sem Limite Máximo**: Jogadores podem apostar qualquer valor acima da aposta mínima
+6. **Sistema Multiplayer**: Salas compartilhadas com outros jogadores em tempo real
 
 ## Configuração da Mesa
 
@@ -75,4 +76,21 @@ A mesa principal está sempre ativa e configurada com:
 - Aposta máxima: Sem limite
 - Máximo de jogadores: 8
 
-O sistema está preparado para futuras expansões caso seja necessário adicionar mais mesas.
+## Sistema Multiplayer
+
+O jogo agora suporta **salas compartilhadas multiplayer** onde:
+
+- **Salas são compartilhadas**: Os jogadores são automaticamente direcionados para salas existentes com espaço disponível
+- **Criação inteligente**: Novas salas só são criadas quando todas as salas existentes atingem a capacidade máxima
+- **Sincronização em tempo real**: Estados de jogo, apostas e resultados são sincronizados entre todos os jogadores
+- **Interface de seleção**: Painel visual para escolher entre diferentes tipos de salas
+
+### Tipos de Salas Disponíveis
+
+1. **Mesa Principal** - Aposta mín: 50 reais, 8 jogadores
+2. **Mesa VIP** - Aposta mín: 500 reais, 6 jogadores  
+3. **Mesa Iniciante** - Aposta mín: 10 reais, 10 jogadores
+
+Para detalhes completos do sistema multiplayer, consulte: `SISTEMA_MULTIPLAYER.md`
+
+O sistema está preparado para futuras expansões e suporta tanto modo online (com WebSocket) quanto offline (local).
