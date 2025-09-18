@@ -1,9 +1,10 @@
 {
   "version": 2,
+  "outputDirectory": "game",
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "/game/index.html"
+      "destination": "/index.html"
     }
   ],
   "headers": [
