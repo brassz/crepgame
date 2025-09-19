@@ -25,9 +25,16 @@ function CRoomSelectionPanel(){
         _oBg = new createjs.Shape(oGraphics);
         _oContainer.addChild(_oBg);
         
-        // Panel background - responsivo para diferentes resoluções
-        var iPanelWidth = Math.min(Math.max(400, CANVAS_WIDTH * 0.7), CANVAS_WIDTH - 40);
-        var iPanelHeight = Math.min(Math.max(350, CANVAS_HEIGHT * 0.7), CANVAS_HEIGHT - 40);
+        // Panel background - otimizado para 1280x768 e outras resoluções
+        var iPanelWidth = Math.min(800, CANVAS_WIDTH - 80); // Largura máxima 800px
+        var iPanelHeight = Math.min(500, CANVAS_HEIGHT - 80); // Altura máxima 500px
+        
+        // Para resolução 1280x768, usar dimensões específicas
+        if(CANVAS_WIDTH === 1280 && CANVAS_HEIGHT === 768) {
+            iPanelWidth = 800;
+            iPanelHeight = 480;
+        }
+        
         var iPanelX = CANVAS_WIDTH/2 - iPanelWidth/2;
         var iPanelY = CANVAS_HEIGHT/2 - iPanelHeight/2;
         
@@ -96,8 +103,15 @@ function CRoomSelectionPanel(){
         var aRoomsInfo = s_oMultiplayerRoomManager.getActiveRoomsInfo();
         
         // Calcular posições baseadas no painel (usar as mesmas dimensões da criação)
-        var iPanelWidth = Math.min(Math.max(400, CANVAS_WIDTH * 0.7), CANVAS_WIDTH - 40);
-        var iPanelHeight = Math.min(Math.max(350, CANVAS_HEIGHT * 0.7), CANVAS_HEIGHT - 40);
+        var iPanelWidth = Math.min(800, CANVAS_WIDTH - 80);
+        var iPanelHeight = Math.min(500, CANVAS_HEIGHT - 80);
+        
+        // Para resolução 1280x768, usar dimensões específicas
+        if(CANVAS_WIDTH === 1280 && CANVAS_HEIGHT === 768) {
+            iPanelWidth = 800;
+            iPanelHeight = 480;
+        }
+        
         var iPanelY = CANVAS_HEIGHT/2 - iPanelHeight/2;
         
         // Garantir que o painel não saia da tela
