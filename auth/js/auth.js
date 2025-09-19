@@ -7,8 +7,17 @@
 const SUPABASE_URL = 'YOUR_SUPABASE_URL'; // Replace with your Supabase URL
 const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // Replace with your Supabase anon key
 
-// Initialize Supabase client
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Initialize Supabase client (with fallback for testing)
+let supabase = null;
+try {
+    if (SUPABASE_URL !== 'YOUR_SUPABASE_URL' && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY') {
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    } else {
+        console.log('Supabase not configured - using demo mode only');
+    }
+} catch (error) {
+    console.log('Supabase initialization failed - using demo mode only');
+}
 
 // Global auth state
 let currentUser = null;
