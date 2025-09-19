@@ -117,6 +117,27 @@ function CMultiplayerRoomManager(){
         // Create initial rooms for each room type
         for(var sRoomType in _aActiveRooms){
             this._createLocalRoom(sRoomType);
+            
+            // Create additional rooms for testing with different occupancy levels
+            if(sRoomType === "principal"){
+                var oRoom2 = this._createLocalRoom(sRoomType);
+                // Simular jogadores na segunda sala
+                for(var i = 0; i < 5; i++){
+                    oRoom2.players.push({
+                        id: 'test_player_' + i,
+                        joined_at: Date.now()
+                    });
+                }
+                
+                var oRoom3 = this._createLocalRoom(sRoomType);
+                // Simular sala lotada
+                for(var i = 0; i < oRoom3.max_players; i++){
+                    oRoom3.players.push({
+                        id: 'full_player_' + i,
+                        joined_at: Date.now()
+                    });
+                }
+            }
         }
     };
     

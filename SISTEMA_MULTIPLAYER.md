@@ -45,10 +45,12 @@ O sistema multiplayer implementa salas compartilhadas onde os jogadores são aut
 - Reconexão automática em caso de desconexão
 
 #### Interface de Seleção de Salas
-- Painel visual mostrando todas as salas disponíveis
+- Painel visual responsivo mostrando todas as salas disponíveis
 - Status em tempo real (disponível/lotada)
 - Informações detalhadas de cada sala
 - Atualização automática a cada 3 segundos
+- **Adaptável a diferentes resoluções** - O modal se ajusta automaticamente ao tamanho da tela
+- **Posicionamento inteligente** - Garante que todos os elementos fiquem visíveis na tela
 
 ## Arquitetura do Sistema
 

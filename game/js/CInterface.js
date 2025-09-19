@@ -89,17 +89,17 @@ function CInterface(){
                     false );
 
         
-        // INFORMAÇÕES DA SALA - MOVIDO PARA O ESPAÇO VERDE DA MESA
+        // INFORMAÇÕES DA SALA - MOVIDO PARA O LADO ESQUERDO DA MESA
         var oRoomInfoBg = createBitmap(s_oSpriteLibrary.getSprite('display_bg'));
-        oRoomInfoBg.x = 450; // Posição no espaço verde da mesa
-        oRoomInfoBg.y = 50;  // Parte superior da mesa
+        oRoomInfoBg.x = 50;  // Lado esquerdo
+        oRoomInfoBg.y = 50;  // Parte superior
         s_oStage.addChild(oRoomInfoBg);
         
         _oRoomInfoText = new CTLText(s_oStage, 
-                    oRoomInfoBg.x+114, oRoomInfoBg.y + 13, 130, 80, 
-                    16, "center", "#fff", FONT1, 1,
+                    oRoomInfoBg.x+10, oRoomInfoBg.y + 13, 200, 80, 
+                    14, "left", "#fff", FONT1, 1,
                     0, 0,
-                    "SALA: " + s_oRoomConfig.getRoomName("principal") + "\nJOGADORES: 1/" + s_oRoomConfig.getRoomMaxPlayers("principal") + "\nAPOSTA MIN: " + s_oRoomConfig.getRoomMinBet("principal") + "\nAPOSTA MAX: Sem limite",
+                    "SALA: " + s_oRoomConfig.getRoomName("principal") + "\nJOGADORES: 1/" + s_oRoomConfig.getRoomMaxPlayers("principal") + "\nAPOSTA MIN: " + s_oRoomConfig.getRoomMinBet("principal") + "R$\nAPOSTA MAX: Sem limite",
                     true, true, true,
                     false );
 
@@ -124,8 +124,8 @@ function CInterface(){
         _oRollBut.disable();
         _oRollBut.addEventListener(ON_MOUSE_UP, this._onRoll, this);
         
-        // Room selection button
-        _oRoomSelectionBut = new CTextButton(450,150,s_oSpriteLibrary.getSprite('but_bg'),"SALAS",FONT1,"#fff",16,"center",s_oStage);
+        // Room selection button - posicionado no canto superior direito
+        _oRoomSelectionBut = new CTextButton(CANVAS_WIDTH - 120, 120, s_oSpriteLibrary.getSprite('but_bg'), "SALAS", FONT1, "#fff", 16, "center", s_oStage);
         _oRoomSelectionBut.addEventListener(ON_MOUSE_UP, this._onRoomSelection, this);
       
         _oClearAllBet = new CGfxButton(764,636,s_oSpriteLibrary.getSprite('but_clear_all'),s_oStage);
@@ -295,8 +295,8 @@ function CInterface(){
             var oRoomConfig = s_oRoomConfig.getRoomConfig(sRoomType);
             var sRoomInfo = "SALA: " + oRoomConfig.name + "\n";
             sRoomInfo += "JOGADORES: " + iPlayers + "/" + oRoomConfig.max_players + "\n";
-            sRoomInfo += "APOSTA MIN: " + oRoomConfig.min_bet + "\n";
-            sRoomInfo += "APOSTA MAX: " + (oRoomConfig.max_bet ? oRoomConfig.max_bet : "Sem limite");
+            sRoomInfo += "APOSTA MIN: " + oRoomConfig.min_bet + "R$\n";
+            sRoomInfo += "APOSTA MAX: " + (oRoomConfig.max_bet ? oRoomConfig.max_bet + "R$" : "Ilimitado");
             _oRoomInfoText.refreshText(sRoomInfo);
         }
     };
