@@ -63,6 +63,12 @@ function CGame(oData){
     };
     
     this.unload = function(){
+        // Disconnect from multiplayer room
+        if(s_oMultiplayerRoomManager){
+            s_oMultiplayerRoomManager.disconnect();
+            s_oMultiplayerRoomManager = null;
+        }
+        
         _oInterface.unload();
         _oTableController.unload();
         _oMsgBox.unload();
@@ -173,6 +179,18 @@ function CGame(oData){
     };
     
     this._startRollingAnim = function(){
+        // Broadcast dice roll to other players
+        if(s_oMultiplayerRoomManager){
+            s_oMultiplayerRoomManager.broadcastGameAction({
+                type: 'dice_rolled',
+                data: {
+                    dice_result: _aDiceResult,
+                    state: _iState,
+                    point_number: _iNumberPoint
+                }
+            });
+        }
+        
         _oDicesAnim.startRolling(_aDiceResult);
     };
     
@@ -485,11 +503,21 @@ function CGame(oData){
         _oInterface.setMoney(TOTAL_MONEY);
         _oInterface.setCurBet(0);
         
-        // Atualizar informações da sala (padrão: Mesa Principal com aposta mínima de 50 reais)
-        _oInterface.updateRoomInfo("principal", 1);
+        // Initialize multiplayer room manager
+        if(!s_oMultiplayerRoomManager){
+            s_oMultiplayerRoomManager = new CMultiplayerRoomManager();
+        }
+        
+        // Join a room (will find available room or create new one)
+        s_oMultiplayerRoomManager.joinRoom("principal");
     };
     
     this.changeRoom = function(sRoomType){
+        // Leave current room
+        if(s_oMultiplayerRoomManager){
+            s_oMultiplayerRoomManager.leaveRoom();
+        }
+        
         // Função para trocar de sala (útil para implementar seleção de salas)
         var oRoomConfig = s_oRoomConfig.getRoomConfig(sRoomType);
         
@@ -497,8 +525,10 @@ function CGame(oData){
         MIN_BET = oRoomConfig.min_bet;
         MAX_BET = oRoomConfig.max_bet; // null se não há limite
         
-        // Atualizar interface com nova configuração da sala
-        _oInterface.updateRoomInfo(sRoomType, 1);
+        // Join new room
+        if(s_oMultiplayerRoomManager){
+            s_oMultiplayerRoomManager.joinRoom(sRoomType);
+        }
         
         // Limpar apostas atuais se necessário
         if(_oMySeat.getCurBet() > 0){
@@ -508,6 +538,36 @@ function CGame(oData){
         }
         
         console.log("Sala alterada para:", oRoomConfig.name, "Aposta mínima:", oRoomConfig.min_bet, "Aposta máxima:", oRoomConfig.max_bet || "Sem limite");
+    };
+    
+    this.onRoomChanged = function(oRoom){
+        // Called when successfully assigned to a room
+        console.log("Room changed to:", oRoom.id, "Players:", oRoom.players.length + "/" + oRoom.max_players);
+        
+        // Update interface with current room info
+        if(_oInterface){
+            _oInterface.updateRoomInfo(oRoom.type, oRoom.players.length);
+        }
+    };
+    
+    this.syncGameState = function(oGameState){
+        // Synchronize game state from other players
+        if(!oGameState) return;
+        
+        // Only sync if we're not the current player
+        var sCurrentPlayerId = s_oMultiplayerRoomManager ? s_oMultiplayerRoomManager.getPlayerId() : null;
+        if(oGameState.current_player === sCurrentPlayerId) return;
+        
+        // Sync dice results
+        if(oGameState.dice_result){
+            _aDiceResult = oGameState.dice_result;
+        }
+        
+        // Sync round state
+        if(oGameState.round_active !== undefined){
+            // Handle round state changes
+            console.log("Syncing game state from other player");
+        }
     };
     
     this._onShowBetOnTable = function(oParams){
@@ -551,6 +611,18 @@ function CGame(oData){
         _oInterface.enableRoll(true);
         _oInterface.enableClearButton();
         _oInterface.refreshMsgHelp("APOSTE AQUI - Clique para apostar e lançar os dados",true);
+        
+        // Broadcast bet action to other players
+        if(s_oMultiplayerRoomManager){
+            s_oMultiplayerRoomManager.broadcastGameAction({
+                type: 'bet_placed',
+                data: {
+                    button: szBut,
+                    amount: iFicheValue,
+                    total_bet: _oMySeat.getCurBet()
+                }
+            });
+        }
         
         playSound("chip", 1, false);
     };

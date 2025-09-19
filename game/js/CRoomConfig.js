@@ -8,7 +8,21 @@ function CRoomConfig(){
                 min_bet: 50,
                 max_bet: null, // Sem limite máximo
                 max_players: 8,
-                description: "Mesa principal do jogo"
+                description: "Mesa principal do jogo com aposta mínima de 50 reais"
+            },
+            "vip": {
+                name: "Mesa VIP",
+                min_bet: 500,
+                max_bet: null, // Sem limite máximo
+                max_players: 6,
+                description: "Mesa VIP para jogadores premium com aposta mínima de 500 reais"
+            },
+            "iniciante": {
+                name: "Mesa Iniciante",
+                min_bet: 10,
+                max_bet: 1000,
+                max_players: 10,
+                description: "Mesa para iniciantes com aposta mínima baixa"
             }
         };
     };
