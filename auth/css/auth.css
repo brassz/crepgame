@@ -1,0 +1,767 @@
+/* ============================================================================
+   CRAPS GAME - AUTHENTICATION STYLES
+   Modern, responsive design with casino theme
+   ============================================================================ */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    background: linear-gradient(135deg, #0f4c3a, #1a5f47, #0d3d2f);
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* ============================================================================
+   BACKGROUND AND ANIMATIONS
+   ============================================================================ */
+
+.auth-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 20px;
+    position: relative;
+}
+
+.auth-background {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    overflow: hidden;
+}
+
+.dice-animation {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+}
+
+.dice {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    animation: float 6s ease-in-out infinite;
+}
+
+.dice-1 {
+    top: 20%;
+    left: 10%;
+    animation-delay: 0s;
+}
+
+.dice-2 {
+    top: 60%;
+    right: 15%;
+    animation-delay: 3s;
+}
+
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0px) rotate(0deg);
+        opacity: 0.3;
+    }
+    25% {
+        transform: translateY(-20px) rotate(90deg);
+        opacity: 0.6;
+    }
+    50% {
+        transform: translateY(-10px) rotate(180deg);
+        opacity: 0.4;
+    }
+    75% {
+        transform: translateY(-30px) rotate(270deg);
+        opacity: 0.7;
+    }
+}
+
+/* ============================================================================
+   AUTH CARD
+   ============================================================================ */
+
+.auth-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    border-radius: 20px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    padding: 40px;
+    width: 100%;
+    max-width: 450px;
+    position: relative;
+    z-index: 1;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.register-card {
+    max-width: 550px;
+}
+
+.auth-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.auth-header h1 {
+    color: #0f4c3a;
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.auth-header h1 i {
+    color: #d4af37;
+    margin-right: 10px;
+}
+
+.auth-header p {
+    color: #666;
+    font-size: 1.1rem;
+}
+
+/* ============================================================================
+   FORM STYLES
+   ============================================================================ */
+
+.auth-form {
+    margin-bottom: 20px;
+}
+
+.form-row {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+    flex: 1;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #333;
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.form-group label i {
+    margin-right: 8px;
+    color: #0f4c3a;
+    width: 16px;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 15px;
+    border: 2px solid #e0e0e0;
+    border-radius: 12px;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    background: #f8f9fa;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: #0f4c3a;
+    background: white;
+    box-shadow: 0 0 0 3px rgba(15, 76, 58, 0.1);
+}
+
+.form-group input:invalid {
+    border-color: #dc3545;
+}
+
+.form-group input:valid {
+    border-color: #28a745;
+}
+
+/* Password Input */
+.password-input {
+    position: relative;
+}
+
+.password-toggle {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #666;
+    cursor: pointer;
+    padding: 5px;
+    font-size: 1rem;
+}
+
+.password-toggle:hover {
+    color: #0f4c3a;
+}
+
+/* Field Hints */
+.field-hint {
+    display: block;
+    margin-top: 5px;
+    color: #666;
+    font-size: 0.85rem;
+}
+
+/* Password Strength */
+.password-strength {
+    margin-top: 8px;
+}
+
+.strength-bar {
+    width: 100%;
+    height: 4px;
+    background: #e0e0e0;
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 5px;
+}
+
+.strength-fill {
+    height: 100%;
+    width: 0%;
+    transition: all 0.3s ease;
+    border-radius: 2px;
+}
+
+.strength-fill.weak {
+    background: #dc3545;
+    width: 25%;
+}
+
+.strength-fill.fair {
+    background: #ffc107;
+    width: 50%;
+}
+
+.strength-fill.good {
+    background: #fd7e14;
+    width: 75%;
+}
+
+.strength-fill.strong {
+    background: #28a745;
+    width: 100%;
+}
+
+#strengthText {
+    font-size: 0.85rem;
+    color: #666;
+}
+
+/* Password Match */
+.password-match {
+    display: block;
+    margin-top: 5px;
+    font-size: 0.85rem;
+}
+
+.password-match.match {
+    color: #28a745;
+}
+
+.password-match.no-match {
+    color: #dc3545;
+}
+
+/* ============================================================================
+   FORM OPTIONS
+   ============================================================================ */
+
+.form-options {
+    margin-bottom: 25px;
+}
+
+.checkbox-container {
+    display: flex;
+    align-items: flex-start;
+    cursor: pointer;
+    margin-bottom: 15px;
+    font-size: 0.95rem;
+    line-height: 1.4;
+}
+
+.checkbox-container input {
+    display: none;
+}
+
+.checkmark {
+    width: 20px;
+    height: 20px;
+    background: #f8f9fa;
+    border: 2px solid #e0e0e0;
+    border-radius: 4px;
+    margin-right: 12px;
+    margin-top: 2px;
+    flex-shrink: 0;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.checkbox-container input:checked + .checkmark {
+    background: #0f4c3a;
+    border-color: #0f4c3a;
+}
+
+.checkbox-container input:checked + .checkmark:after {
+    content: '';
+    position: absolute;
+    left: 6px;
+    top: 2px;
+    width: 6px;
+    height: 10px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+.forgot-password {
+    color: #0f4c3a;
+    text-decoration: none;
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+.forgot-password:hover {
+    text-decoration: underline;
+}
+
+/* ============================================================================
+   BUTTONS
+   ============================================================================ */
+
+.auth-button {
+    width: 100%;
+    background: linear-gradient(135deg, #0f4c3a, #1a5f47);
+    color: white;
+    border: none;
+    padding: 16px 24px;
+    border-radius: 12px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.auth-button:hover {
+    background: linear-gradient(135deg, #1a5f47, #0f4c3a);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(15, 76, 58, 0.3);
+}
+
+.auth-button:active {
+    transform: translateY(0);
+}
+
+.auth-button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Social Buttons */
+.social-login {
+    margin-bottom: 20px;
+}
+
+.social-button {
+    width: 100%;
+    padding: 14px 24px;
+    border: 2px solid #e0e0e0;
+    border-radius: 12px;
+    background: white;
+    color: #333;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.social-button:hover {
+    border-color: #ccc;
+    background: #f8f9fa;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.social-button.google {
+    border-color: #db4437;
+    color: #db4437;
+}
+
+.social-button.google:hover {
+    background: #db4437;
+    color: white;
+}
+
+/* Demo Button */
+.demo-section {
+    text-align: center;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #e0e0e0;
+}
+
+.demo-button {
+    background: linear-gradient(135deg, #6c757d, #5a6268);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.demo-button:hover {
+    background: linear-gradient(135deg, #5a6268, #6c757d);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
+}
+
+.demo-section small {
+    display: block;
+    color: #666;
+    font-size: 0.85rem;
+}
+
+/* ============================================================================
+   DIVIDER
+   ============================================================================ */
+
+.auth-divider {
+    text-align: center;
+    margin: 25px 0;
+    position: relative;
+}
+
+.auth-divider:before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: #e0e0e0;
+}
+
+.auth-divider span {
+    background: white;
+    padding: 0 20px;
+    color: #666;
+    font-size: 0.95rem;
+}
+
+/* ============================================================================
+   FOOTER
+   ============================================================================ */
+
+.auth-footer {
+    text-align: center;
+    margin-top: 20px;
+}
+
+.auth-footer p {
+    color: #666;
+    font-size: 0.95rem;
+}
+
+.auth-footer a {
+    color: #0f4c3a;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.auth-footer a:hover {
+    text-decoration: underline;
+}
+
+/* ============================================================================
+   BONUS SECTION
+   ============================================================================ */
+
+.bonus-section {
+    margin-top: 30px;
+}
+
+.bonus-card {
+    background: linear-gradient(135deg, #d4af37, #f4d03f);
+    color: white;
+    padding: 20px;
+    border-radius: 15px;
+    text-align: center;
+    box-shadow: 0 8px 25px rgba(212, 175, 55, 0.3);
+}
+
+.bonus-card i {
+    font-size: 2rem;
+    margin-bottom: 10px;
+}
+
+.bonus-card h3 {
+    font-size: 1.3rem;
+    margin-bottom: 8px;
+}
+
+.bonus-card p {
+    font-size: 1rem;
+    opacity: 0.95;
+}
+
+.bonus-card strong {
+    font-size: 1.2rem;
+}
+
+/* ============================================================================
+   LOADING OVERLAY
+   ============================================================================ */
+
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.loading-overlay.show {
+    display: flex;
+}
+
+.loading-spinner {
+    text-align: center;
+    color: white;
+}
+
+.dice-loader {
+    display: inline-block;
+    position: relative;
+    width: 80px;
+    height: 80px;
+    margin-bottom: 20px;
+}
+
+.dice-face {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    background: white;
+    border-radius: 6px;
+    animation: diceRoll 1.5s infinite ease-in-out;
+}
+
+.dice-face:nth-child(1) {
+    top: 0;
+    left: 0;
+    animation-delay: 0s;
+}
+
+.dice-face:nth-child(2) {
+    top: 0;
+    right: 0;
+    animation-delay: 0.3s;
+}
+
+@keyframes diceRoll {
+    0%, 100% {
+        transform: scale(1) rotate(0deg);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(0.8) rotate(180deg);
+        opacity: 0.7;
+    }
+}
+
+/* ============================================================================
+   ALERT MESSAGES
+   ============================================================================ */
+
+.alert-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 10000;
+    max-width: 400px;
+}
+
+.alert {
+    padding: 16px 20px;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    animation: slideIn 0.3s ease-out;
+}
+
+.alert.success {
+    background: #d4edda;
+    color: #155724;
+    border-left: 4px solid #28a745;
+}
+
+.alert.error {
+    background: #f8d7da;
+    color: #721c24;
+    border-left: 4px solid #dc3545;
+}
+
+.alert.warning {
+    background: #fff3cd;
+    color: #856404;
+    border-left: 4px solid #ffc107;
+}
+
+.alert.info {
+    background: #d1ecf1;
+    color: #0c5460;
+    border-left: 4px solid #17a2b8;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* ============================================================================
+   RESPONSIVE DESIGN
+   ============================================================================ */
+
+@media (max-width: 768px) {
+    .auth-card {
+        padding: 30px 20px;
+        margin: 10px;
+        border-radius: 15px;
+    }
+    
+    .register-card {
+        max-width: none;
+    }
+    
+    .auth-header h1 {
+        font-size: 2rem;
+    }
+    
+    .form-row {
+        flex-direction: column;
+        gap: 0;
+    }
+    
+    .dice {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .alert-container {
+        left: 20px;
+        right: 20px;
+        max-width: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .auth-container {
+        padding: 10px;
+    }
+    
+    .auth-card {
+        padding: 25px 15px;
+    }
+    
+    .auth-header h1 {
+        font-size: 1.8rem;
+    }
+    
+    .form-group input {
+        padding: 12px;
+        font-size: 16px; /* Prevents zoom on iOS */
+    }
+    
+    .auth-button {
+        padding: 14px 20px;
+        font-size: 1rem;
+    }
+}
+
+/* ============================================================================
+   ACCESSIBILITY
+   ============================================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+    .dice,
+    .dice-face,
+    .strength-fill,
+    .auth-button,
+    .social-button,
+    .demo-button {
+        animation: none;
+        transition: none;
+    }
+}
+
+/* Focus styles for keyboard navigation */
+input:focus,
+button:focus,
+a:focus {
+    outline: 2px solid #0f4c3a;
+    outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .auth-card {
+        background: white;
+        border: 2px solid #000;
+    }
+    
+    .form-group input {
+        border-color: #000;
+    }
+    
+    .auth-button {
+        background: #000;
+        border: 2px solid #000;
+    }
+}
