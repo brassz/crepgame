@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>DADOS DA SORTE - Entrar</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, minimal-ui" />
+        <link rel="stylesheet" href="css/reset.css" type="text/css">
+        <link rel="stylesheet" href="css/main.css" type="text/css">
+        <style>
+            body{background:url('sprites/bg_menu.jpg') center/cover no-repeat fixed; min-height:100vh; display:flex; align-items:center; justify-content:center}
+            .auth-container{width:100%;max-width:420px;margin:40px 16px;padding:24px;background:rgba(6,12,18,0.9);border:1px solid rgba(255,255,255,0.06);box-shadow:0 10px 30px rgba(0,0,0,0.6);border-radius:12px;color:#fff}
+            .logo{display:block;margin:0 auto 12px auto; width:200px; max-width:70%}
+            .brand{display:block;text-align:center;font-family:'arialbold', Arial, sans-serif;color:#fff;font-size:30px;letter-spacing:1px;text-shadow:0 2px 0 rgba(0,0,0,0.5), 0 4px 10px rgba(0,0,0,0.6)}
+            .auth-container h1{margin:8px 0 16px;font-size:26px; text-align:center; font-family:'arialbold', Arial, sans-serif; letter-spacing:0.5px}
+            .auth-container input{width:100%;padding:12px 14px;margin:10px 0;background:#0f172a;border:1px solid #334155;color:#e5e7eb;border-radius:8px; font-family:'arialbold', Arial, sans-serif}
+            .auth-container input::placeholder{color:#9ca3af}
+            .auth-container button{width:100%;padding:12px 14px;margin:12px 0;background:linear-gradient(180deg,#22c55e 0%, #16a34a 100%);border:0;color:#052e1a;border-radius:999px;font-weight:bold;cursor:pointer; text-transform:uppercase; letter-spacing:0.5px; font-family:'arialbold', Arial, sans-serif; box-shadow:0 6px 0 #0b5d2b}
+            .auth-container button:active{transform:translateY(2px); box-shadow:0 4px 0 #0b5d2b}
+            .auth-container .muted{color:#cbd5e1;text-align:center;margin-top:8px}
+            .auth-container .muted a{color:#22c55e; text-decoration:none}
+            .auth-container .muted a:hover{text-decoration:underline}
+            .auth-container .error{color:#f87171;margin-top:6px; text-align:center}
+        </style>
+        <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+        <script type="text/javascript" src="js/auth-config.js"></script>
+        <script type="text/javascript" src="js/auth-client.js"></script>
+    </head>
+    <body>
+        <div class="auth-container">
+            <div class="brand">DADOS DA SORTE</div>
+            <h1>Entrar</h1>
+            <form id="login-form">
+                <input id="email" type="email" placeholder="Email" required>
+                <input id="password" type="password" placeholder="Senha" required>
+                <button type="submit">Entrar</button>
+            </form>
+            
+            <div id="error" class="error" style="display:none;"></div>
+            <div class="muted">Novo aqui? <a href="register.html">Crie uma conta</a></div>
+        </div>
+
+        <script>
+            (function(){
+                function redirectIfLogged(){
+                    sb.auth.getSession().then(function(res){
+                        if(res.data && res.data.session){
+                            window.location.href = "index.html";
+                        }
+                    });
+                }
+                redirectIfLogged();
+
+                var form = document.getElementById('login-form');
+                form.addEventListener('submit', function(e){
+                    e.preventDefault();
+                    var email = document.getElementById('email').value;
+                    var password = document.getElementById('password').value;
+                    sb.auth.signInWithPassword({ email: email, password: password })
+                      .then(function(res){
+                        if(res.error){
+                            showError(res.error.message);
+                        } else {
+                            window.location.href = "index.html";
+                        }
+                      });
+                });
+
+                function showError(msg){
+                    var el = document.getElementById('error');
+                    el.textContent = msg;
+                    el.style.display = 'block';
+                }
+            })();
+        </script>
+    </body>
+</html>
+

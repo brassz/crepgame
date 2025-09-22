@@ -72,6 +72,31 @@ Todas as configurações estão em `game/index.html`:
 - Configurações de áudio
 - Configurações de tela cheia
 
+## 🔐 Autenticação (Supabase)
+
+1) Criar projeto no Supabase
+- Acesse `https://supabase.com` e crie um projeto
+- Em Project Settings → API, copie:
+  - `Project URL`
+  - `anon public` key
+
+2) Configurar chaves no frontend
+- Abra `game/js/auth-config.js` e preencha:
+  - `window.SUPABASE_URL = "https://SEU-PROJ.supabase.co"`
+  - `window.SUPABASE_ANON_KEY = "SUA_CHAVE_ANON"`
+
+3) Provedores
+- O projeto está configurado para email/senha apenas. Não é necessário ativar OAuth.
+
+4) Fluxo de uso
+- Acesse `game/register.html` para criar conta (email/senha ou Google/Facebook)
+- Depois de logado, você será redirecionado para `game/index.html`
+- A página `game/index.html` exige sessão ativa e tem botão "Sair"
+
+Observações
+- Nunca exponha a `service_role key` no frontend
+- Certifique-se de incluir o script do Supabase no HTML (já incluso nas páginas)
+
 ## 📄 Licença
 
 MIT License - Use livremente para projetos pessoais e comerciais.
