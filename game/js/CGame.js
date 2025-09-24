@@ -23,6 +23,7 @@ function CGame(oData){
     var _oMsgBox;
     var _oGameOverPanel;
     var _oAreYouSurePanel;
+    var _oRoomSelector;
     
     
     this._init = function(){
@@ -53,6 +54,9 @@ function CGame(oData){
         _oGameOverPanel = new CGameOver();
 
         _oMsgBox = new CMsgBox();
+        
+        // Inicializar seletor de salas para uso dentro do jogo
+        _oRoomSelector = new CRoomSelector(s_oStage);
 
         _aDiceResultHistory=new Array();
 
@@ -68,6 +72,10 @@ function CGame(oData){
         _oMsgBox.unload();
         _oGameOverPanel.unload();
         _oDicesAnim.unload();
+        
+        if(_oRoomSelector){
+            _oRoomSelector.unload();
+        }
 
         s_oStage.removeAllChildren();
     };
@@ -485,8 +493,9 @@ function CGame(oData){
         _oInterface.setMoney(TOTAL_MONEY);
         _oInterface.setCurBet(0);
         
-        // Atualizar informações da sala (padrão: Mesa Principal com aposta mínima de 50 reais)
-        _oInterface.updateRoomInfo("principal", 1);
+        // Usar a sala selecionada ou padrão para Bronze
+        var sCurrentRoom = s_oMain.getSelectedRoom() || "bronze";
+        _oInterface.updateRoomInfo(sCurrentRoom, 1);
     };
     
     this.changeRoom = function(sRoomType){
@@ -508,6 +517,52 @@ function CGame(oData){
         }
         
         console.log("Sala alterada para:", oRoomConfig.name, "Aposta mínima:", oRoomConfig.min_bet, "Aposta máxima:", oRoomConfig.max_bet || "Sem limite");
+    };
+    
+    this.showRoomSelector = function(){
+        if(_oRoomSelector && !_oRoomSelector.isVisible()){
+            // Atualizar o seletor com o dinheiro atual do jogador
+            _oRoomSelector.updatePlayerMoney(_oMySeat.getCredit());
+            _oRoomSelector.show(this._onRoomSelectedInGame.bind(this), this._onRoomSelectorClosedInGame.bind(this));
+        }
+    };
+    
+    this._onRoomSelectedInGame = function(sRoomType){
+        // Trocar de sala durante o jogo
+        var oCurrentRoom = s_oRoomConfig.getRoomConfig(s_oMain.getSelectedRoom());
+        var oNewRoom = s_oRoomConfig.getRoomConfig(sRoomType);
+        
+        // Verificar se o jogador pode entrar na nova sala
+        if(!s_oRoomConfig.canPlayerEnterRoom(sRoomType, _oMySeat.getCredit())){
+            _oMsgBox.show("Você não tem dinheiro suficiente para esta sala!");
+            return;
+        }
+        
+        // Limpar apostas atuais se necessário
+        if(_oMySeat.getCurBet() > 0){
+            this.onClearAllBets();
+        }
+        
+        // Aplicar nova configuração
+        s_oMain.setSelectedRoom(sRoomType);
+        MIN_BET = oNewRoom.min_bet;
+        MAX_BET = oNewRoom.max_bet;
+        
+        // Atualizar interface
+        _oInterface.updateRoomInfo(sRoomType, 1);
+        _oInterface.refreshMsgHelp("Bem-vindo à " + oNewRoom.name + "!", true);
+        
+        // Resetar estado do jogo
+        this._setState(STATE_GAME_WAITING_FOR_BET);
+        
+        _oRoomSelector.hide();
+        
+        new CScoreText("Sala alterada para: " + oNewRoom.name, CANVAS_WIDTH/2, CANVAS_HEIGHT/2 - 100);
+    };
+    
+    this._onRoomSelectorClosedInGame = function(){
+        // Seletor fechado sem mudança de sala
+        _oInterface.refreshMsgHelp("Continue jogando na sala atual.", false);
     };
     
     this._onShowBetOnTable = function(oParams){

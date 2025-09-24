@@ -2,25 +2,34 @@ function CMenu(){
     var _pStartPosAudio;
     var _pStartPosInfo;
     var _pStartPosPlay;
+    var _pStartPosRoomSelect;
     var _pStartPosFullscreen;
     
     var _oBg;
     var _oButPlay;
+    var _oButRoomSelect;
     var _oButInfo;
     var _oAudioToggle;
     var _oButFullscreen;
     var _fRequestFullScreen = null;
     var _fCancelFullScreen = null;
     var _oFade;
+    var _oRoomSelector;
     
     this._init = function(){
         _oBg = createBitmap(s_oSpriteLibrary.getSprite('bg_menu'));
         s_oStage.addChild(_oBg);
 
+        // Botão "JOGAR RÁPIDO" - vai direto para a Sala Bronze
         var oSprite = s_oSpriteLibrary.getSprite('but_play');
-        _pStartPosPlay = {x:(CANVAS_WIDTH/2),y:CANVAS_HEIGHT -110};
-        _oButPlay = new CGfxButton(_pStartPosPlay.x,_pStartPosPlay.y,oSprite,s_oStage);
+        _pStartPosPlay = {x:(CANVAS_WIDTH/2) - 120,y:CANVAS_HEIGHT -110};
+        _oButPlay = new CTextButton(_pStartPosPlay.x,_pStartPosPlay.y,oSprite,"JOGAR RÁPIDO",FONT1,"#fff",18,"center",s_oStage);
         _oButPlay.addEventListener(ON_MOUSE_UP, this._onButPlayRelease, this);
+        
+        // Botão "SELECIONAR SALA" - abre o seletor de salas
+        _pStartPosRoomSelect = {x:(CANVAS_WIDTH/2) + 120,y:CANVAS_HEIGHT -110};
+        _oButRoomSelect = new CTextButton(_pStartPosRoomSelect.x,_pStartPosRoomSelect.y,oSprite,"SELECIONAR SALA",FONT1,"#fff",16,"center",s_oStage);
+        _oButRoomSelect.addEventListener(ON_MOUSE_UP, this._onButRoomSelectRelease, this);
         
         var oSprite = s_oSpriteLibrary.getSprite('but_credits');
         if(SHOW_CREDITS){
@@ -66,6 +75,9 @@ function CMenu(){
         
         createjs.Tween.get(_oFade).to({alpha:0}, 400).call(function(){_oFade.visible = false;});  
         
+        // Inicializar seletor de salas
+        _oRoomSelector = new CRoomSelector(s_oStage);
+        
         this.refreshButtonPos(s_iOffsetX, s_iOffsetY);
     };
     
@@ -81,11 +93,20 @@ function CMenu(){
             _oButInfo.setPosition(_pStartPosInfo.x - iNewX,iNewY + _pStartPosInfo.y);
         }
         _oButPlay.setPosition(_pStartPosPlay.x,_pStartPosPlay.y - iNewY);
+        _oButRoomSelect.setPosition(_pStartPosRoomSelect.x,_pStartPosRoomSelect.y - iNewY);
     };
     
     this.unload = function(){
         _oButPlay.unload(); 
         _oButPlay = null;
+        
+        _oButRoomSelect.unload();
+        _oButRoomSelect = null;
+        
+        if(_oRoomSelector){
+            _oRoomSelector.unload();
+            _oRoomSelector = null;
+        }
         
         if(SHOW_CREDITS){
             _oButInfo.unload();
@@ -110,10 +131,33 @@ function CMenu(){
     };
     
     this._onButPlayRelease = function(){
+        // Inicia o jogo direto na Sala Bronze (jogo rápido)
+        s_oMain.setSelectedRoom("bronze");
         this.unload();
         s_oMain.gotoGame();
         
         $(s_oMain).trigger("start_session");
+    };
+    
+    this._onButRoomSelectRelease = function(){
+        // Mostra o seletor de salas
+        playSound("click", 1, false);
+        _oRoomSelector.show(this._onRoomSelected.bind(this), this._onRoomSelectorClosed.bind(this));
+    };
+    
+    this._onRoomSelected = function(sRoomType){
+        // Callback quando uma sala é selecionada
+        s_oMain.setSelectedRoom(sRoomType);
+        _oRoomSelector.hide();
+        this.unload();
+        s_oMain.gotoGame();
+        
+        $(s_oMain).trigger("start_session");
+    };
+    
+    this._onRoomSelectorClosed = function(){
+        // Callback quando o seletor é fechado sem seleção
+        // Não faz nada, apenas fica no menu
     };
 
     this._onAudioToggle = function(){

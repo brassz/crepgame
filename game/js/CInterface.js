@@ -18,6 +18,7 @@ function CInterface(){
     var _oClearAllBet;
     var _oRollingText;
     var _oButFullscreen;
+    var _oRoomChangeBtn;
     var _fRequestFullScreen = null;
     var _fCancelFullScreen = null;
     
@@ -95,9 +96,9 @@ function CInterface(){
         
         _oRoomInfoText = new CTLText(s_oStage, 
                     oRoomInfoBg.x+114, oRoomInfoBg.y + 13, 130, 80, 
-                    16, "center", "#fff", FONT1, 1,
+                    14, "center", "#fff", FONT1, 1,
                     0, 0,
-                    "SALA: " + s_oRoomConfig.getRoomName("principal") + "\nJOGADORES: 1/" + s_oRoomConfig.getRoomMaxPlayers("principal") + "\nAPOSTA MIN: " + s_oRoomConfig.getRoomMinBet("principal") + "\nAPOSTA MAX: Sem limite",
+                    "SALA: Mesa Principal\nJOGADORES: 1/8\nAPOSTA MIN: 50\nAPOSTA MAX: Sem limite",
                     true, true, true,
                     false );
 
@@ -164,6 +165,9 @@ function CInterface(){
             _oButFullscreen.addEventListener(ON_MOUSE_UP, this._onFullscreenRelease, this);
         }
         
+        // Adicionar botão para mudar de sala
+        _oRoomChangeBtn = this.addRoomChangeButton();
+        
         this.refreshButtonPos(s_iOffsetX, s_iOffsetY);
     };
     
@@ -174,6 +178,9 @@ function CInterface(){
         }
         if (_fRequestFullScreen && screenfull.isEnabled){
             _oButFullscreen.unload();
+        }
+        if(_oRoomChangeBtn){
+            _oRoomChangeBtn.unload();
         }
         _oRollBut.unload();
         _oClearAllBet.unload();
@@ -280,10 +287,33 @@ function CInterface(){
             var oRoomConfig = s_oRoomConfig.getRoomConfig(sRoomType);
             var sRoomInfo = "SALA: " + oRoomConfig.name + "\n";
             sRoomInfo += "JOGADORES: " + iPlayers + "/" + oRoomConfig.max_players + "\n";
-            sRoomInfo += "APOSTA MIN: " + oRoomConfig.min_bet + "\n";
-            sRoomInfo += "APOSTA MAX: " + (oRoomConfig.max_bet ? oRoomConfig.max_bet : "Sem limite");
+            sRoomInfo += "APOSTA MIN: R$ " + oRoomConfig.min_bet + "\n";
+            sRoomInfo += "APOSTA MAX: " + (oRoomConfig.max_bet ? "R$ " + oRoomConfig.max_bet : "Sem limite");
             _oRoomInfoText.refreshText(sRoomInfo);
+            
+            // Atualizar cor do texto baseado na sala
+            if(oRoomConfig.color){
+                _oRoomInfoText.setColor(oRoomConfig.color);
+            }
         }
+    };
+    
+    this.addRoomChangeButton = function(){
+        // Botão pequeno para mudar de sala ao lado das informações da sala
+        var _oRoomChangeBtn = new CTextButton(
+            620, 110, // Posicionado abaixo das informações da sala
+            s_oSpriteLibrary.getSprite('but_clear_all'), // Usar sprite menor
+            "MUDAR", FONT1, "#fff", 12, "center", s_oStage
+        );
+        
+        _oRoomChangeBtn.addEventListener(ON_MOUSE_UP, function(){
+            playSound("click", 1, false);
+            if(s_oGame && s_oGame.showRoomSelector){
+                s_oGame.showRoomSelector();
+            }
+        });
+        
+        return _oRoomChangeBtn;
     };
     
     this._onBetRelease = function(oParams){
