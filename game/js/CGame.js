@@ -8,6 +8,7 @@ function CGame(oData){
     var _iMaxNumRolling;
     var _iCasinoCash;
     var _iHandCont;
+    var _sCurrentRoom = window.SELECTED_ROOM || "bronze";
 
     var _aDiceResultHistory;
     var _aDiceResult;
@@ -45,7 +46,7 @@ function CGame(oData){
         _oMySeat = new CSeat();
         _oPuck = new CPuck(325,108,s_oStage);
         
-        _oInterface = new CInterface();
+        _oInterface = new CInterface(_sCurrentRoom);
         
         _oDicesAnim = new CDicesAnim(240,159);
         
@@ -486,7 +487,9 @@ function CGame(oData){
         _oInterface.setCurBet(0);
         
         // Atualizar informações da sala (padrão: Mesa Principal com aposta mínima de 50 reais)
-        _oInterface.updateRoomInfo("principal", 1);
+        // Initialize with selected room
+        this.changeRoom(_sCurrentRoom);
+        _oInterface.updateRoomInfo(_sCurrentRoom, s_oRoomConfig.getCurrentPlayers(_sCurrentRoom));
     };
     
     this.changeRoom = function(sRoomType){
@@ -508,6 +511,15 @@ function CGame(oData){
         }
         
         console.log("Sala alterada para:", oRoomConfig.name, "Aposta mínima:", oRoomConfig.min_bet, "Aposta máxima:", oRoomConfig.max_bet || "Sem limite");
+    };
+    
+    this.setCurrentRoom = function(sRoomType){
+        _sCurrentRoom = sRoomType;
+        this.changeRoom(sRoomType);
+    };
+    
+    this.getCurrentRoom = function(){
+        return _sCurrentRoom;
     };
     
     this._onShowBetOnTable = function(oParams){
