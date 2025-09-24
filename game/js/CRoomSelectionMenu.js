@@ -1,220 +1,119 @@
 function CRoomSelectionMenu(){
-    var _pStartPosAudio;
-    var _pStartPosFullscreen;
-    var _oButAudio;
-    var _oButFullscreen;
-    var _fRequestFullScreen = null;
-    var _fCancelFullScreen = null;
-    
     var _oBg;
     var _oTitleText;
     var _oRoomButtons = [];
     var _oBackButton;
     var _oFade;
-    var _aRoomData;
     
     this._init = function(){
-        // Criar background
-        _oBg = createBitmap(s_oSpriteLibrary.getSprite('bg_menu'));
-        s_oStage.addChild(_oBg);
+        console.log("=== Iniciando CRoomSelectionMenu ===");
         
-        // Título
-        _oTitleText = new CTLText(s_oStage,
-            CANVAS_WIDTH/2 - 300, 80, 600, 80,
-            50, "center", "#ffffff", FONT1, 1,
-            0, 0,
-            "ESCOLHA SUA SALA",
-            true, true, true,
-            false);
-        
-        // Obter dados das salas
-        _aRoomData = s_oRoomConfig.getAvailableRooms();
-        
-        // Criar botões das salas
-        this._createRoomButtons();
-        
-        // Criar botão voltar
-        var oBackSprite = s_oSpriteLibrary.getSprite('but_exit');
-        _oBackButton = new CGfxButton(80, 80, oBackSprite, s_oStage);
-        _oBackButton.addEventListener(ON_MOUSE_UP, this._onBackButtonRelease, this);
-        
-        // Configurar botões de áudio e fullscreen (semelhante ao menu principal)
-        this._setupUtilityButtons();
-        
-        // Fade inicial
-        _oFade = new createjs.Shape();
-        _oFade.graphics.beginFill("black").drawRect(0,0,CANVAS_WIDTH,CANVAS_HEIGHT);
-        s_oStage.addChild(_oFade);
-        createjs.Tween.get(_oFade).to({alpha:0}, 400).call(function(){_oFade.visible = false;});
-        
-        this.refreshButtonPos(s_iOffsetX, s_iOffsetY);
+        try {
+            // Criar background
+            _oBg = createBitmap(s_oSpriteLibrary.getSprite('bg_menu'));
+            s_oStage.addChild(_oBg);
+            console.log("Background criado");
+            
+            // Título usando createjs.Text simples
+            var oTitle = new createjs.Text("ESCOLHA SUA SALA", "50px " + FONT1, "#ffffff");
+            oTitle.x = CANVAS_WIDTH/2;
+            oTitle.y = 80;
+            oTitle.textAlign = "center";
+            s_oStage.addChild(oTitle);
+            _oTitleText = oTitle;
+            console.log("Título criado");
+            
+            // Criar botões das salas
+            this._createSimpleButtons();
+            console.log("Botões criados");
+            
+            // Botão voltar
+            var oBackSprite = s_oSpriteLibrary.getSprite('but_exit');
+            _oBackButton = new CGfxButton(80, 80, oBackSprite, s_oStage);
+            _oBackButton.addEventListener(ON_MOUSE_UP, this._onBackButtonRelease, this);
+            console.log("Botão voltar criado");
+            
+            // Fade inicial
+            _oFade = new createjs.Shape();
+            _oFade.graphics.beginFill("black").drawRect(0,0,CANVAS_WIDTH,CANVAS_HEIGHT);
+            s_oStage.addChild(_oFade);
+            createjs.Tween.get(_oFade).to({alpha:0}, 400).call(function(){_oFade.visible = false;});
+            console.log("Fade criado");
+            
+            console.log("=== CRoomSelectionMenu inicializado com sucesso! ===");
+            
+        } catch(error) {
+            console.error("Erro na inicialização:", error);
+            console.error("Stack:", error.stack);
+        }
     };
     
-    this._createRoomButtons = function(){
+    this._createSimpleButtons = function(){
+        console.log("Criando botões simples...");
+        
+        var aRooms = [
+            {id: "bronze", name: "SALA BRONZE", info: "R$ 50 - 1.000"},
+            {id: "prata", name: "SALA PRATA", info: "R$ 100 - 3.000"},
+            {id: "ouro", name: "SALA OURO", info: "R$ 200 - 5.000"}
+        ];
+        
         var iStartY = 200;
-        var iSpacing = 160;
+        var iSpacing = 120;
         
-        for(var i = 0; i < _aRoomData.length; i++){
-            var oRoomData = _aRoomData[i];
-            var oRoom = oRoomData.config;
+        for(var i = 0; i < aRooms.length; i++){
+            var oRoom = aRooms[i];
+            var iY = iStartY + (i * iSpacing);
             
-            // Criar container para o botão da sala
-            var oRoomContainer = new createjs.Container();
-            oRoomContainer.x = CANVAS_WIDTH/2;
-            oRoomContainer.y = iStartY + (i * iSpacing);
-            s_oStage.addChild(oRoomContainer);
+            console.log("Criando botão:", oRoom.name);
             
-            // Background do botão (usar sprite de botão existente)
-            var oBtnSprite = s_oSpriteLibrary.getSprite('but_bg');
-            var oRoomBg = createBitmap(oBtnSprite);
-            oRoomBg.regX = oBtnSprite.width/2;
-            oRoomBg.regY = oBtnSprite.height/2;
-            oRoomBg.scaleX = 2.5;
-            oRoomBg.scaleY = 1.2;
+            // Usar sprite do botão play como base
+            var oBtnSprite = s_oSpriteLibrary.getSprite('but_play');
+            var oRoomBtn = new CGfxButton(CANVAS_WIDTH/2, iY, oBtnSprite, s_oStage);
             
-            // Aplicar cor baseada no tier
-            var oColorFilter = new createjs.ColorFilter();
-            var color = this._hexToRgb(oRoom.color);
-            oColorFilter.setColor(color.r, color.g, color.b, 0.3);
-            oRoomBg.filters = [oColorFilter];
-            oRoomBg.cache(-oBtnSprite.width/2, -oBtnSprite.height/2, oBtnSprite.width, oBtnSprite.height);
+            // Adicionar texto no botão
+            var oButtonText = new createjs.Text(oRoom.name, "24px " + FONT1, "#ffffff");
+            oButtonText.x = CANVAS_WIDTH/2;
+            oButtonText.y = iY - 10;
+            oButtonText.textAlign = "center";
+            s_oStage.addChild(oButtonText);
             
-            oRoomContainer.addChild(oRoomBg);
+            // Adicionar informações
+            var oInfoText = new createjs.Text(oRoom.info, "18px " + FONT1, "#ffff99");
+            oInfoText.x = CANVAS_WIDTH/2;
+            oInfoText.y = iY + 20;
+            oInfoText.textAlign = "center";
+            s_oStage.addChild(oInfoText);
             
-            // Nome da sala
-            var oRoomTitle = new CTLText(oRoomContainer,
-                -200, -40, 400, 40,
-                32, "center", "#ffffff", FONT1, 1,
-                0, 0,
-                oRoom.name.toUpperCase(),
-                true, true, true,
-                false);
-            
-            // Informações da sala
-            var sInfo = "Apostas: R$ " + oRoom.min_bet + " - R$ " + oRoom.max_bet;
-            var oRoomInfo = new CTLText(oRoomContainer,
-                -200, -5, 400, 30,
-                20, "center", "#ffff99", FONT1, 1,
-                0, 0,
-                sInfo,
-                true, true, true,
-                false);
-            
-            // Descrição
-            var oRoomDesc = new CTLText(oRoomContainer,
-                -200, 20, 400, 30,
-                16, "center", "#cccccc", FONT1, 1,
-                0, 0,
-                oRoom.description,
-                true, true, true,
-                false);
-            
-            // Área clicável invisível
-            var oHitArea = new createjs.Shape();
-            oHitArea.graphics.beginFill("rgba(0,0,0,0.01)").drawRect(-200, -50, 400, 100);
-            oRoomContainer.addChild(oHitArea);
-            
-            // Tornar clicável
-            oRoomContainer.cursor = "pointer";
-            oRoomContainer.roomId = oRoomData.id;
-            
+            // Configurar evento de clique
             var that = this;
-            (function(container, roomId) {
-                container.addEventListener("click", function() {
+            (function(roomId) {
+                oRoomBtn.addEventListener(ON_MOUSE_UP, function() {
+                    console.log("Clique na sala:", roomId);
                     that._onRoomSelected(roomId);
-                });
-            })(oRoomContainer, oRoomData.id);
+                }, that);
+            })(oRoom.id);
             
-            _oRoomButtons.push(oRoomContainer);
-        }
-    };
-    
-    this._setupUtilityButtons = function(){
-        // Áudio
-        var oSpriteAudio = s_oSpriteLibrary.getSprite('audio_icon');
-        _pStartPosAudio = {x: CANVAS_WIDTH - (oSpriteAudio.height/2)- 10, y: (oSpriteAudio.height/2) + 10}; 
-        
-        if(DISABLE_SOUND_MOBILE === false || s_bMobile === false){
-            _oButAudio = new CToggle(_pStartPosAudio.x,_pStartPosAudio.y,oSpriteAudio,s_bAudioActive,s_oStage);
-            _oButAudio.addEventListener(ON_MOUSE_UP, this._onAudioToggle, this);
+            _oRoomButtons.push(oRoomBtn);
+            _oRoomButtons.push(oButtonText);
+            _oRoomButtons.push(oInfoText);
         }
         
-        // Fullscreen
-        var doc = window.document;
-        var docEl = doc.documentElement;
-        _fRequestFullScreen = docEl.requestFullscreen || docEl.mozRequestFullScreen || docEl.webkitRequestFullScreen || docEl.msRequestFullscreen;
-        
-        if(ENABLE_FULLSCREEN === false){
-            _fRequestFullScreen = false;
-        }
-        
-        if (_fRequestFullScreen && screenfull.isEnabled){
-            var oSpriteFullscreen = s_oSpriteLibrary.getSprite('but_fullscreen');
-            _pStartPosFullscreen = {x:10 + oSpriteFullscreen.width/4,y:(oSpriteFullscreen.height / 2) + 10};
-            _oButFullscreen = new CToggle(_pStartPosFullscreen.x,_pStartPosFullscreen.y,oSpriteFullscreen,s_bFullscreen,s_oStage);
-            _oButFullscreen.addEventListener(ON_MOUSE_UP, this._onFullscreenRelease, this);
-        }
-    };
-    
-    this._hexToRgb = function(hex) {
-        var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-        return result ? {
-            r: parseInt(result[1], 16),
-            g: parseInt(result[2], 16),
-            b: parseInt(result[3], 16)
-        } : {r: 205, g: 127, b: 50}; // Default bronze color
-    };
-    
-    this.refreshButtonPos = function(iNewX, iNewY) {
-        if (DISABLE_SOUND_MOBILE === false || s_bMobile === false) {
-            _oButAudio.setPosition(_pStartPosAudio.x - iNewX, iNewY + _pStartPosAudio.y);
-        }
-        if (_fRequestFullScreen && screenfull.isEnabled){
-            _oButFullscreen.setPosition(_pStartPosFullscreen.x + iNewX,_pStartPosFullscreen.y + iNewY);
-        }
-        
-        _oBackButton.setPosition(80 + iNewX, 80 + iNewY);
-    };
-    
-    this.unload = function(){
-        // Remover botões das salas
-        for(var i = 0; i < _oRoomButtons.length; i++){
-            s_oStage.removeChild(_oRoomButtons[i]);
-        }
-        _oRoomButtons = [];
-        
-        // Remover outros elementos
-        _oBackButton.unload();
-        _oBackButton = null;
-        
-        if(DISABLE_SOUND_MOBILE === false || s_bMobile === false){
-            _oButAudio.unload();
-            _oButAudio = null;
-        }
-        
-        if (_fRequestFullScreen && screenfull.isEnabled){
-            _oButFullscreen.unload();
-        }
-        
-        _oTitleText.unload();
-        _oTitleText = null;
-        
-        s_oStage.removeChild(_oBg);
-        _oBg = null;
-        
-        if(_oFade){
-            s_oStage.removeChild(_oFade);
-            _oFade = null;
-        }
-        
-        s_oRoomSelectionMenu = null;
+        console.log("Botões simples criados com sucesso!");
     };
     
     this._onRoomSelected = function(sRoomId){
-        // Armazenar a sala selecionada globalmente
-        s_sSelectedRoom = sRoomId;
+        console.log("Sala selecionada:", sRoomId);
         
-        // Ir para o jogo com a sala selecionada
+        // Armazenar sala selecionada
+        if(typeof s_sSelectedRoom === 'undefined') {
+            window.s_sSelectedRoom = sRoomId;
+        } else {
+            s_sSelectedRoom = sRoomId;
+        }
+        
+        console.log("Sala armazenada, indo para o jogo...");
+        
+        // Ir para o jogo
         this.unload();
         s_oMain.gotoGame();
         
@@ -222,27 +121,69 @@ function CRoomSelectionMenu(){
     };
     
     this._onBackButtonRelease = function(){
+        console.log("Voltando ao menu principal...");
         this.unload();
         s_oMain.gotoMenu();
     };
     
-    this._onAudioToggle = function(){
-        Howler.mute(s_bAudioActive);
-        s_bAudioActive = !s_bAudioActive;
-    };
-    
-    this._onFullscreenRelease = function(){
-        if(s_bFullscreen) { 
-            _fCancelFullScreen.call(window.document);
-        }else{
-            _fRequestFullScreen.call(window.document.documentElement);
+    this.refreshButtonPos = function(iNewX, iNewY) {
+        // Implementação vazia por enquanto
+        if(_oBackButton) {
+            _oBackButton.setPosition(80 + iNewX, 80 + iNewY);
         }
-        
-        sizeHandler();
     };
     
-    s_oRoomSelectionMenu = this;
+    this.unload = function(){
+        console.log("=== Descarregando CRoomSelectionMenu ===");
+        
+        try {
+            // Remover todos os elementos dos botões
+            for(var i = 0; i < _oRoomButtons.length; i++){
+                if(_oRoomButtons[i]) {
+                    if(_oRoomButtons[i].unload) {
+                        _oRoomButtons[i].unload();
+                    } else if(_oRoomButtons[i].parent) {
+                        _oRoomButtons[i].parent.removeChild(_oRoomButtons[i]);
+                    }
+                }
+            }
+            _oRoomButtons = [];
+            
+            // Remover botão voltar
+            if(_oBackButton) {
+                _oBackButton.unload();
+                _oBackButton = null;
+            }
+            
+            // Remover título
+            if(_oTitleText && _oTitleText.parent) {
+                _oTitleText.parent.removeChild(_oTitleText);
+                _oTitleText = null;
+            }
+            
+            // Remover background
+            if(_oBg && _oBg.parent) {
+                _oBg.parent.removeChild(_oBg);
+                _oBg = null;
+            }
+            
+            // Remover fade
+            if(_oFade && _oFade.parent){
+                _oFade.parent.removeChild(_oFade);
+                _oFade = null;
+            }
+            
+            s_oRoomSelectionMenu = null;
+            
+            console.log("=== CRoomSelectionMenu descarregado com sucesso ===");
+            
+        } catch(error) {
+            console.error("Erro ao descarregar:", error);
+        }
+    };
     
+    // Inicializar
+    s_oRoomSelectionMenu = this;
     this._init();
 }
 
