@@ -8,6 +8,7 @@ function CGame(oData){
     var _iMaxNumRolling;
     var _iCasinoCash;
     var _iHandCont;
+    var _sCurrentRoom;
 
     var _aDiceResultHistory;
     var _aDiceResult;
@@ -63,6 +64,11 @@ function CGame(oData){
     };
     
     this.unload = function(){
+        // Sair da sala multiplayer
+        if(s_oMultiplayerManager){
+            s_oMultiplayerManager.leaveRoom();
+        }
+        
         _oInterface.unload();
         _oTableController.unload();
         _oMsgBox.unload();
@@ -485,8 +491,9 @@ function CGame(oData){
         _oInterface.setMoney(TOTAL_MONEY);
         _oInterface.setCurBet(0);
         
-        // Atualizar informações da sala (padrão: Mesa Principal com aposta mínima de 50 reais)
-        _oInterface.updateRoomInfo("principal", 1);
+        // Usar a sala selecionada ou Bronze como padrão
+        var sCurrentRoom = s_sSelectedRoom || "bronze";
+        this.changeRoom(sCurrentRoom);
     };
     
     this.changeRoom = function(sRoomType){
@@ -496,6 +503,9 @@ function CGame(oData){
         // Atualizar configurações globais baseadas na sala
         MIN_BET = oRoomConfig.min_bet;
         MAX_BET = oRoomConfig.max_bet; // null se não há limite
+        
+        // Salvar sala atual
+        _sCurrentRoom = sRoomType;
         
         // Atualizar interface com nova configuração da sala
         _oInterface.updateRoomInfo(sRoomType, 1);
@@ -508,6 +518,10 @@ function CGame(oData){
         }
         
         console.log("Sala alterada para:", oRoomConfig.name, "Aposta mínima:", oRoomConfig.min_bet, "Aposta máxima:", oRoomConfig.max_bet || "Sem limite");
+    };
+    
+    this.getCurrentRoom = function(){
+        return _sCurrentRoom || "bronze";
     };
     
     this._onShowBetOnTable = function(oParams){

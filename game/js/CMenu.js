@@ -111,9 +111,8 @@ function CMenu(){
     
     this._onButPlayRelease = function(){
         this.unload();
-        s_oMain.gotoGame();
-        
-        $(s_oMain).trigger("start_session");
+        // Abrir seletor de salas ao invés de ir direto para o jogo
+        new CRoomSelector();
     };
 
     this._onAudioToggle = function(){

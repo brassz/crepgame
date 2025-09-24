@@ -3,18 +3,38 @@ function CRoomConfig(){
     
     this._init = function(){
         _aRooms = {
-            "principal": {
-                name: "Mesa Principal",
+            "bronze": {
+                name: "Mesa Bronze",
                 min_bet: 50,
-                max_bet: null, // Sem limite máximo
+                max_bet: 1000,
                 max_players: 8,
-                description: "Mesa principal do jogo"
+                description: "Mesa para iniciantes",
+                color: "#CD7F32",
+                icon: "bronze_icon"
+            },
+            "prata": {
+                name: "Mesa Prata", 
+                min_bet: 100,
+                max_bet: 3000,
+                max_players: 6,
+                description: "Mesa intermediária",
+                color: "#C0C0C0",
+                icon: "silver_icon"
+            },
+            "ouro": {
+                name: "Mesa Ouro",
+                min_bet: 200,
+                max_bet: 5000,
+                max_players: 4,
+                description: "Mesa para experientes",
+                color: "#FFD700", 
+                icon: "gold_icon"
             }
         };
     };
     
     this.getRoomConfig = function(sRoomType){
-        return _aRooms[sRoomType] || _aRooms["principal"];
+        return _aRooms[sRoomType] || _aRooms["bronze"];
     };
     
     this.getAllRooms = function(){
@@ -39,6 +59,25 @@ function CRoomConfig(){
     this.getRoomMaxPlayers = function(sRoomType){
         var oRoom = this.getRoomConfig(sRoomType);
         return oRoom.max_players;
+    };
+    
+    this.getRoomColor = function(sRoomType){
+        var oRoom = this.getRoomConfig(sRoomType);
+        return oRoom.color;
+    };
+    
+    this.getRoomIcon = function(sRoomType){
+        var oRoom = this.getRoomConfig(sRoomType);
+        return oRoom.icon;
+    };
+    
+    this.getRoomDescription = function(sRoomType){
+        var oRoom = this.getRoomConfig(sRoomType);
+        return oRoom.description;
+    };
+    
+    this.getRoomTypes = function(){
+        return Object.keys(_aRooms);
     };
     
     this._init();
