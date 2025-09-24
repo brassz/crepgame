@@ -1,78 +1,133 @@
-# Sistema de Configuração da Mesa
+# Sistema de Salas Multiplayer
 
 ## Visão Geral
 
-O sistema de configuração da mesa permite definir as regras da mesa principal do jogo. A mesa tem **aposta mínima de 50 reais** e **sem limite máximo**.
+O sistema de salas multiplayer permite que jogadores escolham entre diferentes mesas online com configurações específicas de apostas e limites de jogadores. Cada mesa tem características únicas para atender diferentes perfis de jogadores.
 
-## Configuração da Mesa
+## Configuração das Mesas
 
-### Mesa Principal
+### 1. Mesa Iniciante 🌱
+**ID**: `iniciante`
+- Aposta mínima: **R$ 50**
+- Aposta máxima: **R$ 1.000**
+- Máximo de jogadores: **6**
+- Cor: Verde (#4CAF50)
+- Descrição: Mesa para jogadores iniciantes
 
-**Mesa Principal** (`principal`)
-- Aposta mínima: 50 reais
-- Aposta máxima: **Sem limite**
-- Máximo de jogadores: 8
-- Descrição: Mesa principal do jogo
+### 2. Mesa Intermediária ⚡
+**ID**: `intermediaria`
+- Aposta mínima: **R$ 100**
+- Aposta máxima: **R$ 2.000**
+- Máximo de jogadores: **6**
+- Cor: Laranja (#FF9800)
+- Descrição: Mesa para jogadores experientes
 
-## Como Usar
+### 3. Mesa VIP 💎
+**ID**: `vip`
+- Aposta mínima: **R$ 200**
+- Aposta máxima: **R$ 5.000**
+- Máximo de jogadores: **4**
+- Cor: Roxo (#9C27B0)
+- Descrição: Mesa para grandes apostadores
 
-### Usar a Mesa Principal
+## Funcionalidades do Sistema
 
-```javascript
-// Usar a mesa principal (padrão)
-s_oGame.changeRoom("principal");
-```
+### 1. Seleção de Salas
+- Interface visual para escolha de mesa antes de iniciar o jogo
+- Exibe apenas salas que o jogador pode pagar (baseado no saldo)
+- Mostra informações em tempo real de cada sala:
+  - Nome e ícone da mesa
+  - Limites de aposta (mínimo - máximo)
+  - Número de jogadores online/máximo
+  - Status de disponibilidade
+
+### 2. Sistema Multiplayer
+- Simulação de jogadores online (bots)
+- Contador de jogadores em tempo real
+- Mensagens de ações de outros jogadores
+- Atividade automática dos bots
+
+### 3. Interface Durante o Jogo
+- Informações da mesa atual no canto superior
+- Mensagens de ações de outros jogadores
+- Contador de jogadores na mesa
+
+## API do Sistema
 
 ### Obter Configuração de Sala
 
 ```javascript
 // Obter configuração completa
-var oRoomConfig = s_oRoomConfig.getRoomConfig("principal");
-console.log(oRoomConfig.name); // "Mesa Principal"
+var oRoomConfig = s_oRoomConfig.getRoomConfig("iniciante");
+console.log(oRoomConfig.name); // "Mesa Iniciante"
 console.log(oRoomConfig.min_bet); // 50
+console.log(oRoomConfig.max_bet); // 1000
 
 // Obter valores específicos
-var iMinBet = s_oRoomConfig.getRoomMinBet("principal"); // 50
-var iMaxBet = s_oRoomConfig.getRoomMaxBet("principal"); // null (sem limite)
-var sRoomName = s_oRoomConfig.getRoomName("principal"); // "Mesa Principal"
+var iMinBet = s_oRoomConfig.getRoomMinBet("vip"); // 200
+var iMaxBet = s_oRoomConfig.getRoomMaxBet("vip"); // 5000
+var sRoomName = s_oRoomConfig.getRoomName("intermediaria"); // "Mesa Intermediária"
 ```
 
-## Modificações Realizadas
+### Gerenciar Jogadores
 
-### 1. Arquivos Atualizados
-- `game/index.html` - Aposta mínima alterada para 50 reais, limite máximo removido
-- `live_demo/index.html` - Aposta mínima alterada para 50 reais, limite máximo removido
-- `readme/index.html` - Aposta mínima alterada para 50 reais, limite máximo removido
-- `ctl_arcade_wp_plugin/ctl-craps/game/index.php` - Aposta mínima alterada para 50 reais, limite máximo removido
+```javascript
+// Entrar numa sala
+s_oMultiplayerManager.joinRoom("vip", "player123", playerProfile);
 
-### 2. Novos Arquivos
-- `game/js/CRoomConfig.js` - Sistema de configuração de salas
-- `SISTEMA_SALAS.md` - Esta documentação
+// Verificar jogadores online
+var iPlayersCount = s_oMultiplayerManager.getRoomPlayersCount("iniciante");
+var aPlayers = s_oMultiplayerManager.getRoomPlayersProfiles("vip");
 
-### 3. Arquivos Modificados
-- `game/js/CInterface.js` - Integração com sistema de salas
-- `game/js/CGame.js` - Função para trocar de salas
+// Sair de todas as salas
+s_oMultiplayerManager.leaveAllRooms("player123");
+```
 
-## Interface Atualizada
+## Arquivos do Sistema
 
-As informações da sala agora são exibidas no **espaço verde da mesa** (posição x=450, y=50) mostrando:
-- Nome da sala
-- Número de jogadores atuais/máximo
-- Aposta mínima e máxima (ou "Sem limite" quando não há limite)
+### Novos Arquivos Criados
+- `game/js/CRoomConfig.js` - Sistema de configuração das 3 mesas
+- `game/js/CMultiplayerManager.js` - Gerenciamento de jogadores por sala
+- `game/js/CRoomSelection.js` - Interface de seleção de salas
+- `game/js/utils.js` - Funções utilitárias (formatação de moeda, etc.)
 
-## Benefícios
+### Arquivos Modificados
+- `game/index.html` - Adicionados novos scripts e lógica de seleção de sala
+- `game/js/CInterface.js` - Atualizações na UI para mostrar info da sala e mensagens multiplayer
+- `game/js/CGame.js` - Integração com sistema de salas e callbacks multiplayer
+- `game/js/CMain.js` - Suporte para inicialização em salas específicas
 
-1. **Simplicidade**: Uma única mesa com configuração clara
-2. **Configuração Centralizada**: Todas as configurações em um local
-3. **Interface Dinâmica**: Informações da mesa atualizadas automaticamente
-4. **Aposta Mínima Padronizada**: Mesa com aposta mínima de 50 reais
-5. **Sem Limite Máximo**: Jogadores podem apostar qualquer valor acima da aposta mínima
+## Como Funciona
 
-## Configuração da Mesa
+### Fluxo do Jogador
+1. **Login**: Jogador faz login e carrega seu saldo
+2. **Seleção de Mesa**: Interface mostra mesas disponíveis baseadas no saldo
+3. **Entrada na Sala**: Jogador clica numa mesa e entra automaticamente
+4. **Jogo Multiplayer**: Vê outros jogadores online e suas ações em tempo real
 
-A mesa principal está sempre ativa e configurada com:
-- Aposta mínima: 50 reais
-- Aposta máxima: Sem limite
-- Máximo de jogadores: 8
+### Sistema de Bots
+- Simula atividade de jogadores reais
+- Nomes brasileiros realistas
+- Ações periódicas (apostas, entrada/saída)
+- Diferentes perfis de saldo para cada bot
 
-O sistema está preparado para futuras expansões caso seja necessário adicionar mais mesas.
+## Benefícios do Sistema
+
+1. **Experiência Multiplayer**: Sensação de jogo online real
+2. **Segmentação de Jogadores**: Mesas adequadas para diferentes níveis
+3. **Interface Intuitiva**: Seleção visual simples e clara  
+4. **Escalabilidade**: Sistema preparado para expansão
+5. **Imersão**: Jogadores veem atividade em tempo real
+6. **Controle de Acesso**: Apenas jogadores com saldo suficiente podem entrar
+
+## Configuração Técnica
+
+### Limites das Mesas
+- **Iniciante**: R$ 50 - R$ 1.000 (6 jogadores)
+- **Intermediária**: R$ 100 - R$ 2.000 (6 jogadores) 
+- **VIP**: R$ 200 - R$ 5.000 (4 jogadores)
+
+### Validações
+- Saldo mínimo para entrar na sala
+- Limite máximo de jogadores por mesa
+- Verificação de disponibilidade em tempo real
