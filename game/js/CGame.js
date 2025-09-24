@@ -122,339 +122,25 @@ function CGame(oData){
     
     
     
-    this._prepareForRolling = function(){
-        _oInterface.disableBetFiches();
-        _oInterface.disableClearButton();
-        
-        _iContRolling++;
-        _aDiceResult = new Array();
-        this._generateWinLoss();
-        _aDiceResultHistory.push(_aDiceResult);
-
-        _iTimeElaps = 0;
-    };
+    // Métodos de preparação removidos - agora tudo é controlado pelo servidor multiplayer
     
-    this._generateWinLoss = function(){
-        // Para o novo sistema simplificado, vamos gerar dados aleatórios simples
-        // sem a lógica complexa de ganho/perda baseada em apostas específicas
-        var aDices = this._generateRandomDices();
-        _aDiceResult[0] = aDices[0];
-        _aDiceResult[1] = aDices[1];
-    };
-    
-    this._generateRandomDices = function(){
-        var aRandDices = new Array();
-        var iRand = Math.floor(Math.random()*6) + 1;
-        aRandDices.push(iRand);
-        var iRand = Math.floor(Math.random()*6) + 1;
-        aRandDices.push(iRand);
-        
-        return aRandDices;
-    };
-    
-    this._checkHardwayWin = function(szBet){
-        var iDice1 = 6;
-        var iDice2 = 6;
-        switch(szBet){
-            case "hardway6":{
-                iDice1 = 3;
-                iDice2 = 3;    
-                break;
-            }
-            case "hardway10":{
-                iDice1 = 5;
-                iDice2 = 5;
-                break;
-            }
-            case "hardway8":{
-                iDice1 = 4;
-                iDice2 = 4;
-                break;
-            }
-            case "hardway4":{
-                iDice1 = 2;
-                iDice2 = 2;
-                break;
-            }
-        }
-
-        do{
-            var aDices = this._generateRandomDices();
-        }while(aDices[0] !== iDice1 || aDices[1] !== iDice2);
-        
-        return aDices;
-    };
-    
-    this._startRollingAnim = function(){
-        _oDicesAnim.startRolling(_aDiceResult);
-    };
+    // Métodos de animação removidos - agora são controlados pelo sistema multiplayer
     
     this.dicesAnimEnded = function(){
-        try {
-            var iSumDices = _aDiceResult[0] + _aDiceResult[1];
-            
-            // Inicializar arrays se não estiverem definidos
-            if(!_aBetsToRemove) _aBetsToRemove = new Array();
-            if(!_aFichesToMove) _aFichesToMove = new Array();
-            
-            // Verificar se estamos em um estado válido
-            if(_iState < 0 || _iState > 2){
-                console.error("Estado inválido:", _iState);
-                _iState = STATE_GAME_WAITING_FOR_BET;
-                return;
-            }
-
-        if(_iState === STATE_GAME_COME_OUT){
-
-            //FIRST SHOOT
-            if(iSumDices !== 2 && iSumDices !== 3 && iSumDices !== 12 && iSumDices !== 7 && iSumDices !== 11){
-                //ASSIGN NUMBER
-                this._assignNumber(iSumDices);
-            }
-            
-            this._checkWinForBet();
-            
-            if(_aFichesToMove && _aFichesToMove.length > 0){
-                _bDistributeFiches = true;
-                
-                if(_aBetsToRemove && _aBetsToRemove.length > 0){
-                    for(var j=0;j<_aBetsToRemove.length;j++){
-                        _oMySeat.removeBet(_aBetsToRemove[j]);
-                        delete _aBetHistory[_aBetsToRemove[j]];
-                    }
-                }
-                
-                
-                _oInterface.setCurBet(_oMySeat.getCurBet());
-                
-            }
-            
-            if(_iNumberPoint !== -1){
-                this._setState(STATE_GAME_COME_POINT);
-            }
-        }else{
-            this._checkWinForBet();
-            
-            // Verificar se ainda há apostas ativas na fase de ponto
-            if(_iState === STATE_GAME_COME_POINT && Object.keys(_aBetHistory).length === 0){
-                // Se não há apostas, volta para o estado de espera
-                _iNumberPoint = -1;
-                this._setState(STATE_GAME_WAITING_FOR_BET);
-            }
-            
-            if(_aFichesToMove && _aFichesToMove.length > 0){
-                _bDistributeFiches = true;
-                
-                if(_aBetsToRemove && _aBetsToRemove.length > 0){
-                    for(var j=0;j<_aBetsToRemove.length;j++){
-                        _oMySeat.removeBet(_aBetsToRemove[j]);
-                        delete _aBetHistory[_aBetsToRemove[j]];
-                    }
-                }
-                
-                _oInterface.setCurBet(_oMySeat.getCurBet());
-            }
-            
-            if(_iNumberPoint === iSumDices){
-                //PASS LINE WINS
-                _oPuck.switchOff();
-                this._setState(STATE_GAME_WAITING_FOR_BET);
-                
-            }else if(iSumDices === 7){
-                //END TURN
-                _oPuck.switchOff();
-                this._setState(STATE_GAME_WAITING_FOR_BET);
-            }
-        }
+        // Este método agora é chamado apenas para finalizar a animação local
+        // O processamento real dos resultados é feito pelo servidor multiplayer
+        console.log("Animação dos dados finalizada localmente");
         
-        
-        _oInterface.setMoney(_oMySeat.getCredit());
-        if(Object.keys(_aBetHistory).length > 0){
-            _oInterface.enableRoll(true);
-            _oInterface.enableClearButton();
-        }
-        
-        _oInterface.hideBlock();
-        _oInterface.enableBetFiches();
+        // Salvar pontuação atual
         $(s_oMain).trigger("save_score",[_oMySeat.getCredit()]);
-        
-        } catch(error) {
-            console.error("Erro em dicesAnimEnded:", error);
-            // Reset do estado em caso de erro
-            _aBetsToRemove = new Array();
-            _aFichesToMove = new Array();
-            _iState = STATE_GAME_WAITING_FOR_BET;
-        }
     };
     
-    this._assignNumber = function(iNumber){
-        _iNumberPoint = iNumber;
-        
-        //PLACE 'ON' PLACEHOLDER
-        var iNewX = s_oGameSettings.getPuckXByNumber(_iNumberPoint);
-        _oPuck.switchOn(iNewX);
-        
-        //ENABLE GUI
-        _oInterface.hideBlock();
-    };
-    
-    this._showContinueDialog = function(iNumber){
-        // Mostra janela de confirmação quando sai um número de ponto
-        console.log("Mostrando diálogo para número:", iNumber);
-        
-        var szPayout = "";
-        if(iNumber === 4 || iNumber === 10) szPayout = "dobra o valor";
-        else if(iNumber === 5 || iNumber === 9) szPayout = "paga 50%";
-        else if(iNumber === 6 || iNumber === 8) szPayout = "paga 25%";
-        
-        var szMessage = "Resultado: " + iNumber + "!\n\nDeseja continuar apostando contra o 7?\n\n• Se sair 7: PERDE TUDO\n• Se sair " + iNumber + ": " + szPayout + "\n• Outros números: continua jogando";
-        
-        _oAreYouSurePanel.showCustom(szMessage, this._onContinueConfirm.bind(this, iNumber), this._onContinueCancel.bind(this));
-    };
-    
-    this._onContinueConfirm = function(iNumber){
-        // Usuário escolheu continuar - implementa aposta contra o 7
-        _oInterface.hideBlock();
-        this._setState(STATE_GAME_COME_POINT);
-        _iNumberPoint = iNumber; // Define o número como ponto
-        
-        // Mostra mensagem explicativa
-        new CScoreText("APOSTA CONTRA O 7 ATIVA! Ponto: " + iNumber, CANVAS_WIDTH/2, CANVAS_HEIGHT/2 - 50);
-        
-        // Coloca o puck no número correspondente
-        var iNewX = s_oGameSettings.getPuckXByNumber(iNumber);
-        _oPuck.switchOn(iNewX);
-    };
-    
-    this._onContinueCancel = function(){
-        // Usuário escolheu não continuar - volta ao estado normal
-        _oInterface.hideBlock();
-        this._setState(STATE_GAME_WAITING_FOR_BET);
-        new CScoreText("Jogo cancelado. Faça uma nova aposta.", CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
-    };
+    // Métodos de diálogo e processamento local removidos - agora controlados pelo servidor
 
     
-    this._checkWinForBet = function(){
-        var iSumDices = _aDiceResult[0] + _aDiceResult[1];
-        console.log("Verificando resultado dos dados:", iSumDices, "Estado:", _iState);
-        
-        // NOVA LÓGICA CONFORME ESPECIFICAÇÕES
-        if(_iState === STATE_GAME_COME_OUT){
-            // PRIMEIRO LANÇAMENTO
-            if(iSumDices === 7 || iSumDices === 11){
-                // 7-11: GANHA DOBRO
-                var iTotalActiveBets = _oMySeat.getCurBet();
-                if(iTotalActiveBets > 0){
-                    var iAutoWin = iTotalActiveBets * 2; // Dobro
-                    _oMySeat.showWin(iAutoWin);
-                    _iCasinoCash -= iAutoWin;
-                    new CScoreText("GANHOU! +" + iAutoWin + TEXT_CURRENCY, CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
-                    playSound("win", 0.2, false);
-                }
-                // Remove todas as apostas ativas após pagamento
-                _oMySeat.clearAllBets();
-                _aBetHistory = {};
-                _oInterface.setCurBet(_oMySeat.getCurBet());
-            } else if(iSumDices === 2 || iSumDices === 3 || iSumDices === 12){
-                // 2-3-12: PERDE TUDO
-                var iTotalActiveBets = _oMySeat.getCurBet();
-                if(iTotalActiveBets > 0){
-                    _oMySeat.decreaseBet(iTotalActiveBets);
-                    playSound("lose", 0.2, false);
-                    new CScoreText("PERDEU TUDO!", CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
-                }
-                // Remove todas as apostas ativas
-                _oMySeat.clearAllBets();
-                _aBetHistory = {};
-                _oInterface.setCurBet(_oMySeat.getCurBet());
-            } else if(iSumDices === 4 || iSumDices === 5 || iSumDices === 6 || iSumDices === 8 || iSumDices === 9 || iSumDices === 10){
-                // NÚMEROS DE PONTO: PERGUNTA SE QUER CONTINUAR
-                console.log("Número de ponto detectado:", iSumDices);
-                this._showContinueDialog(iSumDices);
-                return;
-            }
-        } else if(_iState === STATE_GAME_COME_POINT){
-            // FASE DE PONTO - APOSTA CONTRA O 7
-            if(iSumDices === 7){
-                // SAIU 7: PERDE TUDO
-                var iTotalActiveBets = _oMySeat.getCurBet();
-                if(iTotalActiveBets > 0){
-                    _oMySeat.decreaseBet(iTotalActiveBets);
-                    playSound("lose", 0.2, false);
-                    new CScoreText("7 PERDEU TUDO!", CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
-                }
-                // Remove todas as apostas ativas
-                _oMySeat.clearAllBets();
-                _aBetHistory = {};
-                _oInterface.setCurBet(_oMySeat.getCurBet());
-                // Volta para o estado de espera
-                _iNumberPoint = -1;
-                this._setState(STATE_GAME_WAITING_FOR_BET);
-            } else if(iSumDices === _iNumberPoint){
-                // ACERTOU O PONTO: PAGA CONFORME A MESA
-                var iTotalActiveBets = _oMySeat.getCurBet();
-                if(iTotalActiveBets > 0){
-                    // Determina o multiplicador baseado no número do ponto
-                    var iMultiplier = 1;
-                    if(_iNumberPoint === 4 || _iNumberPoint === 10) iMultiplier = 2; // Dobro
-                    else if(_iNumberPoint === 5 || _iNumberPoint === 9) iMultiplier = 0.5; // 50%
-                    else if(_iNumberPoint === 6 || _iNumberPoint === 8) iMultiplier = 0.25; // 25%
-                    
-                    var iAutoWin = iTotalActiveBets * iMultiplier;
-                    _oMySeat.showWin(iAutoWin);
-                    _iCasinoCash -= iAutoWin;
-                    new CScoreText("PONTO ACERTOU! +" + iAutoWin + TEXT_CURRENCY, CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
-                    playSound("win", 0.2, false);
-                }
-                // Remove todas as apostas ativas
-                _oMySeat.clearAllBets();
-                _aBetHistory = {};
-                _oInterface.setCurBet(_oMySeat.getCurBet());
-                // Volta para o estado de espera
-                _iNumberPoint = -1;
-                this._setState(STATE_GAME_WAITING_FOR_BET);
-            } else {
-                // QUALQUER OUTRO NÚMERO: CONTINUA JOGANDO
-                new CScoreText("CONTINUA... PONTO: " + _iNumberPoint, CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
-            }
-        }
-    };
+    // Método de verificação de apostas removido - agora processado no servidor multiplayer
     
-    this.assignBetFromCome = function(iNumberAssigned,szOrigBet){
-        var aFicheMc = _oMySeat.getFicheMc(szOrigBet);
-        
-        //MOVE FICHES
-        for(var k=0;k<aFicheMc.length;k++){
-            _aFichesToMove.push(aFicheMc[k]);
-            var oEndPos = s_oGameSettings.getAttachOffset("number"+iNumberAssigned);
-
-            aFicheMc[k].setEndPoint(oEndPos.x,oEndPos.y);
-        }
-        
-        
-        _aBetHistory["number"+iNumberAssigned] = _aBetHistory[szOrigBet];
-        delete _aBetHistory[szOrigBet];
-        
-        _oMySeat.swapBet(szOrigBet,"number"+iNumberAssigned);
-    };
-    
-    this.assignBetFromDontCome = function(iNumberAssigned,szOrigBet){
-        var aFicheMc = _oMySeat.getFicheMc(szOrigBet);
-        
-        //MOVE FICHES
-        for(var k=0;k<aFicheMc.length;k++){
-            _aFichesToMove.push(aFicheMc[k]);
-            var oEndPos = s_oGameSettings.getAttachOffset("lay_bet"+iNumberAssigned);
-
-            aFicheMc[k].setEndPoint(oEndPos.x,oEndPos.y);
-        }
-        
-        
-        _aBetHistory["lay_bet"+iNumberAssigned] = _aBetHistory[szOrigBet];
-        delete _aBetHistory[szOrigBet];
-        
-        _oMySeat.swapBet(szOrigBet,"lay_bet"+iNumberAssigned);
-    };
+    // Métodos de movimentação de apostas removidos - gerenciados pelo servidor multiplayer
     
     this.onRecharge = function(iMoney) {
         _oMySeat.recharge(iMoney);
@@ -481,7 +167,7 @@ function CGame(oData){
                 return;
         }
 
-        // Verificar se é modo multiplayer
+        // Modo multiplayer obrigatório
         if(s_oMultiplayerGame && s_oMultiplayerGame.isMultiplayer()){
             // Verificar se é o dealer
             if(!s_oMultiplayerGame.isDealer()){
@@ -495,16 +181,8 @@ function CGame(oData){
                 // O resultado virá do servidor via eventos
             }
         } else {
-            // Modo single player - processar normalmente
-            _oInterface.showBlock();
-            
-            if(_iState === STATE_GAME_WAITING_FOR_BET){
-                this._setState(STATE_GAME_COME_OUT);
-            }
-            
-            $(s_oMain).trigger("bet_placed",_oMySeat.getCurBet());
-            this._prepareForRolling();
-            this._startRollingAnim();    
+            // Sem conexão multiplayer - mostrar erro
+            _oMsgBox.show("ERRO: Conecte-se ao servidor para jogar!");
         }
     };
     
@@ -566,7 +244,7 @@ function CGame(oData){
             return;
         }
 
-        // Verificar se é modo multiplayer
+        // Modo multiplayer obrigatório
         if(s_oMultiplayerGame && s_oMultiplayerGame.isMultiplayer()){
             // Enviar aposta para o servidor
             if(s_oMultiplayerGame.placeBet(iFicheValue, szBut)){
@@ -574,8 +252,8 @@ function CGame(oData){
                 this._processLocalBet(iFicheValue, iIndexFicheSelected, szBut);
             }
         } else {
-            // Modo single player - processar normalmente
-            this._processLocalBet(iFicheValue, iIndexFicheSelected, szBut);
+            // Sem conexão multiplayer - mostrar erro
+            _oMsgBox.show("ERRO: Conecte-se ao servidor para jogar!");
         }
     };
     
@@ -618,14 +296,14 @@ function CGame(oData){
     this.onClearAllBets = function(){
         $(s_oMain).trigger("clear_bet",_oMySeat.getCurBet());
         
-        // Verificar se é modo multiplayer
+        // Modo multiplayer obrigatório
         if(s_oMultiplayerGame && s_oMultiplayerGame.isMultiplayer()){
             // Enviar comando para limpar apostas
             s_oMultiplayerGame.clearBets();
             // A limpeza local será feita quando o servidor confirmar
         } else {
-            // Modo single player - processar normalmente
-            this._processClearBets();
+            // Sem conexão multiplayer - mostrar erro
+            _oMsgBox.show("ERRO: Conecte-se ao servidor para jogar!");
         }
     };
     

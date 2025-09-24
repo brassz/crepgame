@@ -1,8 +1,8 @@
-# 🎲 Guia do Sistema Multiplayer - Dados da Sorte
+# 🎲 Guia do Jogo Multiplayer - Dados da Sorte
 
 ## 🎯 Visão Geral
 
-O jogo Dados da Sorte agora suporta **múltiplos jogadores em tempo real** usando Socket.IO! Os jogadores podem se conectar a diferentes salas, fazer apostas juntos e jogar de forma sincronizada.
+O jogo Dados da Sorte é um **jogo exclusivamente multiplayer** em tempo real usando Socket.IO! Os jogadores devem se conectar a salas online, fazer apostas juntos e jogar de forma sincronizada com outros jogadores.
 
 ## 🚀 Como Iniciar o Servidor
 
@@ -148,8 +148,10 @@ npm start
 ```
 
 **Sintoma:** Desconectado durante o jogo
+- **IMPORTANTE:** O jogo não funciona offline - é necessária conexão com o servidor
 - O jogo tentará reconectar automaticamente
 - Recarregue a página se necessário
+- Certifique-se de que o servidor está rodando
 
 ### 🎮 Problemas de Jogabilidade
 
@@ -199,6 +201,8 @@ O sistema está preparado para facilmente adicionar:
 - 🎁 **Recompensas diárias**
 - 📱 **Otimização mobile**
 - 🎵 **Efeitos sonoros sincronizados**
+- 🔐 **Salas privadas com senha**
+- 🏟️ **Torneios programados**
 
 ## 🎯 Começar a Jogar
 

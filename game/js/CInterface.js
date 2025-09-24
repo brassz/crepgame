@@ -310,7 +310,7 @@ function CInterface(){
                 this.enableRoll(true);
             }
         } else {
-            this.refreshMsgHelp("👥 MODO MULTIPLAYER - Aguardando o dealer rolar os dados", true);
+            this.refreshMsgHelp("👥 AGUARDANDO O DEALER - Esperando o dealer rolar os dados", true);
             // Desabilitar botão de rolar se não é dealer
             this.enableRoll(false);
         }

@@ -1,12 +1,10 @@
 function CMultiplayerGame() {
-    var _bMultiplayerEnabled = true;
     var _bIsMultiplayer = false;
-    var _oOriginalGame = null;
     var _aOtherPlayers = [];
     var _oRoomSelector = null;
     
     this._init = function() {
-        console.log('Inicializando sistema multiplayer...');
+        console.log('Inicializando sistema multiplayer obrigatório...');
         
         // Criar gerenciador Socket.IO
         if (!s_oSocketManager) {
@@ -21,13 +19,19 @@ function CMultiplayerGame() {
         
         // Eventos de conexão
         s_oSocketManager.addEventListener('connected', function(data) {
-            console.log('Multiplayer: Conectado ao servidor');
+            console.log('Conectado ao servidor - Modo multiplayer obrigatório');
             self._showRoomSelector();
         });
         
         s_oSocketManager.addEventListener('disconnected', function(data) {
-            console.log('Multiplayer: Desconectado do servidor');
+            console.log('Desconectado do servidor - Jogo pausado até reconexão');
             _bIsMultiplayer = false;
+            
+            // Mostrar mensagem de desconexão
+            if (s_oGame && s_oGame.getMsgBox()) {
+                s_oGame.getMsgBox().show("DESCONECTADO: Tentando reconectar ao servidor...");
+            }
+            
             if (_oRoomSelector) {
                 _oRoomSelector.hide();
             }
@@ -35,7 +39,7 @@ function CMultiplayerGame() {
         
         // Eventos de sala
         s_oSocketManager.addEventListener('room_joined', function(data) {
-            console.log('Multiplayer: Entrou na sala', data.room.config.name);
+            console.log('Entrou na sala', data.room.config.name);
             _bIsMultiplayer = true;
             self._onRoomJoined(data);
             if (_oRoomSelector) {
@@ -44,58 +48,58 @@ function CMultiplayerGame() {
         });
         
         s_oSocketManager.addEventListener('room_join_error', function(data) {
-            console.error('Multiplayer: Erro ao entrar na sala:', data.error);
+            console.error('Erro ao entrar na sala:', data.error);
             self._showMessage('Erro', data.error);
         });
         
         s_oSocketManager.addEventListener('player_joined', function(data) {
-            console.log('Multiplayer: Novo jogador:', data.player.name);
+            console.log('Novo jogador na mesa:', data.player.name);
             self._addOtherPlayer(data.player);
             self._updateRoomInfo(data.room);
         });
         
         s_oSocketManager.addEventListener('player_left', function(data) {
-            console.log('Multiplayer: Jogador saiu:', data.playerId);
+            console.log('Jogador saiu da mesa:', data.playerId);
             self._removeOtherPlayer(data.playerId);
             self._updateRoomInfo(data.room);
         });
         
         // Eventos de apostas
         s_oSocketManager.addEventListener('bet_placed', function(data) {
-            console.log('Multiplayer: Aposta confirmada pelo servidor');
+            console.log('Aposta confirmada pelo servidor');
             // A aposta já foi processada localmente, apenas confirma
         });
         
         s_oSocketManager.addEventListener('bet_error', function(data) {
-            console.error('Multiplayer: Erro na aposta:', data.error);
+            console.error('Erro na aposta:', data.error);
             self._showMessage('Erro na Aposta', data.error);
             // Reverter aposta local se necessário
         });
         
         s_oSocketManager.addEventListener('player_bet_placed', function(data) {
-            console.log('Multiplayer: Outro jogador apostou:', data.amount);
+            console.log('Outro jogador apostou:', data.amount);
             self._showOtherPlayerBet(data);
         });
         
         // Eventos de dados
         s_oSocketManager.addEventListener('dice_rolled', function(data) {
-            console.log('Multiplayer: Dados lançados pelo servidor:', data.diceResult);
+            console.log('Dados lançados pelo servidor:', data.diceResult);
             self._processDiceResult(data);
         });
         
         s_oSocketManager.addEventListener('roll_error', function(data) {
-            console.error('Multiplayer: Erro ao rolar dados:', data.error);
+            console.error('Erro ao rolar dados:', data.error);
             self._showMessage('Erro', data.error);
         });
         
         s_oSocketManager.addEventListener('dice_animation_complete', function(data) {
-            console.log('Multiplayer: Animação dos dados completa');
+            console.log('Animação dos dados completa');
             self._onDiceAnimationComplete(data);
         });
         
         // Eventos do dealer
         s_oSocketManager.addEventListener('dealer_assigned', function(data) {
-            console.log('Multiplayer: Você é o dealer agora!');
+            console.log('Você é o dealer agora!');
             self._updateDealerStatus(true);
         });
     };
@@ -114,7 +118,7 @@ function CMultiplayerGame() {
         var roomInfo = data.room;
         var player = data.player;
         
-        console.log('Configurando jogo multiplayer para sala:', roomInfo.config.name);
+        console.log('Configurando jogo para sala:', roomInfo.config.name);
         
         // Atualizar configurações do jogo baseadas na sala
         if (s_oGame) {
@@ -122,14 +126,12 @@ function CMultiplayerGame() {
             MAX_BET = roomInfo.config.max_bet;
             
             // Atualizar saldo do jogador
-            if (s_oGame._oMySeat) {
-                s_oGame._oMySeat.setCredit(player.balance);
-            }
+            s_oGame.setMoney(player.balance);
             
             // Atualizar interface
-            if (s_oGame._oInterface) {
-                s_oGame._oInterface.setMoney(player.balance);
-                s_oGame._oInterface.updateMultiplayerInfo(roomInfo, player.isDealer);
+            var oInterface = s_oGame.getInterface();
+            if (oInterface) {
+                oInterface.updateMultiplayerInfo(roomInfo, player.isDealer);
             }
         }
         
@@ -148,8 +150,9 @@ function CMultiplayerGame() {
     };
     
     this._updateDealerStatus = function(bIsDealer) {
-        if (s_oGame && s_oGame._oInterface) {
-            s_oGame._oInterface.updateDealerStatus(bIsDealer);
+        var oInterface = s_oGame ? s_oGame.getInterface() : null;
+        if (oInterface) {
+            oInterface.updateDealerStatus(bIsDealer);
         }
         
         if (bIsDealer) {
@@ -376,21 +379,15 @@ function CMultiplayerGame() {
     };
     
     this.placeBet = function(amount, betType) {
-        if (!_bIsMultiplayer) return false;
-        
-        return s_oSocketManager.placeBet(amount, betType || 'main_bet');
+        return s_oSocketManager ? s_oSocketManager.placeBet(amount, betType || 'main_bet') : false;
     };
     
     this.rollDice = function() {
-        if (!_bIsMultiplayer) return false;
-        
-        return s_oSocketManager.rollDice();
+        return s_oSocketManager ? s_oSocketManager.rollDice() : false;
     };
     
     this.clearBets = function() {
-        if (!_bIsMultiplayer) return false;
-        
-        return s_oSocketManager.clearBets();
+        return s_oSocketManager ? s_oSocketManager.clearBets() : false;
     };
     
     this.getOtherPlayers = function() {
@@ -402,10 +399,8 @@ function CMultiplayerGame() {
     };
     
     this.leaveRoom = function() {
-        if (!_bIsMultiplayer) return false;
-        
         _bIsMultiplayer = false;
-        return s_oSocketManager.leaveRoom();
+        return s_oSocketManager ? s_oSocketManager.leaveRoom() : false;
     };
     
     this._init();

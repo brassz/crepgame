@@ -1,6 +1,26 @@
 # 📝 Changelog - Implementação Multiplayer
 
-## 🚀 Versão 2.0.0 - Sistema Multiplayer Completo
+## 🚀 Versão 2.1.0 - Jogo Multiplayer Exclusivo
+
+**Data:** Dezembro 2024  
+**Tipo:** Major Release - Jogo exclusivamente multiplayer
+
+### 🔥 **Mudanças Importantes - v2.1.0**
+- ❌ **REMOVIDO:** Modo single player completamente removido
+- ✅ **OBRIGATÓRIO:** Conexão com servidor para jogar
+- ✅ **SIMPLIFICADO:** Código limpo sem verificações de modo
+- ✅ **FOCADO:** Experiência 100% multiplayer
+
+### 📋 **Arquivos Modificados - v2.1.0**
+- `game/js/CGame.js` - Removida lógica single player
+- `game/js/CInterface.js` - Mensagens simplificadas  
+- `game/js/CMultiplayerGame.js` - Código otimizado
+- `MULTIPLAYER_GUIDE.md` - Documentação atualizada
+- `CHANGELOG_MULTIPLAYER.md` - Este arquivo
+
+---
+
+## 🔄 Versão 2.0.0 - Sistema Multiplayer Completo
 
 **Data:** Dezembro 2024  
 **Tipo:** Major Release - Nova funcionalidade multiplayer
@@ -194,11 +214,11 @@ Cliente → Socket.IO → Servidor → Validação → Broadcast → Todos os Cl
 
 ## 🎯 Compatibilidade
 
-### ✅ **Retrocompatibilidade**
-- [x] Modo single player mantido intacto
-- [x] Todas as funcionalidades originais preservadas
-- [x] Interface original como fallback
-- [x] Configurações existentes respeitadas
+### ❌ **Compatibilidade (v2.1.0)**
+- [x] **REMOVIDO:** Modo single player não está mais disponível
+- [x] **OBRIGATÓRIO:** Servidor deve estar rodando para jogar
+- [x] Todas as outras funcionalidades preservadas
+- [x] Configurações de salas respeitadas
 
 ### ✅ **Navegadores Suportados**
 - [x] Chrome/Chromium 70+
@@ -246,6 +266,13 @@ Cliente → Socket.IO → Servidor → Validação → Broadcast → Todos os Cl
 
 ## ✨ Conclusão
 
-O sistema multiplayer foi implementado com sucesso, mantendo a compatibilidade completa com o jogo original enquanto adiciona uma experiência totalmente nova de jogo colaborativo em tempo real. 
+O sistema foi evoluído para ser **exclusivamente multiplayer**, removendo complexidades desnecessárias e focando em uma experiência de jogo colaborativo otimizada e em tempo real. 
 
-**🎲 O Dados da Sorte agora é verdadeiramente social! 🎲**
+**🎲 O Dados da Sorte é agora um jogo 100% social e multiplayer! 🎲**
+
+### 🎯 **Principais Benefícios da v2.1.0:**
+- ✅ **Código mais simples** e fácil de manter
+- ✅ **Performance melhorada** sem verificações de modo
+- ✅ **Experiência focada** no aspecto social
+- ✅ **Menor complexidade** de desenvolvimento
+- ✅ **Jogo mais divertido** com interação obrigatória
