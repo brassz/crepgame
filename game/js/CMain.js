@@ -7,6 +7,7 @@ function CMain(oData){
     var _oData;
     var _oPreloader;
     var _oMenu;
+    var _oRoomSelectionMenu;
     var _oHelp;
     var _oGame;
 
@@ -222,9 +223,14 @@ function CMain(oData){
         _iState = STATE_MENU;
     };
     
+    this.gotoRoomSelection = function(){
+        _oRoomSelectionMenu = new CRoomSelectionMenu();
+        _iState = STATE_ROOM_SELECTION;
+    };
+    
     this.gotoGame = function(){
         _oGame = new CGame(_oData);   
-							
+						
         _iState = STATE_GAME;
     };
     
