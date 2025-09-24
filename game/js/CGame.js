@@ -57,9 +57,22 @@ function CGame(oData){
         _aDiceResultHistory=new Array();
 
         _iTimeElaps=0;
+        
+        // Inicializar sistema multiplayer
+        this._initMultiplayer();
+        
         this._onSitDown();
 	
         _bUpdate = true;
+    };
+    
+    this._initMultiplayer = function(){
+        // Inicializar sistema multiplayer se disponível
+        if (typeof CMultiplayerGame !== 'undefined') {
+            if (!s_oMultiplayerGame) {
+                s_oMultiplayerGame = new CMultiplayerGame();
+            }
+        }
     };
     
     this.unload = function(){
@@ -468,15 +481,31 @@ function CGame(oData){
                 return;
         }
 
-        _oInterface.showBlock();
-        
-        if(_iState === STATE_GAME_WAITING_FOR_BET){
-            this._setState(STATE_GAME_COME_OUT);
+        // Verificar se é modo multiplayer
+        if(s_oMultiplayerGame && s_oMultiplayerGame.isMultiplayer()){
+            // Verificar se é o dealer
+            if(!s_oMultiplayerGame.isDealer()){
+                _oMsgBox.show("Apenas o dealer pode rolar os dados!");
+                return;
+            }
+            
+            // Enviar comando para rolar dados
+            if(s_oMultiplayerGame.rollDice()){
+                _oInterface.showBlock();
+                // O resultado virá do servidor via eventos
+            }
+        } else {
+            // Modo single player - processar normalmente
+            _oInterface.showBlock();
+            
+            if(_iState === STATE_GAME_WAITING_FOR_BET){
+                this._setState(STATE_GAME_COME_OUT);
+            }
+            
+            $(s_oMain).trigger("bet_placed",_oMySeat.getCurBet());
+            this._prepareForRolling();
+            this._startRollingAnim();    
         }
-        
-        $(s_oMain).trigger("bet_placed",_oMySeat.getCurBet());
-        this._prepareForRolling();
-        this._startRollingAnim();    
     };
     
     this._onSitDown = function(){
@@ -537,10 +566,24 @@ function CGame(oData){
             return;
         }
 
-        if(_aBetHistory[oParams.button] === undefined){
-            _aBetHistory[oParams.button] = iFicheValue;
+        // Verificar se é modo multiplayer
+        if(s_oMultiplayerGame && s_oMultiplayerGame.isMultiplayer()){
+            // Enviar aposta para o servidor
+            if(s_oMultiplayerGame.placeBet(iFicheValue, szBut)){
+                // Processar aposta localmente (será confirmada pelo servidor)
+                this._processLocalBet(iFicheValue, iIndexFicheSelected, szBut);
+            }
+        } else {
+            // Modo single player - processar normalmente
+            this._processLocalBet(iFicheValue, iIndexFicheSelected, szBut);
+        }
+    };
+    
+    this._processLocalBet = function(iFicheValue, iIndexFicheSelected, szBut){
+        if(_aBetHistory[szBut] === undefined){
+            _aBetHistory[szBut] = iFicheValue;
         }else{
-            _aBetHistory[oParams.button] += iFicheValue;
+            _aBetHistory[szBut] += iFicheValue;
         }
         
         // Coloca a ficha diretamente no botão "APOSTE AQUI"
@@ -575,6 +618,18 @@ function CGame(oData){
     this.onClearAllBets = function(){
         $(s_oMain).trigger("clear_bet",_oMySeat.getCurBet());
         
+        // Verificar se é modo multiplayer
+        if(s_oMultiplayerGame && s_oMultiplayerGame.isMultiplayer()){
+            // Enviar comando para limpar apostas
+            s_oMultiplayerGame.clearBets();
+            // A limpeza local será feita quando o servidor confirmar
+        } else {
+            // Modo single player - processar normalmente
+            this._processClearBets();
+        }
+    };
+    
+    this._processClearBets = function(){
         if(_iState === STATE_GAME_COME_POINT){
             _oMySeat.clearAllBetsInComePoint();
             for(var i in _aBetHistory){
@@ -592,8 +647,6 @@ function CGame(oData){
         _oInterface.setCurBet(_oMySeat.getCurBet());
         _oInterface.enableRoll(false);
         _oInterface.disableClearButton();
-        
-        
     };
    
     this.onExit = function(bForceExit){
@@ -640,6 +693,75 @@ function CGame(oData){
             _oDicesAnim.update();
         }
         
+    };
+    
+    // Métodos públicos para acesso ao multiplayer
+    this.getMoney = function(){
+        return _oMySeat ? _oMySeat.getCredit() : 0;
+    };
+    
+    this.setMoney = function(iMoney){
+        if(_oMySeat){
+            _oMySeat.setCredit(iMoney);
+            _oInterface.setMoney(iMoney);
+        }
+    };
+    
+    this.getCurrentBet = function(){
+        return _oMySeat ? _oMySeat.getCurBet() : 0;
+    };
+    
+    this.getGameState = function(){
+        return _iState;
+    };
+    
+    this.setGameState = function(iState){
+        this._setState(iState);
+    };
+    
+    this.getPointNumber = function(){
+        return _iNumberPoint;
+    };
+    
+    this.setPointNumber = function(iNumber){
+        _iNumberPoint = iNumber;
+    };
+    
+    this.getDiceResult = function(){
+        return _aDiceResult;
+    };
+    
+    this.setDiceResult = function(aDiceResult){
+        _aDiceResult = aDiceResult;
+    };
+    
+    this.getBetHistory = function(){
+        return _aBetHistory;
+    };
+    
+    this.clearBetHistory = function(){
+        _aBetHistory = new Object();
+    };
+    
+    // Referencias para componentes
+    this.getInterface = function(){
+        return _oInterface;
+    };
+    
+    this.getDicesAnim = function(){
+        return _oDicesAnim;
+    };
+    
+    this.getPuck = function(){
+        return _oPuck;
+    };
+    
+    this.getMySeat = function(){
+        return _oMySeat;
+    };
+    
+    this.getMsgBox = function(){
+        return _oMsgBox;
     };
     
     s_oGame = this;

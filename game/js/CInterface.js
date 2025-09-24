@@ -286,6 +286,143 @@ function CInterface(){
         }
     };
     
+    // Métodos para sistema multiplayer
+    this.updateMultiplayerInfo = function(oRoomInfo, bIsDealer){
+        if(_oRoomInfoText && oRoomInfo){
+            var sRoomInfo = "SALA: " + oRoomInfo.config.name + "\n";
+            sRoomInfo += "JOGADORES: " + oRoomInfo.playerCount + "/" + oRoomInfo.config.max_players + "\n";
+            sRoomInfo += "APOSTA MIN: R$" + oRoomInfo.config.min_bet + "\n";
+            sRoomInfo += "APOSTA MAX: " + (oRoomInfo.config.max_bet ? "R$" + oRoomInfo.config.max_bet : "Sem limite");
+            
+            if(bIsDealer){
+                sRoomInfo += "\n🎲 VOCÊ É O DEALER";
+            }
+            
+            _oRoomInfoText.refreshText(sRoomInfo);
+        }
+    };
+    
+    this.updateDealerStatus = function(bIsDealer){
+        if(bIsDealer){
+            this.refreshMsgHelp("🎲 VOCÊ É O DEALER - Pode rolar os dados quando houver apostas", true);
+            // Habilitar botão de rolar se há apostas
+            if(s_oGame && s_oGame.getCurrentBet() > 0){
+                this.enableRoll(true);
+            }
+        } else {
+            this.refreshMsgHelp("👥 MODO MULTIPLAYER - Aguardando o dealer rolar os dados", true);
+            // Desabilitar botão de rolar se não é dealer
+            this.enableRoll(false);
+        }
+    };
+    
+    this.showMultiplayerMessage = function(sMessage, sColor){
+        if(_oHelpText){
+            var sPrevColor = _oHelpText.color;
+            if(sColor){
+                _oHelpText.color = sColor;
+            }
+            _oHelpText.refreshText(sMessage);
+            
+            // Voltar à cor original após 3 segundos
+            setTimeout(function(){
+                if(_oHelpText){
+                    _oHelpText.color = sPrevColor;
+                    _oHelpText.refreshText(_szLastMsgHelp);
+                }
+            }, 3000);
+        }
+    };
+    
+    this.addOtherPlayerIndicator = function(sPlayerId, sPlayerName, iX, iY){
+        // Adicionar indicador visual de outro jogador na mesa
+        var oPlayerIndicator = new createjs.Container();
+        
+        // Círculo de fundo
+        var oCircle = new createjs.Shape();
+        oCircle.graphics.beginFill("#FFD700").drawCircle(0, 0, 20);
+        oPlayerIndicator.addChild(oCircle);
+        
+        // Iniciais do jogador
+        var sInitials = sPlayerName.substring(0, 2).toUpperCase();
+        var oPlayerText = new createjs.Text(sInitials, "bold 12px " + FONT1, "#000000");
+        oPlayerText.textAlign = "center";
+        oPlayerText.textBaseline = "middle";
+        oPlayerIndicator.addChild(oPlayerText);
+        
+        // Nome do jogador (tooltip)
+        var oNameText = new createjs.Text(sPlayerName, "10px " + FONT1, "#FFFFFF");
+        oNameText.x = -sPlayerName.length * 3;
+        oNameText.y = 25;
+        oNameText.visible = false;
+        oPlayerIndicator.addChild(oNameText);
+        
+        // Posicionamento
+        oPlayerIndicator.x = iX;
+        oPlayerIndicator.y = iY;
+        oPlayerIndicator.name = "player_" + sPlayerId;
+        
+        // Eventos de mouse
+        oPlayerIndicator.cursor = "pointer";
+        oPlayerIndicator.addEventListener("mouseover", function(){
+            oNameText.visible = true;
+        });
+        oPlayerIndicator.addEventListener("mouseout", function(){
+            oNameText.visible = false;
+        });
+        
+        s_oStage.addChild(oPlayerIndicator);
+        return oPlayerIndicator;
+    };
+    
+    this.removeOtherPlayerIndicator = function(sPlayerId){
+        var oIndicator = s_oStage.getChildByName("player_" + sPlayerId);
+        if(oIndicator){
+            s_oStage.removeChild(oIndicator);
+        }
+    };
+    
+    this.showOtherPlayerBet = function(sPlayerId, sPlayerName, iAmount){
+        // Mostrar animação de aposta de outro jogador
+        var oIndicator = s_oStage.getChildByName("player_" + sPlayerId);
+        if(oIndicator){
+            // Animação de ficha voando
+            var oFiche = createBitmap(s_oSpriteLibrary.getSprite('fiche_0'));
+            oFiche.x = oIndicator.x;
+            oFiche.y = oIndicator.y;
+            oFiche.scaleX = oFiche.scaleY = 0.5;
+            s_oStage.addChild(oFiche);
+            
+            // Animar para o centro da mesa
+            createjs.Tween.get(oFiche)
+                .to({x: CANVAS_WIDTH/2, y: CANVAS_HEIGHT/2, scaleX: 1, scaleY: 1}, 1000, createjs.Ease.quadOut)
+                .call(function(){
+                    s_oStage.removeChild(oFiche);
+                });
+            
+            // Mostrar texto de aposta
+            new CScoreText(sPlayerName + " apostou R$" + iAmount, oIndicator.x, oIndicator.y - 30, "#FFD700");
+        }
+    };
+    
+    this.updatePlayersDisplay = function(aPlayers){
+        // Limpar indicadores existentes
+        for(var i = 0; i < aPlayers.length; i++){
+            this.removeOtherPlayerIndicator(aPlayers[i].id);
+        }
+        
+        // Adicionar novos indicadores
+        var iStartX = 200;
+        var iStartY = 50;
+        var iSpacing = 60;
+        
+        for(var i = 0; i < aPlayers.length; i++){
+            var player = aPlayers[i];
+            var iX = iStartX + (i * iSpacing);
+            this.addOtherPlayerIndicator(player.id, player.name, iX, iStartY);
+        }
+    };
+    
     this._onBetRelease = function(oParams){
         var aBets=oParams.numbers;
 
