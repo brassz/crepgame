@@ -18,6 +18,10 @@ function trace(szMsg){
     console.log(szMsg);
 }
 
+function formatCurrency(iValue){
+    return TEXT_CURRENCY + " " + iValue.toFixed(0);
+}
+
 function isChrome(){
     var isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
     return isChrome;

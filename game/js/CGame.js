@@ -532,8 +532,20 @@ function CGame(oData){
             return;
         }
         
-        if( MAX_BET && (iCurBet + iFicheValue) > MAX_BET ){
-            _oMsgBox.show(TEXT_ERROR_MAX_BET_REACHED);
+        // Verifica limites da mesa atual
+        var oCurrentRoom = s_oRoomConfig.getCurrentRoomConfig();
+        var iMinBet = oCurrentRoom.min_bet;
+        var iMaxBet = oCurrentRoom.max_bet;
+        
+        // Verifica aposta mínima (só quando for a primeira aposta)
+        if(iCurBet === 0 && iFicheValue < iMinBet){
+            _oMsgBox.show(TEXT_ERROR_MIN_BET.replace("%s", formatCurrency(iMinBet)));
+            return;
+        }
+        
+        // Verifica aposta máxima
+        if( iMaxBet && (iCurBet + iFicheValue) > iMaxBet ){
+            _oMsgBox.show(TEXT_ERROR_MAX_BET_REACHED + " " + formatCurrency(iMaxBet));
             return;
         }
 
