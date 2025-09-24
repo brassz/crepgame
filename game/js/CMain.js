@@ -3,6 +3,7 @@ function CMain(oData){
     var _iCurResource = 0;
     var RESOURCE_TO_LOAD = 0;
     var _iState = STATE_LOADING;
+    var _sSelectedRoom = "bronze"; // Sala padrão
     
     var _oData;
     var _oPreloader;
@@ -223,9 +224,26 @@ function CMain(oData){
     };
     
     this.gotoGame = function(){
-        _oGame = new CGame(_oData);   
-							
+        // Atualizar configurações do jogo baseado na sala selecionada
+        var oRoomConfig = s_oRoomConfig.getRoomConfig(_sSelectedRoom);
+        var oGameData = Object.assign({}, _oData);
+        
+        // Aplicar configurações da sala
+        oGameData.min_bet = oRoomConfig.min_bet;
+        oGameData.max_bet = oRoomConfig.max_bet;
+        oGameData.room_type = _sSelectedRoom;
+        
+        _oGame = new CGame(oGameData);   
+						
         _iState = STATE_GAME;
+    };
+    
+    this.setSelectedRoom = function(sRoomType){
+        _sSelectedRoom = sRoomType;
+    };
+    
+    this.getSelectedRoom = function(){
+        return _sSelectedRoom;
     };
     
     this.gotoHelp = function(){
