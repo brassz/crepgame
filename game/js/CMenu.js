@@ -110,10 +110,15 @@ function CMenu(){
     };
     
     this._onButPlayRelease = function(){
-        this.unload();
-        s_oMain.gotoGame();
+        // Show table selector instead of going directly to game
+        var _oTableSelector = new CTableSelector();
+        _oTableSelector.addEventListener("table_selected", this._onTableSelected, this);
         
         $(s_oMain).trigger("start_session");
+    };
+    
+    this._onTableSelected = function(){
+        this.unload();
     };
 
     this._onAudioToggle = function(){

@@ -1,4 +1,5 @@
-function CInterface(){
+function CInterface(sRoomType){
+    var _sCurrentRoom = sRoomType || "bronze";
     var _iIndexFicheSelected;
     var _szLastMsgHelp;
     var _aFiches;
@@ -97,7 +98,7 @@ function CInterface(){
                     oRoomInfoBg.x+114, oRoomInfoBg.y + 13, 130, 80, 
                     16, "center", "#fff", FONT1, 1,
                     0, 0,
-                    "SALA: " + s_oRoomConfig.getRoomName("principal") + "\nJOGADORES: 1/" + s_oRoomConfig.getRoomMaxPlayers("principal") + "\nAPOSTA MIN: " + s_oRoomConfig.getRoomMinBet("principal") + "\nAPOSTA MAX: Sem limite",
+                    "SALA: " + s_oRoomConfig.getRoomName(_sCurrentRoom) + "\nJOGADORES: 1/" + s_oRoomConfig.getRoomMaxPlayers(_sCurrentRoom) + "\nAPOSTA MIN: " + s_oRoomConfig.getRoomMinBet(_sCurrentRoom) + "\nAPOSTA MAX: " + (s_oRoomConfig.getRoomMaxBet(_sCurrentRoom) || "Sem limite"),
                     true, true, true,
                     false );
 
