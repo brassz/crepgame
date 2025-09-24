@@ -9,6 +9,7 @@ function CMain(oData){
     var _oMenu;
     var _oHelp;
     var _oGame;
+    var _oRoomSelector;
 
     this.initContainer = function(){
         var canvas = document.getElementById("canvas");
@@ -220,6 +221,11 @@ function CMain(oData){
     this.gotoMenu = function(){
         _oMenu = new CMenu();
         _iState = STATE_MENU;
+    };
+    
+    this.gotoRoomSelector = function(){
+        _oRoomSelector = new CRoomSelector();
+        _iState = STATE_MENU; // Mantém no estado de menu
     };
     
     this.gotoGame = function(){

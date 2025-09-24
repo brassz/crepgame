@@ -78,11 +78,16 @@ function CInterface(){
         _oDisplayBg.y = 610;
         s_oStage.addChild(_oDisplayBg);
 
+        // Obter informações da mesa atual
+        var oCurrentRoom = s_oRoomConfig.getCurrentRoomConfig();
+        var sMinBet = formatCurrency(oCurrentRoom.min_bet);
+        var sMaxBet = oCurrentRoom.max_bet ? formatCurrency(oCurrentRoom.max_bet) : TEXT_NO_LIMIT;
+        
         _oMsgTitle = new CTLText(s_oStage, 
                     _oDisplayBg.x+4, _oDisplayBg.y +4, 140, 40, 
                     16, "center", "#fff", FONT1, 1.2,
                     0, 0,
-                    TEXT_MIN_BET+": "+MIN_BET+"\n"+TEXT_MAX_BET+": "+MAX_BET,
+                    TEXT_MIN_BET+": "+sMinBet+"\n"+TEXT_MAX_BET+": "+sMaxBet,
                     true, true, true,
                     false );
 
@@ -93,11 +98,16 @@ function CInterface(){
         oRoomInfoBg.y = 50;  // Parte superior da mesa
         s_oStage.addChild(oRoomInfoBg);
         
+        // Criar indicador colorido da mesa
+        var oRoomIndicator = new createjs.Shape();
+        oRoomIndicator.graphics.beginFill(oCurrentRoom.color).drawRoundRect(oRoomInfoBg.x+10, oRoomInfoBg.y+10, 220, 30, 5);
+        s_oStage.addChild(oRoomIndicator);
+        
         _oRoomInfoText = new CTLText(s_oStage, 
-                    oRoomInfoBg.x+114, oRoomInfoBg.y + 13, 130, 80, 
-                    16, "center", "#fff", FONT1, 1,
+                    oRoomInfoBg.x+10, oRoomInfoBg.y + 13, 220, 25, 
+                    18, "center", "#fff", FONT1, 1,
                     0, 0,
-                    "SALA: " + s_oRoomConfig.getRoomName("principal") + "\nJOGADORES: 1/" + s_oRoomConfig.getRoomMaxPlayers("principal") + "\nAPOSTA MIN: " + s_oRoomConfig.getRoomMinBet("principal") + "\nAPOSTA MAX: Sem limite",
+                    oCurrentRoom.name,
                     true, true, true,
                     false );
 
