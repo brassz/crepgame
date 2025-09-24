@@ -278,11 +278,19 @@ function CInterface(){
     this.updateRoomInfo = function(sRoomType, iPlayers){
         if(_oRoomInfoText){
             var oRoomConfig = s_oRoomConfig.getRoomConfig(sRoomType);
+            var iOnlinePlayers = s_oMultiplayerManager ? s_oMultiplayerManager.getRoomPlayersCount(sRoomType) : iPlayers;
             var sRoomInfo = "SALA: " + oRoomConfig.name + "\n";
-            sRoomInfo += "JOGADORES: " + iPlayers + "/" + oRoomConfig.max_players + "\n";
-            sRoomInfo += "APOSTA MIN: " + oRoomConfig.min_bet + "\n";
-            sRoomInfo += "APOSTA MAX: " + (oRoomConfig.max_bet ? oRoomConfig.max_bet : "Sem limite");
+            sRoomInfo += "JOGADORES: " + iOnlinePlayers + "/" + oRoomConfig.max_players + "\n";
+            sRoomInfo += "APOSTA MIN: R$ " + oRoomConfig.min_bet + "\n";
+            sRoomInfo += "APOSTA MAX: R$ " + (oRoomConfig.max_bet ? oRoomConfig.max_bet : "Sem limite");
             _oRoomInfoText.refreshText(sRoomInfo);
+        }
+    };
+    
+    this.updatePlayersCount = function(sRoomType, iPlayers){
+        // Atualizar contagem de jogadores em tempo real
+        if(s_oGame && s_oGame.getCurrentRoom && s_oGame.getCurrentRoom() === sRoomType){
+            this.updateRoomInfo(sRoomType, iPlayers);
         }
     };
     
