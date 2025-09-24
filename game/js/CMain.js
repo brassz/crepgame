@@ -224,6 +224,11 @@ function CMain(oData){
     
     this.gotoGame = function(){
         _oGame = new CGame(_oData);   
+        
+        // Se foi especificada uma sala, entra nela automaticamente
+        if(_oData.room_type){
+            _oGame.onRoomSelected(_oData.room_type);
+        }
 							
         _iState = STATE_GAME;
     };

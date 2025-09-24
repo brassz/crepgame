@@ -497,8 +497,20 @@ function CGame(oData){
         MIN_BET = oRoomConfig.min_bet;
         MAX_BET = oRoomConfig.max_bet; // null se não há limite
         
+        // Entrar na sala multiplayer
+        if(s_oMultiplayerManager){
+            var oPlayerProfile = {
+                id: "player_" + Date.now(),
+                name: "Você",
+                balance: _oMySeat.getCredit(),
+                isBot: false,
+                avatar: 1
+            };
+            s_oMultiplayerManager.joinRoom(sRoomType, oPlayerProfile.id, oPlayerProfile);
+        }
+        
         // Atualizar interface com nova configuração da sala
-        _oInterface.updateRoomInfo(sRoomType, 1);
+        _oInterface.updateRoomInfo(sRoomType);
         
         // Limpar apostas atuais se necessário
         if(_oMySeat.getCurBet() > 0){
@@ -508,6 +520,43 @@ function CGame(oData){
         }
         
         console.log("Sala alterada para:", oRoomConfig.name, "Aposta mínima:", oRoomConfig.min_bet, "Aposta máxima:", oRoomConfig.max_bet || "Sem limite");
+    };
+    
+    this.onRoomSelected = function(sRoomType){
+        // Callback quando jogador seleciona uma sala
+        this.changeRoom(sRoomType);
+        
+        // Iniciar atividade dos bots
+        if(s_oMultiplayerManager){
+            s_oMultiplayerManager.startBotActivity();
+        }
+    };
+    
+    this.onMultiplayerAction = function(sAction, oData){
+        // Callback para ações de outros jogadores
+        switch(sAction){
+            case "bet_placed":
+                if(_oInterface){
+                    _oInterface.showMultiplayerMessage(oData.playerName + " apostou R$ " + formatMoney(oData.data.amount));
+                }
+                break;
+            case "player_joined":
+                if(_oInterface){
+                    _oInterface.showMultiplayerMessage(oData.playerName + " entrou na mesa");
+                    _oInterface.updateRoomInfo(s_oMultiplayerManager.getCurrentRoom());
+                }
+                break;
+            case "player_left":
+                if(_oInterface){
+                    _oInterface.showMultiplayerMessage(oData.playerName + " saiu da mesa");
+                    _oInterface.updateRoomInfo(s_oMultiplayerManager.getCurrentRoom());
+                }
+                break;
+        }
+    };
+    
+    this.getMoney = function(){
+        return _oMySeat.getCredit();
     };
     
     this._onShowBetOnTable = function(oParams){

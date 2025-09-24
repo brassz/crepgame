@@ -275,14 +275,35 @@ function CInterface(){
         _oHelpText.refreshText(_szLastMsgHelp);
     };
     
-    this.updateRoomInfo = function(sRoomType, iPlayers){
+    this.updateRoomInfo = function(sRoomType){
         if(_oRoomInfoText){
             var oRoomConfig = s_oRoomConfig.getRoomConfig(sRoomType);
-            var sRoomInfo = "SALA: " + oRoomConfig.name + "\n";
+            var iPlayers = 1; // Padrão: apenas o jogador atual
+            
+            // Obter número real de jogadores se disponível
+            if(s_oMultiplayerManager){
+                iPlayers = s_oMultiplayerManager.getRoomPlayersCount(sRoomType);
+            }
+            
+            var sRoomInfo = oRoomConfig.icon + " " + oRoomConfig.name + "\n";
             sRoomInfo += "JOGADORES: " + iPlayers + "/" + oRoomConfig.max_players + "\n";
-            sRoomInfo += "APOSTA MIN: " + oRoomConfig.min_bet + "\n";
-            sRoomInfo += "APOSTA MAX: " + (oRoomConfig.max_bet ? oRoomConfig.max_bet : "Sem limite");
+            sRoomInfo += "APOSTA: R$ " + oRoomConfig.min_bet + " - R$ " + (oRoomConfig.max_bet || "∞");
             _oRoomInfoText.refreshText(sRoomInfo);
+        }
+    };
+    
+    this.showMultiplayerMessage = function(sMessage){
+        // Mostra mensagens de ações de outros jogadores
+        if(_oHelpText){
+            var sPrevMessage = _szLastMsgHelp;
+            this.setHelpText(sMessage);
+            
+            // Restaura mensagem anterior após 3 segundos
+            setTimeout(function(){
+                if(_oHelpText){
+                    _oInterface.setHelpText(sPrevMessage);
+                }
+            }, 3000);
         }
     };
     
