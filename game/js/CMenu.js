@@ -111,9 +111,7 @@ function CMenu(){
     
     this._onButPlayRelease = function(){
         this.unload();
-        s_oMain.gotoGame();
-        
-        $(s_oMain).trigger("start_session");
+        s_oMain.gotoRoomSelection();
     };
 
     this._onAudioToggle = function(){

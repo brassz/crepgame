@@ -57,6 +57,10 @@ function CGame(oData){
         _aDiceResultHistory=new Array();
 
         _iTimeElaps=0;
+        
+        // Configurar sala selecionada
+        this.changeRoom(s_sSelectedRoom || "bronze");
+        
         this._onSitDown();
 	
         _bUpdate = true;
@@ -457,8 +461,15 @@ function CGame(oData){
                 return;
         }
 
-        if(_oMySeat.getCurBet() < MIN_BET){
-            _oMsgBox.show(TEXT_ERROR_MIN_BET);
+        // Validar aposta mínima baseada na sala selecionada
+        var sCurrentRoom = s_sSelectedRoom || "bronze";
+        var iCurrentBet = _oMySeat.getCurBet();
+        var iMinBetRequired = s_oRoomConfig.getRoomMinBet(sCurrentRoom);
+        
+        if(iCurrentBet < iMinBetRequired){
+            var sRoomName = s_oRoomConfig.getRoomName(sCurrentRoom);
+            var sErrorMsg = "Aposta mínima para " + sRoomName + " é R$ " + iMinBetRequired;
+            _oMsgBox.show(sErrorMsg);
             _oInterface.enableBetFiches();
             _oInterface.enableRoll(true);
             return;
@@ -532,8 +543,19 @@ function CGame(oData){
             return;
         }
         
-        if( MAX_BET && (iCurBet + iFicheValue) > MAX_BET ){
-            _oMsgBox.show(TEXT_ERROR_MAX_BET_REACHED);
+        // Validação de aposta baseada na sala selecionada
+        var sCurrentRoom = s_sSelectedRoom || "bronze";
+        var iTotalBet = iCurBet + iFicheValue;
+        
+        if(!s_oRoomConfig.isValidBet(sCurrentRoom, iTotalBet)){
+            var sRoomName = s_oRoomConfig.getRoomName(sCurrentRoom);
+            var iMinBet = s_oRoomConfig.getRoomMinBet(sCurrentRoom);
+            var iMaxBet = s_oRoomConfig.getRoomMaxBet(sCurrentRoom);
+            var sMaxBetText = iMaxBet ? "R$ " + iMaxBet : "sem limite";
+            
+            var sErrorMsg = "Aposta inválida para " + sRoomName + "!\nLimites: R$ " + iMinBet + " - " + sMaxBetText;
+            
+            _oMsgBox.show(sErrorMsg);
             return;
         }
 

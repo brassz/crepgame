@@ -10,8 +10,9 @@ var DISABLE_SOUND_MOBILE = false;
 
 var STATE_LOADING = 0;
 var STATE_MENU    = 1;
-var STATE_HELP    = 1;
-var STATE_GAME    = 3;
+var STATE_HELP    = 2;
+var STATE_ROOM_SELECTION = 3;
+var STATE_GAME    = 4;
 
 var STATE_GAME_WAITING_FOR_BET = 0;
 var STATE_GAME_COME_OUT        = 1;

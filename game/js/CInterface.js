@@ -82,7 +82,7 @@ function CInterface(){
                     _oDisplayBg.x+4, _oDisplayBg.y +4, 140, 40, 
                     16, "center", "#fff", FONT1, 1.2,
                     0, 0,
-                    TEXT_MIN_BET+": "+MIN_BET+"\n"+TEXT_MAX_BET+": "+MAX_BET,
+                    this._getBetLimitsText(),
                     true, true, true,
                     false );
 
@@ -275,6 +275,21 @@ function CInterface(){
         _oHelpText.refreshText(_szLastMsgHelp);
     };
     
+    this._getBetLimitsText = function(){
+        var sCurrentRoom = s_sSelectedRoom || "bronze";
+        var iMinBet = s_oRoomConfig.getRoomMinBet(sCurrentRoom);
+        var iMaxBet = s_oRoomConfig.getRoomMaxBet(sCurrentRoom);
+        var sMaxBetText = iMaxBet ? iMaxBet : "SEM LIMITE";
+        
+        return TEXT_MIN_BET + ": " + iMinBet + "\n" + TEXT_MAX_BET + ": " + sMaxBetText;
+    };
+    
+    this.updateBetLimitsDisplay = function(){
+        if(_oMsgTitle){
+            _oMsgTitle.refreshText(this._getBetLimitsText());
+        }
+    };
+
     this.updateRoomInfo = function(sRoomType, iPlayers){
         if(_oRoomInfoText){
             var oRoomConfig = s_oRoomConfig.getRoomConfig(sRoomType);
@@ -284,6 +299,9 @@ function CInterface(){
             sRoomInfo += "APOSTA MAX: " + (oRoomConfig.max_bet ? oRoomConfig.max_bet : "Sem limite");
             _oRoomInfoText.refreshText(sRoomInfo);
         }
+        
+        // Também atualizar os limites de aposta exibidos
+        this.updateBetLimitsDisplay();
     };
     
     this._onBetRelease = function(oParams){
