@@ -20,10 +20,11 @@ const ROOM_CONFIGS = {
 };
 
 // State
+const TURN_MS = 25000;
 const roomState = {
-  bronze: { players: new Set(), lastRoll: null },
-  prata: { players: new Set(), lastRoll: null },
-  ouro: { players: new Set(), lastRoll: null },
+  bronze: { players: new Set(), order: [], currentIndex: -1, turnEndsAt: null, timer: null, lastRoll: null },
+  prata: { players: new Set(), order: [], currentIndex: -1, turnEndsAt: null, timer: null, lastRoll: null },
+  ouro: { players: new Set(), order: [], currentIndex: -1, turnEndsAt: null, timer: null, lastRoll: null },
 };
 
 function getRoomPlayerCount(room) {
@@ -49,9 +50,19 @@ io.on('connection', (socket) => {
 
     currentRoom = room;
     socket.join(room);
-    roomState[room].players.add(socket.id);
+    const state = roomState[room];
+    state.players.add(socket.id);
+    if (!state.order.includes(socket.id)) state.order.push(socket.id);
     socket.emit('room_config', cfg);
     io.to(room).emit('players_update', getRoomPlayerCount(room));
+
+    // start turn cycle if not running
+    if (state.currentIndex === -1 && state.order.length > 0){
+      startNextTurn(room);
+    } else {
+      // sync current turn to the newcomer
+      emitTurnUpdate(room);
+    }
 
     // send last roll to newcomer (optional)
     if (roomState[room].lastRoll) {
@@ -62,18 +73,33 @@ io.on('connection', (socket) => {
   // Authoritative roll from server
   socket.on('request_roll', () => {
     if (!currentRoom) return;
-    // Simple random dice
-    const d1 = Math.floor(Math.random() * 6) + 1;
-    const d2 = Math.floor(Math.random() * 6) + 1;
-    const roll = { d1, d2, ts: Date.now() };
-    roomState[currentRoom].lastRoll = roll;
-    io.to(currentRoom).emit('dice_result', roll);
+    const state = roomState[currentRoom];
+    const currentPlayer = state.order[state.currentIndex];
+    if (socket.id !== currentPlayer) return; // not your turn
+    // check timer
+    if (state.turnEndsAt && Date.now() > state.turnEndsAt) return;
+    performRoll(currentRoom);
+    startNextTurn(currentRoom);
   });
 
   socket.on('disconnect', () => {
     if (currentRoom) {
-      roomState[currentRoom].players.delete(socket.id);
+      const state = roomState[currentRoom];
+      state.players.delete(socket.id);
+      const idx = state.order.indexOf(socket.id);
+      if (idx !== -1) {
+        state.order.splice(idx,1);
+        if (idx <= state.currentIndex) state.currentIndex--;
+      }
       io.to(currentRoom).emit('players_update', getRoomPlayerCount(currentRoom));
+      if (state.order.length === 0){
+        clearTimer(currentRoom);
+        state.currentIndex = -1;
+      } else {
+        // if current index out of bounds or current player missing, advance
+        const cur = state.order[state.currentIndex];
+        if (!cur) startNextTurn(currentRoom);
+      }
     }
   });
 });
@@ -82,4 +108,49 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`);
 });
+
+function performRoll(room){
+  const d1 = Math.floor(Math.random() * 6) + 1;
+  const d2 = Math.floor(Math.random() * 6) + 1;
+  const roll = { d1, d2, ts: Date.now() };
+  roomState[room].lastRoll = roll;
+  io.to(room).emit('dice_result', roll);
+}
+
+function clearTimer(room){
+  const state = roomState[room];
+  if (state.timer){
+    clearInterval(state.timer);
+    state.timer = null;
+  }
+}
+
+function emitTurnUpdate(room){
+  const state = roomState[room];
+  const playerId = state.order[state.currentIndex] || null;
+  io.to(room).emit('turn_update', { playerId, endsAt: state.turnEndsAt });
+}
+
+function startNextTurn(room){
+  const state = roomState[room];
+  if (state.order.length === 0){
+    clearTimer(room);
+    state.currentIndex = -1;
+    state.turnEndsAt = null;
+    return;
+  }
+  state.currentIndex = (state.currentIndex + 1) % state.order.length;
+  state.turnEndsAt = Date.now() + TURN_MS;
+  emitTurnUpdate(room);
+  clearTimer(room);
+  state.timer = setInterval(() => {
+    const remaining = Math.max(0, Math.ceil((state.turnEndsAt - Date.now())/1000));
+    io.to(room).emit('turn_tick', { remaining });
+    if (Date.now() >= state.turnEndsAt){
+      // auto-roll and advance
+      performRoll(room);
+      startNextTurn(room);
+    }
+  }, 1000);
+}
 

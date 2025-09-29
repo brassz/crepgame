@@ -33,6 +33,16 @@ window.Realtime = (function(){
         socket.on('room_full', function(){
             alert('Sala cheia. Tente outra sala.');
         });
+        socket.on('turn_update', function(data){
+            if(window.s_oGame && window.s_oGame.onTurnUpdate){
+                window.s_oGame.onTurnUpdate(data);
+            }
+        });
+        socket.on('turn_tick', function(data){
+            if(window.s_oInterface && window.s_oInterface.updateTurnTimer){
+                window.s_oInterface.updateTurnTimer(data.remaining);
+            }
+        });
         return socket;
     }
 

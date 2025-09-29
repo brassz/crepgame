@@ -190,6 +190,17 @@ function CGame(oData){
         _iTimeElaps = 0;
         this._startRollingAnim();
     };
+
+    // Atualizações de turno vindas do servidor
+    this.onTurnUpdate = function(data){
+        var isMyTurn = false;
+        if (Realtime && Realtime.getSocket()){
+            var s = Realtime.getSocket();
+            isMyTurn = (data && data.playerId && s && s.id === data.playerId);
+        }
+        // Só permite rolar se for meu turno
+        _oInterface.enableRoll(isMyTurn && _oMySeat.getCurBet() > 0);
+    };
     
     this.dicesAnimEnded = function(){
         try {

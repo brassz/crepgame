@@ -21,6 +21,7 @@ function CInterface(){
     var _oButRoomBronze;
     var _oButRoomPrata;
     var _oButRoomOuro;
+    var _oTurnTimerText;
     var _fRequestFullScreen = null;
     var _fCancelFullScreen = null;
     
@@ -133,6 +134,15 @@ function CInterface(){
         _oRollBut = new CTextButton(1030,162,s_oSpriteLibrary.getSprite('roll_but'),"  "+TEXT_ROLL,FONT1,"#fff",22,"right",s_oStage);
         _oRollBut.disable();
         _oRollBut.addEventListener(ON_MOUSE_UP, this._onRoll, this);
+
+        // Timer de turno (topo direito, abaixo do botão lançar)
+        _oTurnTimerText = new CTLText(s_oStage, 
+                    1030, 210, 200, 30, 
+                    18, "right", "#ffde00", FONT2, 1,
+                    0, 0,
+                    "",
+                    true, true, false,
+                    false );
       
         _oClearAllBet = new CGfxButton(764,636,s_oSpriteLibrary.getSprite('but_clear_all'),s_oStage);
         _oClearAllBet.addEventListener(ON_MOUSE_UP, this._onClearAllBet, this);
@@ -253,6 +263,14 @@ function CInterface(){
             _oRollBut.disable();
         }
         
+    };
+
+    // Atualiza contador visual de turno (segundos restantes)
+    this.updateTurnTimer = function(iSeconds){
+        if (_oTurnTimerText){
+            var s = (iSeconds>0) ? ("TURNO: "+iSeconds+"s") : "";
+            _oTurnTimerText.refreshText(s);
+        }
     };
     
     this._initFichesBut = function(){
