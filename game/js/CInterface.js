@@ -97,9 +97,15 @@ function CInterface(){
                     oRoomInfoBg.x+114, oRoomInfoBg.y + 13, 130, 80, 
                     16, "center", "#fff", FONT1, 1,
                     0, 0,
-                    "SALA: " + s_oRoomConfig.getRoomName("principal") + "\nJOGADORES: 1/" + s_oRoomConfig.getRoomMaxPlayers("principal") + "\nAPOSTA MIN: " + s_oRoomConfig.getRoomMinBet("principal") + "\nAPOSTA MAX: Sem limite",
+                    this._getRoomInfoText(),
                     true, true, true,
                     false );
+                    
+        // Botão para trocar de sala
+        var oRoomSelectorButton = new CTextButton(oRoomInfoBg.x + 10, oRoomInfoBg.y + 90, 
+                                                  s_oSpriteLibrary.getSprite('but_bg'), 
+                                                  "TROCAR SALA", FONT1, "#fff", 14, "center", s_oStage);
+        oRoomSelectorButton.addEventListener(ON_MOUSE_UP, this._onOpenRoomSelector, this);
 
         // HELP TEXT - MANTIDO NO CANTO DIREITO MAS AJUSTADO
         var oHelpBg = createBitmap(s_oSpriteLibrary.getSprite('display_bg'));
@@ -348,6 +354,74 @@ function CInterface(){
     
     this.isBlockVisible = function(){
         return _oBlock.visible;
+    };
+    
+    this._getRoomInfoText = function(){
+        var sCurrentRoom = s_oMultiplayerManager ? s_oMultiplayerManager.getCurrentRoom() : "bronze";
+        var oRoomInfo = s_oMultiplayerManager ? s_oMultiplayerManager.getRoomInfo(sCurrentRoom) : null;
+        
+        if(!oRoomInfo){
+            oRoomInfo = {
+                name: "Sala Bronze",
+                min_bet: 50,
+                max_bet: 1000,
+                current_players: 1,
+                max_players: 8
+            };
+        }
+        
+        return "SALA: " + oRoomInfo.name + "\n" +
+               "JOGADORES: " + oRoomInfo.current_players + "/" + oRoomInfo.max_players + "\n" +
+               "MIN: " + oRoomInfo.min_bet + "\n" +
+               "MAX: " + oRoomInfo.max_bet;
+    };
+    
+    this._onOpenRoomSelector = function(){
+        if(!s_oRoomSelector){
+            s_oRoomSelector = new CRoomSelector();
+        }
+        s_oRoomSelector.show(this._onRoomSelected.bind(this));
+    };
+    
+    this._onRoomSelected = function(sRoomType){
+        // Tentar trocar de sala
+        var oResult = s_oMultiplayerManager.setCurrentRoom(sRoomType);
+        if(oResult){
+            // Atualizar display da sala
+            this.updateRoomInfo();
+            
+            // Atualizar limites de aposta na interface
+            this.updateBetLimits(sRoomType);
+            
+            // Mostrar mensagem de confirmação
+            this.setHelpText("Você entrou na " + s_oRoomConfig.getRoomName(sRoomType));
+        } else {
+            this.setHelpText("Não foi possível entrar na sala");
+        }
+    };
+    
+    this.updateRoomInfo = function(){
+        if(_oRoomInfoText){
+            _oRoomInfoText.refreshText(this._getRoomInfoText());
+        }
+    };
+    
+    this.updateBetLimits = function(sRoomType){
+        var iMinBet = s_oRoomConfig.getRoomMinBet(sRoomType);
+        var iMaxBet = s_oRoomConfig.getRoomMaxBet(sRoomType);
+        var sMaxBetText = iMaxBet ? iMaxBet.toString() : "Sem limite";
+        
+        if(_oMsgTitle){
+            _oMsgTitle.refreshText(TEXT_MIN_BET + ": " + iMinBet + "\n" + TEXT_MAX_BET + ": " + sMaxBetText);
+        }
+        
+        // Atualizar variáveis globais se necessário
+        if(typeof MIN_BET !== 'undefined'){
+            MIN_BET = iMinBet;
+        }
+        if(typeof MAX_BET !== 'undefined'){
+            MAX_BET = iMaxBet;
+        }
     };
     
     s_oInterface = this;
