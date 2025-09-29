@@ -23,6 +23,7 @@ function CGame(oData){
     var _oMsgBox;
     var _oGameOverPanel;
     var _oAreYouSurePanel;
+    var _sCurrentRoom = null;
     
     
     this._init = function(){
@@ -112,7 +113,13 @@ function CGame(oData){
     this._prepareForRolling = function(){
         _oInterface.disableBetFiches();
         _oInterface.disableClearButton();
-        
+
+        // Se conectado ao servidor, pedi-lo para rolar (autoritativo)
+        if (window.Realtime && Realtime.getSocket()){
+            Realtime.requestRoll();
+            return;
+        }
+
         _iContRolling++;
         _aDiceResult = new Array();
         this._generateWinLoss();
@@ -174,6 +181,14 @@ function CGame(oData){
     
     this._startRollingAnim = function(){
         _oDicesAnim.startRolling(_aDiceResult);
+    };
+
+    // Recebe rolagem do servidor e anima localmente
+    this.onServerRoll = function(roll){
+        _aDiceResult = [roll.d1, roll.d2];
+        _aDiceResultHistory.push(_aDiceResult);
+        _iTimeElaps = 0;
+        this._startRollingAnim();
     };
     
     this.dicesAnimEnded = function(){
@@ -485,8 +500,11 @@ function CGame(oData){
         _oInterface.setMoney(TOTAL_MONEY);
         _oInterface.setCurBet(0);
         
-        // Atualizar informações da sala (padrão: Mesa Principal com aposta mínima de 50 reais)
-        _oInterface.updateRoomInfo("principal", 1);
+        // Sala padrão: BRONZE
+        this.changeRoom("bronze");
+        if (window.Realtime && Realtime.connect()){
+            Realtime.join("bronze");
+        }
     };
     
     this.changeRoom = function(sRoomType){
@@ -496,9 +514,11 @@ function CGame(oData){
         // Atualizar configurações globais baseadas na sala
         MIN_BET = oRoomConfig.min_bet;
         MAX_BET = oRoomConfig.max_bet; // null se não há limite
+        _sCurrentRoom = sRoomType;
         
         // Atualizar interface com nova configuração da sala
         _oInterface.updateRoomInfo(sRoomType, 1);
+        _oInterface.updateBetLimits(MIN_BET, MAX_BET);
         
         // Limpar apostas atuais se necessário
         if(_oMySeat.getCurBet() > 0){
@@ -508,6 +528,21 @@ function CGame(oData){
         }
         
         console.log("Sala alterada para:", oRoomConfig.name, "Aposta mínima:", oRoomConfig.min_bet, "Aposta máxima:", oRoomConfig.max_bet || "Sem limite");
+
+        // Informar servidor para entrar na sala
+        if (window.Realtime && Realtime.connect()){
+            Realtime.join(sRoomType);
+        }
+    };
+
+    this.onRoomConfig = function(cfg){
+        MIN_BET = cfg.min_bet;
+        MAX_BET = cfg.max_bet;
+        _oInterface.updateBetLimits(MIN_BET, MAX_BET);
+    };
+
+    this.getCurrentRoom = function(){
+        return _sCurrentRoom || "bronze";
     };
     
     this._onShowBetOnTable = function(oParams){

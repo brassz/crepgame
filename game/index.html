@@ -50,6 +50,8 @@
         <script type="text/javascript" src="js/CScoreText.js"></script>
         <script type="text/javascript" src="js/CCTLText.js"></script>
         <script type="text/javascript" src="js/CRoomConfig.js"></script>
+        <script src="/socket.io/socket.io.js"></script>
+        <script type="text/javascript" src="js/realtime.js"></script>
         <!-- Auth dependencies -->
         <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
         <script type="text/javascript" src="js/auth-config.js"></script>
@@ -64,8 +66,8 @@
                      function startWithBalance(balance){
                          var oMain = new CMain({
                                            money: balance,        //STARTING CREDIT FROM PROFILE
-                                            min_bet: 50,      //MINIMUM BET
-                                            max_bet: null,     //SEM LIMITE MÁXIMO   
+                                           min_bet: 50,      //MINIMUM BET (BRONZE)
+                                           max_bet: 1000,     //LIMITE MÁXIMO (BRONZE)  
                                             win_occurrence: 30,//Win occurrence percentage (100 = always win). 
                                             time_show_dice_result: 3000, //TIME IN MILLISECONDS OF DICE RESULT SHOWING.                    
                                             casino_cash:400,   //The starting casino cash that is recharged by the money lost by the user

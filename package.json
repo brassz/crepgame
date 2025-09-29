@@ -2,16 +2,20 @@
   "name": "craps-game",
   "version": "1.0.0",
   "description": "Jogo de Craps Online",
-  "main": "game/index.html",
+  "main": "server.js",
   "scripts": {
-    "dev": "vercel dev",
+    "dev": "node server.js",
     "build": "echo 'No build step required'",
-    "start": "vercel dev"
+    "start": "node server.js"
   },
   "keywords": ["craps", "game", "casino", "dice"],
   "author": "Seu Nome",
   "license": "MIT",
   "devDependencies": {
     "vercel": "^32.0.0"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5"
   }
 }

@@ -18,6 +18,9 @@ function CInterface(){
     var _oClearAllBet;
     var _oRollingText;
     var _oButFullscreen;
+    var _oButRoomBronze;
+    var _oButRoomPrata;
+    var _oButRoomOuro;
     var _fRequestFullScreen = null;
     var _fCancelFullScreen = null;
     
@@ -97,9 +100,18 @@ function CInterface(){
                     oRoomInfoBg.x+114, oRoomInfoBg.y + 13, 130, 80, 
                     16, "center", "#fff", FONT1, 1,
                     0, 0,
-                    "SALA: " + s_oRoomConfig.getRoomName("principal") + "\nJOGADORES: 1/" + s_oRoomConfig.getRoomMaxPlayers("principal") + "\nAPOSTA MIN: " + s_oRoomConfig.getRoomMinBet("principal") + "\nAPOSTA MAX: Sem limite",
+                    "SALA: " + s_oRoomConfig.getRoomName("bronze") + "\nJOGADORES: 1/" + s_oRoomConfig.getRoomMaxPlayers("bronze") + "\nAPOSTA MIN: " + s_oRoomConfig.getRoomMinBet("bronze") + "\nAPOSTA MAX: " + (s_oRoomConfig.getRoomMaxBet("bronze") ? s_oRoomConfig.getRoomMaxBet("bronze") : "Sem limite"),
                     true, true, true,
                     false );
+
+        // Botões de seleção de sala
+        _oButRoomBronze = new CTextButton(220, 40, s_oSpriteLibrary.getSprite('but_bg'), "BRONZE", FONT1, "#fff", 16, "center", s_oStage);
+        _oButRoomBronze.addEventListener(ON_MOUSE_UP, function(){ s_oGame.changeRoom("bronze"); }, this);
+        _oButRoomPrata = new CTextButton(220, 85, s_oSpriteLibrary.getSprite('but_bg'), "PRATA", FONT1, "#fff", 16, "center", s_oStage);
+        _oButRoomPrata.addEventListener(ON_MOUSE_UP, function(){ s_oGame.changeRoom("prata"); }, this);
+        _oButRoomOuro = new CTextButton(220, 130, s_oSpriteLibrary.getSprite('but_bg'), "OURO", FONT1, "#fff", 16, "center", s_oStage);
+        _oButRoomOuro.addEventListener(ON_MOUSE_UP, function(){ s_oGame.changeRoom("ouro"); }, this);
+        // garantir que fiquem acima: adicionar novamente ao stage após criação das fichas (feito abaixo)
 
         // HELP TEXT - MANTIDO NO CANTO DIREITO MAS AJUSTADO
         var oHelpBg = createBitmap(s_oSpriteLibrary.getSprite('display_bg'));
@@ -126,6 +138,10 @@ function CInterface(){
         _oClearAllBet.addEventListener(ON_MOUSE_UP, this._onClearAllBet, this);
        
         this._initFichesBut();
+        // Trazer os botões de sala para frente, acima das fichas
+        if (_oButRoomBronze) { s_oStage.addChild(_oButRoomBronze.getSprite()); }
+        if (_oButRoomPrata) { s_oStage.addChild(_oButRoomPrata.getSprite()); }
+        if (_oButRoomOuro) { s_oStage.addChild(_oButRoomOuro.getSprite()); }
 
         _iIndexFicheSelected=0;
         _aFiches[_iIndexFicheSelected].select();
@@ -172,6 +188,9 @@ function CInterface(){
 	if(DISABLE_SOUND_MOBILE === false || s_bMobile === false){
             _oAudioToggle.unload();
         }
+        if (_oButRoomBronze) { _oButRoomBronze.unload(); }
+        if (_oButRoomPrata) { _oButRoomPrata.unload(); }
+        if (_oButRoomOuro) { _oButRoomOuro.unload(); }
         if (_fRequestFullScreen && screenfull.isEnabled){
             _oButFullscreen.unload();
         }
@@ -188,6 +207,9 @@ function CInterface(){
             _oButFullscreen.setPosition(_pStartPosFullscreen.x + iNewX,_pStartPosFullscreen.y + iNewY);
         }
         _oButExit.setPosition(_pStartPosExit.x - iNewX,_pStartPosExit.y + iNewY);
+        if (_oButRoomBronze) { _oButRoomBronze.setPosition(220 - iNewX, 40 + iNewY); }
+        if (_oButRoomPrata) { _oButRoomPrata.setPosition(220 - iNewX, 85 + iNewY); }
+        if (_oButRoomOuro) { _oButRoomOuro.setPosition(220 - iNewX, 130 + iNewY); }
     };
     
     this.hideBlock = function(){
@@ -283,6 +305,12 @@ function CInterface(){
             sRoomInfo += "APOSTA MIN: " + oRoomConfig.min_bet + "\n";
             sRoomInfo += "APOSTA MAX: " + (oRoomConfig.max_bet ? oRoomConfig.max_bet : "Sem limite");
             _oRoomInfoText.refreshText(sRoomInfo);
+        }
+    };
+
+    this.updateBetLimits = function(iMin, iMax){
+        if (_oMsgTitle){
+            _oMsgTitle.refreshText(TEXT_MIN_BET+": "+iMin+"\n"+TEXT_MAX_BET+": "+(iMax ? iMax : "Sem limite"));
         }
     };
     
