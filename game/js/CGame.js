@@ -29,6 +29,12 @@ function CGame(oData){
         s_oTweenController = new CTweenController();
         s_oGameSettings = new CGameSettings();
         
+        // Inicializar sistema multiplayer
+        if(typeof s_oMultiplayerManager === 'undefined' || !s_oMultiplayerManager){
+            // O CMultiplayerManager deve ser carregado antes
+            console.warn("CMultiplayerManager não encontrado. Sistema multiplayer desabilitado.");
+        }
+        
         _oTableController = new CTableController();
         _oTableController.addEventListener(ON_SHOW_ENLIGHT,this._onShowEnlight);
         _oTableController.addEventListener(ON_HIDE_ENLIGHT,this._onHideEnlight);
@@ -325,6 +331,15 @@ function CGame(oData){
         var iSumDices = _aDiceResult[0] + _aDiceResult[1];
         console.log("Verificando resultado dos dados:", iSumDices, "Estado:", _iState);
         
+        // Preparar dados para sistema multiplayer
+        var aResults = {
+            dice_sum: iSumDices,
+            dice1: _aDiceResult[0],
+            dice2: _aDiceResult[1],
+            game_state: _iState,
+            point_number: _iNumberPoint
+        };
+        
         // NOVA LÓGICA CONFORME ESPECIFICAÇÕES
         if(_iState === STATE_GAME_COME_OUT){
             // PRIMEIRO LANÇAMENTO
@@ -405,6 +420,86 @@ function CGame(oData){
                 new CScoreText("CONTINUA... PONTO: " + _iNumberPoint, CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
             }
         }
+        
+        // Processamento da Banca (Sistema Multiplayer)
+        if(s_oMultiplayerManager){
+            this._processBankCoverage(aResults);
+        }
+    };
+    
+    this._processBankCoverage = function(aResults){
+        var sCurrentRoom = s_oMultiplayerManager.getCurrentRoom();
+        if(!sCurrentRoom) return;
+        
+        // Calcular resultados específicos do jogo
+        aResults.pass_line_win = this._calculatePassLineWin(aResults);
+        aResults.dont_pass_win = this._calculateDontPassWin(aResults);
+        aResults.field_win = this._calculateFieldWin(aResults);
+        aResults.any_craps_win = this._calculateAnyCrapsWin(aResults);
+        
+        // Calcular pagamentos para a sala
+        var oPayoutResult = s_oMultiplayerManager.calculateRoomPayout(sCurrentRoom, aResults);
+        
+        // Log para acompanhamento
+        console.log("Processamento da Banca:", {
+            room: sCurrentRoom,
+            total_bets: oPayoutResult.total_bets,
+            total_payout: oPayoutResult.total_payout,
+            bank_coverage: oPayoutResult.bank_coverage,
+            dice_result: aResults.dice_sum
+        });
+        
+        // Se a banca cobriu algum valor, mostrar notificação
+        if(oPayoutResult.bank_coverage > 0){
+            var sBankInfo = "Banca cobriu " + oPayoutResult.bank_coverage + " reais";
+            console.log(sBankInfo);
+            
+            // Opcional: Mostrar na interface
+            setTimeout(function(){
+                if(_oInterface && _oInterface.setHelpText){
+                    _oInterface.setHelpText(sBankInfo);
+                }
+            }, 2000);
+        }
+        
+        // Limpar apostas da sala após processamento
+        s_oMultiplayerManager.clearRoomBets(sCurrentRoom);
+    };
+    
+    // Métodos auxiliares para calcular resultados específicos do jogo
+    this._calculatePassLineWin = function(aResults){
+        var iDiceSum = aResults.dice_sum;
+        var iGameState = aResults.game_state;
+        
+        if(iGameState === STATE_GAME_COME_OUT){
+            return (iDiceSum === 7 || iDiceSum === 11);
+        } else if(iGameState === STATE_GAME_COME_POINT){
+            return (iDiceSum === aResults.point_number);
+        }
+        return false;
+    };
+    
+    this._calculateDontPassWin = function(aResults){
+        var iDiceSum = aResults.dice_sum;
+        var iGameState = aResults.game_state;
+        
+        if(iGameState === STATE_GAME_COME_OUT){
+            return (iDiceSum === 2 || iDiceSum === 3); // 12 é push
+        } else if(iGameState === STATE_GAME_COME_POINT){
+            return (iDiceSum === 7);
+        }
+        return false;
+    };
+    
+    this._calculateFieldWin = function(aResults){
+        var iDiceSum = aResults.dice_sum;
+        return (iDiceSum === 2 || iDiceSum === 3 || iDiceSum === 4 || 
+                iDiceSum === 9 || iDiceSum === 10 || iDiceSum === 11 || iDiceSum === 12);
+    };
+    
+    this._calculateAnyCrapsWin = function(aResults){
+        var iDiceSum = aResults.dice_sum;
+        return (iDiceSum === 2 || iDiceSum === 3 || iDiceSum === 12);
     };
     
     this.assignBetFromCome = function(iNumberAssigned,szOrigBet){
@@ -485,29 +580,88 @@ function CGame(oData){
         _oInterface.setMoney(TOTAL_MONEY);
         _oInterface.setCurBet(0);
         
-        // Atualizar informações da sala (padrão: Mesa Principal com aposta mínima de 50 reais)
-        _oInterface.updateRoomInfo("principal", 1);
+        // Inicializar jogador no sistema multiplayer
+        if(s_oMultiplayerManager){
+            var oPlayer = {
+                id: Math.floor(Math.random() * 1000000),
+                name: "Jogador_" + Math.floor(Math.random() * 1000),
+                credit: TOTAL_MONEY,
+                avatar: "default"
+            };
+            
+            s_oMultiplayerManager.setCurrentPlayer(oPlayer);
+            
+            // Entrar na sala padrão (Bronze)
+            var oResult = s_oMultiplayerManager.addPlayerToRoom(oPlayer, "bronze");
+            if(oResult.success){
+                s_oMultiplayerManager.setCurrentRoom("bronze");
+                
+                // Atualizar limites baseados na sala bronze
+                MIN_BET = s_oRoomConfig.getRoomMinBet("bronze");
+                MAX_BET = s_oRoomConfig.getRoomMaxBet("bronze");
+                
+                _oInterface.updateBetLimits("bronze");
+            }
+        }
+        
+        // Atualizar informações da sala
+        _oInterface.updateRoomInfo();
     };
     
     this.changeRoom = function(sRoomType){
-        // Função para trocar de sala (útil para implementar seleção de salas)
+        // Função para trocar de sala - integrada com sistema multiplayer
+        if(!s_oMultiplayerManager) return false;
+        
         var oRoomConfig = s_oRoomConfig.getRoomConfig(sRoomType);
+        if(!oRoomConfig) return false;
+        
+        // Criar jogador se não existir
+        var oCurrentPlayer = s_oMultiplayerManager.getCurrentPlayer();
+        if(!oCurrentPlayer){
+            oCurrentPlayer = {
+                id: Math.floor(Math.random() * 1000000),
+                name: "Jogador_" + Math.floor(Math.random() * 1000),
+                credit: _oMySeat.getCredit(),
+                avatar: "default"
+            };
+            s_oMultiplayerManager.setCurrentPlayer(oCurrentPlayer);
+        }
+        
+        // Tentar adicionar jogador à nova sala
+        var oResult = s_oMultiplayerManager.addPlayerToRoom(oCurrentPlayer, sRoomType);
+        if(!oResult.success){
+            _oInterface.setHelpText("Erro: " + oResult.reason);
+            return false;
+        }
+        
+        // Atualizar sala atual no manager
+        s_oMultiplayerManager.setCurrentRoom(sRoomType);
         
         // Atualizar configurações globais baseadas na sala
         MIN_BET = oRoomConfig.min_bet;
-        MAX_BET = oRoomConfig.max_bet; // null se não há limite
+        MAX_BET = oRoomConfig.max_bet;
         
-        // Atualizar interface com nova configuração da sala
-        _oInterface.updateRoomInfo(sRoomType, 1);
+        // Validar apostas atuais contra novos limites
+        var iCurrentBet = _oMySeat.getCurBet();
+        var oValidation = s_oRoomConfig.validateBetForRoom(sRoomType, iCurrentBet);
         
-        // Limpar apostas atuais se necessário
-        if(_oMySeat.getCurBet() > 0){
+        // Limpar apostas se não são válidas para a nova sala
+        if(iCurrentBet > 0 && !oValidation.valid){
             _oMySeat.clearAllBets();
             _aBetHistory = {};
             _oInterface.setCurBet(0);
         }
         
+        // Atualizar interface com nova configuração da sala
+        _oInterface.updateRoomInfo();
+        _oInterface.updateBetLimits(sRoomType);
+        
+        // Notificar mudança de sala
+        _oInterface.setHelpText("Você entrou na " + oRoomConfig.name);
+        
         console.log("Sala alterada para:", oRoomConfig.name, "Aposta mínima:", oRoomConfig.min_bet, "Aposta máxima:", oRoomConfig.max_bet || "Sem limite");
+        
+        return true;
     };
     
     this._onShowBetOnTable = function(oParams){
@@ -526,21 +680,46 @@ function CGame(oData){
         var iFicheValue=s_oGameSettings.getFicheValues(iIndexFicheSelected);
         
         var iCurBet=_oMySeat.getCurBet();
+        var iNewBetTotal = iCurBet + iFicheValue;
+        
+        // Verificar crédito
         if( (_oMySeat.getCredit() - iFicheValue) < 0){
-            //SHOW MSG BOX
             _oMsgBox.show(TEXT_ERROR_NO_MONEY_MSG);
             return;
         }
         
-        if( MAX_BET && (iCurBet + iFicheValue) > MAX_BET ){
-            _oMsgBox.show(TEXT_ERROR_MAX_BET_REACHED);
-            return;
+        // Validar aposta para a sala atual
+        if(s_oMultiplayerManager){
+            var sCurrentRoom = s_oMultiplayerManager.getCurrentRoom();
+            var oValidation = s_oRoomConfig.validateBetForRoom(sCurrentRoom, iNewBetTotal);
+            if(!oValidation.valid){
+                _oMsgBox.show("ERRO: " + oValidation.reason);
+                return;
+            }
+        } else {
+            // Validação tradicional como fallback
+            if( MAX_BET && iNewBetTotal > MAX_BET ){
+                _oMsgBox.show(TEXT_ERROR_MAX_BET_REACHED);
+                return;
+            }
         }
 
         if(_aBetHistory[oParams.button] === undefined){
             _aBetHistory[oParams.button] = iFicheValue;
         }else{
             _aBetHistory[oParams.button] += iFicheValue;
+        }
+        
+        // Registrar aposta no sistema multiplayer
+        if(s_oMultiplayerManager){
+            var oCurrentPlayer = s_oMultiplayerManager.getCurrentPlayer();
+            if(oCurrentPlayer){
+                var sCurrentRoom = s_oMultiplayerManager.getCurrentRoom();
+                var oBetResult = s_oMultiplayerManager.placeBet(oCurrentPlayer.id, sCurrentRoom, oParams.button, iFicheValue);
+                if(!oBetResult.success){
+                    console.warn("Erro ao registrar aposta no sistema multiplayer:", oBetResult.reason);
+                }
+            }
         }
         
         // Coloca a ficha diretamente no botão "APOSTE AQUI"
