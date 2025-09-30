@@ -8,14 +8,23 @@
     "build": "echo 'Static files ready for deployment' && ls -la game/",
     "start": "node server.js"
   },
-  "keywords": ["craps", "game", "casino", "dice"],
+  "keywords": [
+    "craps",
+    "game",
+    "casino",
+    "dice"
+  ],
   "author": "Seu Nome",
   "license": "MIT",
   "devDependencies": {
+    "socket.io-client": "^4.8.1",
     "vercel": "^32.0.0"
   },
   "dependencies": {
     "express": "^4.19.2",
     "socket.io": "^4.7.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

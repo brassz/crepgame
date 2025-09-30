@@ -1,41 +1,28 @@
 {
   "version": 2,
-  "outputDirectory": "game",
-  "buildCommand": "echo 'Static files ready for deployment'",
-  "installCommand": "npm install",
-  "rewrites": [
+  "builds": [
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "src": "game/**/*",
+      "use": "@vercel/static"
     }
   ],
-  "headers": [
+  "routes": [
     {
-      "source": "/assets/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=31536000, immutable"
-        }
-      ]
+      "src": "/socket.io/(.*)",
+      "dest": "/api/socket"
     },
     {
-      "source": "/js/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=31536000, immutable"
-        }
-      ]
+      "src": "/game/(.*)",
+      "dest": "/game/$1"
     },
     {
-      "source": "/css/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=31536000, immutable"
-        }
-      ]
+      "src": "/(.*)",
+      "dest": "/game/$1"
     }
-  ]
+  ],
+  "functions": {
+    "api/socket.js": {
+      "maxDuration": 30
+    }
+  }
 }

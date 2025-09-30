@@ -1,16 +1,48 @@
 window.Realtime = (function(){
     var socket = null;
     var currentRoom = null;
+    var reconnectAttempts = 0;
+    var maxReconnectAttempts = 5;
 
     function connect(){
-        if(socket){ return socket; }
+        if(socket && socket.connected){ return socket; }
+        
         // if socket.io client not present (opened via file://), bail gracefully
         if (typeof io === 'undefined'){
-            console.warn('Socket.IO client não encontrado. Inicie o servidor Node e acesse via http://localhost:3000/');
+            console.warn('Socket.IO client não encontrado. Certifique-se de que está acessando via HTTPS.');
             return null;
         }
-        // assume same origin server
-        socket = io();
+        
+        // Conectar ao servidor Socket.IO com configurações para Vercel
+        socket = io({
+            transports: ['polling', 'websocket'],
+            upgrade: true,
+            rememberUpgrade: false,
+            timeout: 20000,
+            forceNew: true
+        });
+
+        // Event handlers para conexão
+        socket.on('connect', function(){
+            console.log('Conectado ao servidor multiplayer!');
+            reconnectAttempts = 0;
+            // Rejoin room if we were in one
+            if(currentRoom){
+                socket.emit('join_room', currentRoom);
+            }
+        });
+
+        socket.on('disconnect', function(reason){
+            console.log('Desconectado do servidor:', reason);
+        });
+
+        socket.on('connect_error', function(error){
+            console.error('Erro de conexão:', error);
+            reconnectAttempts++;
+            if(reconnectAttempts >= maxReconnectAttempts){
+                console.warn('Máximo de tentativas de reconexão atingido. Modo offline.');
+            }
+        });
 
         // forward events into game if globals exist
         socket.on('room_config', function(cfg){
