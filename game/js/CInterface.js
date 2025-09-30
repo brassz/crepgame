@@ -106,7 +106,7 @@ function CInterface(){
                     false );
 
         // Botões de seleção de sala - posição ajustada para mobile
-        var iRoomButtonX = s_bMobile ? 120 : 220;
+        var iRoomButtonX = s_bMobile ? 200 : 220;
         _oButRoomBronze = new CTextButton(iRoomButtonX, 40, s_oSpriteLibrary.getSprite('but_bg'), "BRONZE", FONT1, "#fff", 16, "center", s_oStage);
         _oButRoomBronze.addEventListener(ON_MOUSE_UP, function(){ s_oGame.changeRoom("bronze"); }, this);
         _oButRoomPrata = new CTextButton(iRoomButtonX, 85, s_oSpriteLibrary.getSprite('but_bg'), "PRATA", FONT1, "#fff", 16, "center", s_oStage);
@@ -222,9 +222,9 @@ function CInterface(){
         // Correção para botões de sala no mobile - manter posição fixa
         if(s_bMobile){
             // No mobile, manter posição fixa mais à direita
-            if (_oButRoomBronze) { _oButRoomBronze.setPosition(120, 40 + iNewY); }
-            if (_oButRoomPrata) { _oButRoomPrata.setPosition(120, 85 + iNewY); }
-            if (_oButRoomOuro) { _oButRoomOuro.setPosition(120, 130 + iNewY); }
+            if (_oButRoomBronze) { _oButRoomBronze.setPosition(200, 40 + iNewY); }
+            if (_oButRoomPrata) { _oButRoomPrata.setPosition(200, 85 + iNewY); }
+            if (_oButRoomOuro) { _oButRoomOuro.setPosition(200, 130 + iNewY); }
         } else {
             // No desktop, aplicar offset normal
             if (_oButRoomBronze) { _oButRoomBronze.setPosition(220 - iNewX, 40 + iNewY); }
