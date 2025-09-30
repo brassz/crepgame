@@ -6,7 +6,14 @@ const { Server } = require('socket.io');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: '*' }
+  cors: { 
+    origin: process.env.NODE_ENV === 'production' 
+      ? [process.env.FRONTEND_URL || '*'] 
+      : '*',
+    methods: ['GET', 'POST']
+  },
+  transports: ['websocket', 'polling'],
+  allowEIO3: true
 });
 
 // Static files (serve the game)
@@ -32,10 +39,15 @@ function getRoomPlayerCount(room) {
 }
 
 io.on('connection', (socket) => {
+  console.log('Cliente conectado:', socket.id);
   let currentRoom = null;
 
   socket.on('join_room', (room) => {
-    if (!ROOM_CONFIGS[room]) return;
+    console.log('Cliente', socket.id, 'tentando entrar na sala:', room);
+    if (!ROOM_CONFIGS[room]) {
+      console.log('Sala inválida:', room);
+      return;
+    }
     if (currentRoom) {
       socket.leave(currentRoom);
       roomState[currentRoom].players.delete(socket.id);
@@ -83,6 +95,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
+    console.log('Cliente desconectado:', socket.id);
     if (currentRoom) {
       const state = roomState[currentRoom];
       state.players.delete(socket.id);
@@ -105,8 +118,11 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Server listening on http://localhost:${PORT}`);
+const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
+
+server.listen(PORT, HOST, () => {
+  console.log(`Server listening on http://${HOST}:${PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 });
 
 function performRoll(room){

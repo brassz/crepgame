@@ -9,10 +9,36 @@ window.Realtime = (function(){
             console.warn('Socket.IO client não encontrado. Inicie o servidor Node e acesse via http://localhost:3000/');
             return null;
         }
-        // connect to Vercel serverless function
-        socket = io({
-            path: '/api/socket',
-            transports: ['websocket', 'polling']
+        // detect if we're in production (not localhost)
+        var isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+        
+        console.log('Conectando ao Socket.IO...', {
+            hostname: window.location.hostname,
+            isProduction: isProduction
+        });
+        
+        if (isProduction) {
+            // production: connect to same domain
+            socket = io({
+                transports: ['websocket', 'polling']
+            });
+        } else {
+            // development: connect to local server
+            socket = io('http://localhost:3000', {
+                transports: ['websocket', 'polling']
+            });
+        }
+
+        socket.on('connect', function() {
+            console.log('Socket.IO conectado com sucesso! ID:', socket.id);
+        });
+
+        socket.on('disconnect', function() {
+            console.log('Socket.IO desconectado');
+        });
+
+        socket.on('connect_error', function(error) {
+            console.error('Erro de conexão Socket.IO:', error);
         });
 
         // forward events into game if globals exist
