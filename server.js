@@ -1,12 +1,20 @@
 const path = require('path');
 const express = require('express');
-const http = require('http');
+const { createServer } = require('http');
 const { Server } = require('socket.io');
 
 const app = express();
-const server = http.createServer(app);
+const server = createServer(app);
+
+// Configure Socket.IO with proper CORS for Vercel
 const io = new Server(server, {
-  cors: { origin: '*' }
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+    credentials: true
+  },
+  transports: ['websocket', 'polling'],
+  allowEIO3: true
 });
 
 // Static files (serve the game)
@@ -105,9 +113,17 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Server listening on http://localhost:${PORT}`);
-});
+
+// For local development
+if (process.env.NODE_ENV !== 'production') {
+  server.listen(PORT, () => {
+    console.log(`Server listening on http://localhost:${PORT}`);
+  });
+}
+
+// Export for Vercel
+module.exports = app;
+module.exports.handler = server;
 
 function performRoll(room){
   const d1 = Math.floor(Math.random() * 6) + 1;

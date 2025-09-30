@@ -1,6 +1,6 @@
-# 🎲 Jogo de Craps Online
+# 🎲 Jogo de Craps Online Multiplayer
 
-Um jogo de craps completo desenvolvido em JavaScript com interface moderna.
+Um jogo de craps completo desenvolvido em JavaScript com interface moderna e funcionalidade multiplayer em tempo real.
 
 ## 🎮 Como Jogar
 
@@ -14,9 +14,15 @@ Um jogo de craps completo desenvolvido em JavaScript com interface moderna.
 
 ## 🎯 Regras da Mesa
 
-- **Aposta mínima**: 50 reais
-- **Aposta máxima**: Sem limite
-- **Máximo de jogadores**: 8
+### Salas Disponíveis
+- **Bronze**: Aposta mín. 50, máx. 1.000 - 8 jogadores
+- **Prata**: Aposta mín. 100, máx. 3.000 - 8 jogadores  
+- **Ouro**: Aposta mín. 200, máx. 5.000 - 8 jogadores
+
+### Multiplayer
+- Turnos alternados entre jogadores
+- Timer de 25 segundos por turno
+- Sincronização em tempo real via polling
 
 ## 🚀 Deploy no Vercel
 
@@ -41,9 +47,13 @@ vercel --prod
 ## 📁 Estrutura do Projeto
 
 ```
+├── api/
+│   └── game-state.js       # Vercel Function para multiplayer
 ├── game/
 │   ├── index.html          # Página principal
-│   ├── js/                 # Arquivos JavaScript
+│   ├── js/
+│   │   ├── realtime-polling.js  # Cliente multiplayer
+│   │   └── ...             # Outros arquivos JS
 │   ├── assets/             # Sprites e sons
 │   └── css/                # Estilos
 ├── vercel.json             # Configuração do Vercel
@@ -53,9 +63,32 @@ vercel --prod
 ## 🛠️ Tecnologias
 
 - **JavaScript**: Lógica do jogo
-- **CreateJS**: Engine de animação
+- **CreateJS**: Engine de animação  
+- **Vercel Functions**: Backend serverless para multiplayer
+- **Polling**: Comunicação em tempo real
 - **HTML5**: Estrutura
 - **CSS3**: Estilos
+
+## 🌐 Sistema Multiplayer
+
+### Arquitetura
+- **Vercel Functions**: API serverless em `/api/game-state`
+- **Polling**: Cliente consulta estado a cada 1 segundo
+- **Estado em memória**: Simples e eficaz para jogos casuais
+- **Turnos sincronizados**: Timer compartilhado entre jogadores
+
+### Funcionalidades
+- ✅ Salas com múltiplos jogadores (até 8 por sala)
+- ✅ Turnos alternados automáticos
+- ✅ Timer visual de 25 segundos por turno
+- ✅ Sincronização de dados dos dados entre jogadores
+- ✅ Entrada/saída dinâmica de jogadores
+- ✅ Compatível com Vercel (sem WebSockets)
+
+### Limitações
+- Estado reinicia a cada deploy (normal em serverless)
+- Polling de 1s (não instantâneo como WebSockets)
+- Adequado para jogos casuais, não competitivos
 
 ## 📱 Responsivo
 
