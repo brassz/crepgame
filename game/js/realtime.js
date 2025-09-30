@@ -9,8 +9,11 @@ window.Realtime = (function(){
             console.warn('Socket.IO client não encontrado. Inicie o servidor Node e acesse via http://localhost:3000/');
             return null;
         }
-        // assume same origin server
-        socket = io();
+        // connect to Vercel serverless function
+        socket = io({
+            path: '/api/socket',
+            transports: ['websocket', 'polling']
+        });
 
         // forward events into game if globals exist
         socket.on('room_config', function(cfg){
