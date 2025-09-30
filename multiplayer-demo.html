@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dados da Sorte - Multiplayer Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        .demo-section {
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 30px;
+            margin: 20px 0;
+            backdrop-filter: blur(10px);
+        }
+        .room-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+        .room-btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.2em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 150px;
+        }
+        .room-btn.bronze {
+            background: linear-gradient(45deg, #cd7f32, #b8860b);
+            color: white;
+        }
+        .room-btn.prata {
+            background: linear-gradient(45deg, #c0c0c0, #a8a8a8);
+            color: #333;
+        }
+        .room-btn.ouro {
+            background: linear-gradient(45deg, #ffd700, #ffb347);
+            color: #333;
+        }
+        .room-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+        .game-frame {
+            width: 100%;
+            height: 600px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+        .instructions {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        .instructions h3 {
+            color: #ffd700;
+            margin-top: 0;
+        }
+        .instructions ul {
+            padding-left: 20px;
+        }
+        .instructions li {
+            margin: 10px 0;
+        }
+        .status {
+            background: rgba(0,255,0,0.2);
+            border: 2px solid #00ff00;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        .warning {
+            background: rgba(255,165,0,0.2);
+            border: 2px solid #ffa500;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎲 DADOS DA SORTE - MULTIPLAYER 🎲</h1>
+        
+        <div class="status">
+            ✅ Sistema Multiplayer Local Ativo - Funciona sem servidor!
+        </div>
+        
+        <div class="demo-section">
+            <h2>Escolha uma Sala</h2>
+            <div class="room-buttons">
+                <button class="room-btn bronze" onclick="openGame('bronze')">
+                    🥉 BRONZE<br>
+                    <small>R$50 - R$1.000</small>
+                </button>
+                <button class="room-btn prata" onclick="openGame('prata')">
+                    🥈 PRATA<br>
+                    <small>R$100 - R$3.000</small>
+                </button>
+                <button class="room-btn ouro" onclick="openGame('ouro')">
+                    🥇 OURO<br>
+                    <small>R$200 - R$5.000</small>
+                </button>
+            </div>
+        </div>
+        
+        <div class="instructions">
+            <h3>🎮 Como Testar o Multiplayer:</h3>
+            <ul>
+                <li><strong>Abra múltiplas abas:</strong> Clique com o botão direito em qualquer sala e selecione "Abrir link em nova aba"</li>
+                <li><strong>Escolha a mesma sala:</strong> Em cada aba, selecione a mesma sala (Bronze, Prata ou Ouro)</li>
+                <li><strong>Jogue em turnos:</strong> Cada jogador tem 25 segundos para jogar os dados</li>
+                <li><strong>Sincronização automática:</strong> Todas as abas são sincronizadas automaticamente</li>
+                <li><strong>Sistema de turnos:</strong> Os jogadores jogam em ordem, um por vez</li>
+            </ul>
+        </div>
+        
+        <div class="warning">
+            <strong>⚠️ Importante:</strong> Este sistema funciona localmente usando localStorage. 
+            Todas as abas devem estar no mesmo navegador para funcionar corretamente.
+        </div>
+        
+        <div class="demo-section">
+            <h2>🚀 Iniciar Jogo</h2>
+            <p>Clique em uma das salas acima para começar a jogar!</p>
+            <p><small>O jogo abrirá em uma nova aba. Abra mais abas para testar o multiplayer.</small></p>
+        </div>
+    </div>
+
+    <script>
+        function openGame(room) {
+            // Abrir o jogo em uma nova aba com parâmetro da sala
+            const gameUrl = `game/index.html?room=${room}`;
+            window.open(gameUrl, '_blank');
+        }
+        
+        // Adicionar alguns efeitos visuais
+        document.addEventListener('DOMContentLoaded', function() {
+            const buttons = document.querySelectorAll('.room-btn');
+            buttons.forEach(btn => {
+                btn.addEventListener('mouseenter', function() {
+                    this.style.transform = 'translateY(-3px) scale(1.05)';
+                });
+                btn.addEventListener('mouseleave', function() {
+                    this.style.transform = 'translateY(0) scale(1)';
+                });
+            });
+        });
+    </script>
+</body>
+</html>

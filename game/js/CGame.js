@@ -511,10 +511,14 @@ function CGame(oData){
         _oInterface.setMoney(TOTAL_MONEY);
         _oInterface.setCurBet(0);
         
-        // Sala padrão: BRONZE
-        this.changeRoom("bronze");
+        // Detectar sala da URL ou usar BRONZE como padrão
+        var urlParams = new URLSearchParams(window.location.search);
+        var roomFromUrl = urlParams.get('room');
+        var defaultRoom = (roomFromUrl && s_oRoomConfig.getRoomConfig(roomFromUrl)) ? roomFromUrl : "bronze";
+        
+        this.changeRoom(defaultRoom);
         if (window.Realtime && Realtime.connect()){
-            Realtime.join("bronze");
+            Realtime.join(defaultRoom);
         }
     };
     
