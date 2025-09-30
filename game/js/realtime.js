@@ -12,7 +12,28 @@ window.Realtime = (function(){
         // connect to Vercel serverless function
         socket = io({
             path: '/api/socket',
-            transports: ['websocket', 'polling']
+            transports: ['polling', 'websocket'],
+            upgrade: true,
+            rememberUpgrade: true,
+            timeout: 20000,
+            forceNew: false,
+            reconnection: true,
+            reconnectionDelay: 1000,
+            reconnectionAttempts: 5,
+            maxReconnectionAttempts: 5
+        });
+
+        // Add connection event handlers for debugging
+        socket.on('connect', function() {
+            console.log('Socket.IO connected successfully!', socket.id);
+        });
+        
+        socket.on('connect_error', function(error) {
+            console.error('Socket.IO connection error:', error);
+        });
+        
+        socket.on('disconnect', function(reason) {
+            console.log('Socket.IO disconnected:', reason);
         });
 
         // forward events into game if globals exist

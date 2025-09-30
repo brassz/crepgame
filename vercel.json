@@ -2,7 +2,8 @@
   "version": 2,
   "functions": {
     "api/socket.js": {
-      "runtime": "nodejs18.x"
+      "runtime": "nodejs18.x",
+      "maxDuration": 30
     }
   },
   "builds": [
@@ -17,8 +18,12 @@
   ],
   "routes": [
     {
+      "src": "/api/socket",
+      "dest": "/api/socket.js"
+    },
+    {
       "src": "/socket.io/(.*)",
-      "dest": "/api/socket"
+      "dest": "/api/socket.js"
     },
     {
       "src": "/(.*)",
@@ -26,6 +31,23 @@
     }
   ],
   "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, Authorization"
+        }
+      ]
+    },
     {
       "source": "/game/js/(.*)",
       "headers": [

@@ -1,4 +1,4 @@
-import { Server } from 'socket.io';
+const { Server } = require('socket.io');
 
 // Room configs (must match client)
 const ROOM_CONFIGS = {
@@ -7,13 +7,17 @@ const ROOM_CONFIGS = {
   ouro: { name: 'OURO', min_bet: 200, max_bet: 5000, max_players: 8, banker: true },
 };
 
-// State
+// State - usando global para persistir entre invocações
+if (!global.roomState) {
+  global.roomState = {
+    bronze: { players: new Set(), order: [], currentIndex: -1, turnEndsAt: null, timer: null, lastRoll: null },
+    prata: { players: new Set(), order: [], currentIndex: -1, turnEndsAt: null, timer: null, lastRoll: null },
+    ouro: { players: new Set(), order: [], currentIndex: -1, turnEndsAt: null, timer: null, lastRoll: null },
+  };
+}
+const roomState = global.roomState;
+
 const TURN_MS = 25000;
-const roomState = {
-  bronze: { players: new Set(), order: [], currentIndex: -1, turnEndsAt: null, timer: null, lastRoll: null },
-  prata: { players: new Set(), order: [], currentIndex: -1, turnEndsAt: null, timer: null, lastRoll: null },
-  ouro: { players: new Set(), order: [], currentIndex: -1, turnEndsAt: null, timer: null, lastRoll: null },
-};
 
 function getRoomPlayerCount(room) {
   return roomState[room] ? roomState[room].players.size : 0;
@@ -64,20 +68,34 @@ function startNextTurn(room, io) {
   }, 1000);
 }
 
-let io;
+// Usar global para manter instância do Socket.IO
+if (!global.io) {
+  global.io = null;
+}
 
-export default function handler(req, res) {
-  if (!io) {
+module.exports = function handler(req, res) {
+  if (!global.io) {
     console.log('Initializing Socket.IO server...');
-    io = new Server(res.socket.server, {
+    global.io = new Server(res.socket.server, {
       path: '/api/socket',
       addTrailingSlash: false,
       cors: {
         origin: '*',
-        methods: ['GET', 'POST']
-      }
+        methods: ['GET', 'POST'],
+        credentials: false
+      },
+      transports: ['websocket', 'polling'],
+      allowEIO3: true
     });
+  }
+  
+  const io = global.io;
 
+  // Só adicionar listeners se ainda não foram adicionados
+  if (!global.io._initialized) {
+    console.log('Setting up Socket.IO event listeners...');
+    global.io._initialized = true;
+    
     io.on('connection', (socket) => {
       console.log('Client connected:', socket.id);
       let currentRoom = null;
@@ -154,9 +172,12 @@ export default function handler(req, res) {
         }
       });
     });
+  }
 
+  // Certificar que o servidor Socket.IO está anexado ao servidor HTTP
+  if (!res.socket.server.io) {
     res.socket.server.io = io;
   }
 
   res.end();
-}
+};
