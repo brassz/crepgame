@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Teste API Multiplayer</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        button { padding: 10px; margin: 5px; }
+        .result { background: #f0f0f0; padding: 10px; margin: 10px 0; }
+        .success { background: #d4edda; }
+        .error { background: #f8d7da; }
+    </style>
+</head>
+<body>
+    <h1>🎲 Teste da API Multiplayer</h1>
+    
+    <div class="test-section">
+        <h3>1. Entrar na Sala Bronze</h3>
+        <button onclick="joinRoom('bronze')">Entrar na Sala Bronze</button>
+        <div id="join-result" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>2. Verificar Estado da Sala</h3>
+        <button onclick="getGameState('bronze')">Verificar Estado</button>
+        <div id="state-result" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>3. Tentar Rolar Dados</h3>
+        <button onclick="rollDice('bronze')">Rolar Dados</button>
+        <div id="roll-result" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>4. Polling Automático</h3>
+        <button onclick="startPolling('bronze')">Iniciar Polling</button>
+        <button onclick="stopPolling()">Parar Polling</button>
+        <div id="polling-result" class="result"></div>
+    </div>
+
+    <script>
+        const playerId = 'test_player_' + Math.random().toString(36).substr(2, 9);
+        let pollingInterval = null;
+        
+        console.log('Player ID:', playerId);
+        
+        async function joinRoom(room) {
+            const resultDiv = document.getElementById('join-result');
+            try {
+                const response = await fetch('/api/game-state', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action: 'join',
+                        room: room,
+                        playerId: playerId
+                    })
+                });
+                
+                const data = await response.json();
+                resultDiv.className = 'result success';
+                resultDiv.innerHTML = `<strong>Sucesso!</strong><br>` + JSON.stringify(data, null, 2);
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `<strong>Erro:</strong> ${error.message}`;
+            }
+        }
+        
+        async function getGameState(room) {
+            const resultDiv = document.getElementById('state-result');
+            try {
+                const response = await fetch('/api/game-state?' + new URLSearchParams({
+                    action: 'get_state',
+                    room: room,
+                    playerId: playerId
+                }));
+                
+                const data = await response.json();
+                resultDiv.className = 'result success';
+                resultDiv.innerHTML = `<strong>Estado:</strong><br>` + JSON.stringify(data, null, 2);
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `<strong>Erro:</strong> ${error.message}`;
+            }
+        }
+        
+        async function rollDice(room) {
+            const resultDiv = document.getElementById('roll-result');
+            try {
+                const response = await fetch('/api/game-state', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action: 'roll',
+                        room: room,
+                        playerId: playerId
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `<strong>Dados:</strong><br>` + JSON.stringify(data, null, 2);
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = `<strong>Erro:</strong> ${data.error}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `<strong>Erro:</strong> ${error.message}`;
+            }
+        }
+        
+        function startPolling(room) {
+            if (pollingInterval) return;
+            
+            const resultDiv = document.getElementById('polling-result');
+            resultDiv.className = 'result';
+            resultDiv.innerHTML = '<strong>Polling iniciado...</strong>';
+            
+            pollingInterval = setInterval(async () => {
+                try {
+                    const response = await fetch('/api/game-state?' + new URLSearchParams({
+                        action: 'get_state',
+                        room: room,
+                        playerId: playerId
+                    }));
+                    
+                    const data = await response.json();
+                    const timestamp = new Date().toLocaleTimeString();
+                    resultDiv.innerHTML = `<strong>Último update (${timestamp}):</strong><br>` + JSON.stringify(data, null, 2);
+                } catch (error) {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = `<strong>Erro no polling:</strong> ${error.message}`;
+                }
+            }, 2000);
+        }
+        
+        function stopPolling() {
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+                pollingInterval = null;
+                document.getElementById('polling-result').innerHTML = '<strong>Polling parado</strong>';
+            }
+        }
+    </script>
+</body>
+</html>
