@@ -105,12 +105,13 @@ function CInterface(){
                     true, true, true,
                     false );
 
-        // Botões de seleção de sala
-        _oButRoomBronze = new CTextButton(220, 40, s_oSpriteLibrary.getSprite('but_bg'), "BRONZE", FONT1, "#fff", 16, "center", s_oStage);
+        // Botões de seleção de sala - posição ajustada para mobile
+        var iRoomButtonX = s_bMobile ? 20 : 220;
+        _oButRoomBronze = new CTextButton(iRoomButtonX, 40, s_oSpriteLibrary.getSprite('but_bg'), "BRONZE", FONT1, "#fff", 16, "center", s_oStage);
         _oButRoomBronze.addEventListener(ON_MOUSE_UP, function(){ s_oGame.changeRoom("bronze"); }, this);
-        _oButRoomPrata = new CTextButton(220, 85, s_oSpriteLibrary.getSprite('but_bg'), "PRATA", FONT1, "#fff", 16, "center", s_oStage);
+        _oButRoomPrata = new CTextButton(iRoomButtonX, 85, s_oSpriteLibrary.getSprite('but_bg'), "PRATA", FONT1, "#fff", 16, "center", s_oStage);
         _oButRoomPrata.addEventListener(ON_MOUSE_UP, function(){ s_oGame.changeRoom("prata"); }, this);
-        _oButRoomOuro = new CTextButton(220, 130, s_oSpriteLibrary.getSprite('but_bg'), "OURO", FONT1, "#fff", 16, "center", s_oStage);
+        _oButRoomOuro = new CTextButton(iRoomButtonX, 130, s_oSpriteLibrary.getSprite('but_bg'), "OURO", FONT1, "#fff", 16, "center", s_oStage);
         _oButRoomOuro.addEventListener(ON_MOUSE_UP, function(){ s_oGame.changeRoom("ouro"); }, this);
         // garantir que fiquem acima: adicionar novamente ao stage após criação das fichas (feito abaixo)
 
@@ -217,9 +218,19 @@ function CInterface(){
             _oButFullscreen.setPosition(_pStartPosFullscreen.x + iNewX,_pStartPosFullscreen.y + iNewY);
         }
         _oButExit.setPosition(_pStartPosExit.x - iNewX,_pStartPosExit.y + iNewY);
-        if (_oButRoomBronze) { _oButRoomBronze.setPosition(220 - iNewX, 40 + iNewY); }
-        if (_oButRoomPrata) { _oButRoomPrata.setPosition(220 - iNewX, 85 + iNewY); }
-        if (_oButRoomOuro) { _oButRoomOuro.setPosition(220 - iNewX, 130 + iNewY); }
+        
+        // Correção para botões de sala no mobile - manter posição fixa
+        if(s_bMobile){
+            // No mobile, manter posição fixa para garantir visibilidade
+            if (_oButRoomBronze) { _oButRoomBronze.setPosition(20, 40 + iNewY); }
+            if (_oButRoomPrata) { _oButRoomPrata.setPosition(20, 85 + iNewY); }
+            if (_oButRoomOuro) { _oButRoomOuro.setPosition(20, 130 + iNewY); }
+        } else {
+            // No desktop, aplicar offset normal
+            if (_oButRoomBronze) { _oButRoomBronze.setPosition(220 - iNewX, 40 + iNewY); }
+            if (_oButRoomPrata) { _oButRoomPrata.setPosition(220 - iNewX, 85 + iNewY); }
+            if (_oButRoomOuro) { _oButRoomOuro.setPosition(220 - iNewX, 130 + iNewY); }
+        }
     };
     
     this.hideBlock = function(){
