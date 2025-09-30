@@ -1,15 +1,69 @@
 {
   "version": 2,
-  "outputDirectory": "game",
   "rewrites": [
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "source": "/",
+      "destination": "/multiplayer-demo.html"
+    },
+    {
+      "source": "/game",
+      "destination": "/game/index.html"
+    },
+    {
+      "source": "/game/(.*)",
+      "destination": "/game/$1"
+    },
+    {
+      "source": "/bronze",
+      "destination": "/game/index.html?room=bronze"
+    },
+    {
+      "source": "/prata",
+      "destination": "/game/index.html?room=prata"
+    },
+    {
+      "source": "/ouro",
+      "destination": "/game/index.html?room=ouro"
     }
   ],
   "headers": [
     {
-      "source": "/assets/(.*)",
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        }
+      ]
+    },
+    {
+      "source": "/game/js/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400"
+        }
+      ]
+    },
+    {
+      "source": "/game/css/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400"
+        }
+      ]
+    },
+    {
+      "source": "/game/sounds/(.*)",
       "headers": [
         {
           "key": "Cache-Control",
@@ -18,16 +72,7 @@
       ]
     },
     {
-      "source": "/js/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=31536000, immutable"
-        }
-      ]
-    },
-    {
-      "source": "/css/(.*)",
+      "source": "/game/sprites/(.*)",
       "headers": [
         {
           "key": "Cache-Control",

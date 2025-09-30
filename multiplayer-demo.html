@@ -142,8 +142,10 @@
         </div>
         
         <div class="warning">
-            <strong>⚠️ Importante:</strong> Este sistema funciona localmente usando localStorage. 
+            <strong>⚠️ Importante:</strong> Este sistema funciona usando localStorage. 
             Todas as abas devem estar no mesmo navegador para funcionar corretamente.
+            <br><br>
+            <strong>🌐 No Vercel:</strong> Funciona perfeitamente! Compartilhe o link com amigos para jogarem juntos.
         </div>
         
         <div class="demo-section">
@@ -151,12 +153,23 @@
             <p>Clique em uma das salas acima para começar a jogar!</p>
             <p><small>O jogo abrirá em uma nova aba. Abra mais abas para testar o multiplayer.</small></p>
         </div>
+        
+        <div class="instructions">
+            <h3>🌐 URLs Diretas (Perfeito para Vercel):</h3>
+            <ul>
+                <li><strong>Sala Bronze:</strong> <code>seu-dominio.vercel.app/bronze</code></li>
+                <li><strong>Sala Prata:</strong> <code>seu-dominio.vercel.app/prata</code></li>
+                <li><strong>Sala Ouro:</strong> <code>seu-dominio.vercel.app/ouro</code></li>
+            </ul>
+            <p><small>💡 Compartilhe estes links diretos com amigos para jogarem na mesma sala!</small></p>
+        </div>
     </div>
 
     <script>
         function openGame(room) {
             // Abrir o jogo em uma nova aba com parâmetro da sala
-            const gameUrl = `game/index.html?room=${room}`;
+            // Funciona tanto localmente quanto no Vercel
+            const gameUrl = `/${room}`;
             window.open(gameUrl, '_blank');
         }
         
