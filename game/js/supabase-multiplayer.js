@@ -225,50 +225,85 @@ window.SupabaseMultiplayer = (function(){
     // Set up real-time subscriptions
     async function setupRealtimeSubscription() {
         if (!currentRoomId) {
-            console.warn('No room ID for real-time subscription');
+            console.warn('❌ No room ID for real-time subscription');
             return;
         }
 
+        console.log('🔗 Setting up real-time subscriptions for room:', currentRoomId);
+        console.log('📡 Current game session ID:', currentGameSessionId);
+
         // Clean up existing subscription
         if (realtimeSubscription) {
+            console.log('🧹 Cleaning up existing real-time subscription');
             await supabase.removeChannel(realtimeSubscription);
         }
 
         // Create new subscription for room events
-        realtimeSubscription = supabase.channel(`room_${currentRoomId}`)
+        const channelName = `room_${currentRoomId}`;
+        console.log('📺 Creating channel:', channelName);
+        
+        realtimeSubscription = supabase.channel(channelName)
             .on('postgres_changes', {
                 event: 'INSERT',
                 schema: 'public',
                 table: 'game_events',
                 filter: `room_id=eq.${currentRoomId}`
-            }, handleGameEvent)
+            }, function(payload) {
+                console.log('📬 Game event received:', payload);
+                handleGameEvent(payload);
+            })
             .on('postgres_changes', {
                 event: 'UPDATE',
                 schema: 'public',
                 table: 'game_sessions',
                 filter: `room_id=eq.${currentRoomId}`
-            }, handleGameSessionUpdate)
+            }, function(payload) {
+                console.log('📬 Game session update received:', payload);
+                handleGameSessionUpdate(payload);
+            })
             .on('postgres_changes', {
                 event: '*',
                 schema: 'public',
                 table: 'player_sessions',
                 filter: `room_id=eq.${currentRoomId}`
-            }, handlePlayerSessionChange)
+            }, function(payload) {
+                console.log('📬 Player session change received:', payload);
+                handlePlayerSessionChange(payload);
+            })
             .on('postgres_changes', {
                 event: 'INSERT',
                 schema: 'public',
                 table: 'dice_rolls',
                 filter: `game_session_id=eq.${currentGameSessionId}`
-            }, handleDiceRoll)
+            }, function(payload) {
+                console.log('📬 Dice roll received:', payload);
+                handleDiceRoll(payload);
+            })
             .on('postgres_changes', {
                 event: 'INSERT',
                 schema: 'public',
                 table: 'game_rolls',
                 filter: `room_id=eq.${currentRoomId}`
-            }, handleGameRoll)
-            .subscribe();
+            }, function(payload) {
+                console.log('🎬 SYNCHRONIZED GAME ROLL received:', payload);
+                handleGameRoll(payload);
+            })
+            .subscribe(function(status) {
+                console.log('📡 Real-time subscription status:', status);
+                if (status === 'SUBSCRIBED') {
+                    console.log('✅ Successfully subscribed to real-time events');
+                    console.log('🎯 Listening for game_rolls on room_id:', currentRoomId);
+                } else if (status === 'CHANNEL_ERROR') {
+                    console.error('❌ Error subscribing to real-time channel');
+                } else if (status === 'TIMED_OUT') {
+                    console.error('⏰ Real-time subscription timed out');
+                } else {
+                    console.log('📡 Subscription status:', status);
+                }
+            });
 
-        console.log('Real-time subscription set up for room:', currentRoomId);
+        console.log('📡 Real-time subscription configured for room:', currentRoomId);
+        console.log('🎲 Watching for synchronized dice rolls on table: game_rolls');
     }
 
     // Handle real-time game events
@@ -347,9 +382,16 @@ window.SupabaseMultiplayer = (function(){
 
     // Handle synchronized game roll events (for animation)
     function handleGameRoll(payload) {
-        console.log('Synchronized game roll event:', payload);
+        console.log('🎬 Synchronized game roll event received:', payload);
         
         const roll = payload.new;
+        
+        if (!roll || !roll.die1 || !roll.die2 || !roll.player_id) {
+            console.error('❌ Invalid roll data received:', roll);
+            return;
+        }
+        
+        console.log(`🎲 Processing roll from player ${roll.player_id}: ${roll.die1} + ${roll.die2} = ${roll.total}`);
         
         // Get player name for the roller
         supabase.from('profiles')
@@ -358,9 +400,13 @@ window.SupabaseMultiplayer = (function(){
             .single()
             .then(function(response) {
                 const profile = response.data;
+                console.log('👤 Player profile retrieved:', profile);
+                
                 // Get current user ID for comparison
                 supabase.auth.getUser().then(function(userResponse) {
                     const currentUserId = userResponse.data?.user?.id;
+                    const isMyRoll = roll.player_id === currentUserId;
+                    
                     const rollData = {
                         d1: roll.die1,
                         d2: roll.die2,
@@ -368,22 +414,32 @@ window.SupabaseMultiplayer = (function(){
                         ts: Date.parse(roll.rolled_at),
                         playerName: profile ? profile.username : 'Jogador',
                         playerId: roll.player_id,
-                        isMyRoll: roll.player_id === currentUserId
+                        isMyRoll: isMyRoll
                     };
+
+                    console.log(`🎯 Triggering animation for ${isMyRoll ? 'own' : 'other player'} roll:`, rollData);
 
                     // Trigger dice animation for all players in the room
                     if (window.s_oGame && window.s_oGame.onSynchronizedRoll) {
+                        console.log('✅ Calling s_oGame.onSynchronizedRoll()');
                         window.s_oGame.onSynchronizedRoll(rollData);
                     } else if (window.s_oGame && window.s_oGame.onServerRoll) {
-                        // Fallback to existing method
+                        console.log('🔄 Fallback to s_oGame.onServerRoll()');
                         window.s_oGame.onServerRoll(rollData);
+                    } else {
+                        console.error('❌ No animation handler available! s_oGame methods:', 
+                            window.s_oGame ? Object.keys(window.s_oGame) : 's_oGame not found');
                     }
                 });
             }).catch(function(error) {
-                console.warn('Could not get player profile for roll:', error);
+                console.warn('⚠️  Could not get player profile for roll:', error);
+                console.log('🔄 Using fallback without player profile');
+                
                 // Still trigger animation without player info
                 supabase.auth.getUser().then(function(userResponse) {
                     const currentUserId = userResponse.data?.user?.id;
+                    const isMyRoll = roll.player_id === currentUserId;
+                    
                     const rollData = {
                         d1: roll.die1,
                         d2: roll.die2,
@@ -391,14 +447,23 @@ window.SupabaseMultiplayer = (function(){
                         ts: Date.parse(roll.rolled_at),
                         playerName: 'Jogador',
                         playerId: roll.player_id,
-                        isMyRoll: roll.player_id === currentUserId
+                        isMyRoll: isMyRoll
                     };
 
+                    console.log(`🎯 Triggering fallback animation for ${isMyRoll ? 'own' : 'other player'} roll:`, rollData);
+
                     if (window.s_oGame && window.s_oGame.onSynchronizedRoll) {
+                        console.log('✅ Calling s_oGame.onSynchronizedRoll() (fallback)');
                         window.s_oGame.onSynchronizedRoll(rollData);
                     } else if (window.s_oGame && window.s_oGame.onServerRoll) {
+                        console.log('🔄 Calling s_oGame.onServerRoll() (fallback)');
                         window.s_oGame.onServerRoll(rollData);
+                    } else {
+                        console.error('❌ No animation handler available in fallback! s_oGame methods:', 
+                            window.s_oGame ? Object.keys(window.s_oGame) : 's_oGame not found');
                     }
+                }).catch(function(authError) {
+                    console.error('❌ Failed to get current user for animation:', authError);
                 });
             });
     }
