@@ -72,6 +72,16 @@ window.Realtime = (function(){
                 window.s_oInterface.updateTurnTimer(data.remaining);
             }
         });
+        socket.on('your_turn_now', function(){
+            if(window.s_oInterface && window.s_oInterface.showYourTurnMessage){
+                window.s_oInterface.showYourTurnMessage();
+            }
+        });
+        socket.on('wait_for_turn', function(data){
+            if(window.s_oInterface && window.s_oInterface.showWaitMessage){
+                window.s_oInterface.showWaitMessage(data.currentPlayerId);
+            }
+        });
         return socket;
     }
 

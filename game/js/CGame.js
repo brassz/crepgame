@@ -198,8 +198,18 @@ function CGame(oData){
             var s = Realtime.getSocket();
             isMyTurn = (data && data.playerId && s && s.id === data.playerId);
         }
-        // Só permite rolar se for meu turno
+        // Só permite rolar se for meu turno e houver apostas
         _oInterface.enableRoll(isMyTurn && _oMySeat.getCurBet() > 0);
+        
+        // Bloquear/desbloquear fichas baseado no turno
+        if (isMyTurn) {
+            _oInterface.enableBetFiches();
+        } else {
+            // Se não é meu turno, desabilitar fichas (mas não rolar, caso já esteja jogando)
+            if (_iState === STATE_GAME_WAITING_FOR_BET) {
+                _oInterface.disableBetFiches();
+            }
+        }
     };
     
     this.dicesAnimEnded = function(){
@@ -479,6 +489,12 @@ function CGame(oData){
     };
     
     this.onRoll = function(){
+        // Verificar se é multiplayer e se é o turno do jogador
+        if (window.Realtime && Realtime.getSocket()) {
+            // No modo multiplayer, só rola se for autorizado pelo servidor
+            // A função _prepareForRolling já faz isso via Realtime.requestRoll()
+        }
+
         if (_oMySeat.getCurBet() === 0) {
                 return;
         }
