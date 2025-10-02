@@ -145,9 +145,45 @@ window.Realtime = (function(){
 
     function requestRoll(){
         if (useSupabase && window.SupabaseMultiplayer) {
-            // For Supabase, dice rolling will be handled differently
-            // The actual roll logic will be in the game logic, then recorded
-            console.log('Supabase dice roll requested');
+            // Check if properly connected to a room before rolling
+            if (!window.SupabaseMultiplayer.isConnected) {
+                console.error('Not connected to a Supabase room. Cannot roll dice.');
+                return;
+            }
+            
+            // For Supabase, generate dice roll locally and record it
+            // This will trigger real-time events for all players in the room
+            if (window.s_oGame && window.s_oGame._generateRandomDices) {
+                var dice = window.s_oGame._generateRandomDices();
+                var die1 = dice[0];
+                var die2 = dice[1];
+                var total = die1 + die2;
+                
+                console.log('Rolling dice for all players in room:', die1, die2, 'total:', total);
+                
+                // Record the roll in the database, which will trigger real-time events
+                window.SupabaseMultiplayer.recordDiceRoll(die1, die2, 'come_out', total)
+                    .then(function(result) {
+                        console.log('Dice roll recorded successfully - all players will see animation:', die1, die2, 'total:', total);
+                        // The real-time subscription will handle broadcasting to all players
+                    })
+                    .catch(function(error) {
+                        console.error('Failed to record dice roll:', error);
+                        // Fallback: trigger local animation if recording fails
+                        if (window.s_oGame && window.s_oGame.onServerRoll) {
+                            console.log('Using fallback local animation');
+                            window.s_oGame.onServerRoll({
+                                d1: die1,
+                                d2: die2,
+                                total: total,
+                                ts: Date.now(),
+                                playerName: 'Jogador'
+                            });
+                        }
+                    });
+            } else {
+                console.error('Game instance or dice generation method not available');
+            }
             return;
         }
         
@@ -185,7 +221,9 @@ window.Realtime = (function(){
 
     function getSocket(){ return socket; }
 
-    function isUsingSupabase() { return useSupabase; }
+    function isUsingSupabase() { 
+        return useSupabase && window.SupabaseMultiplayer && window.SupabaseMultiplayer.isConnected; 
+    }
 
     // Initialize on load
     if (document.readyState === 'loading') {

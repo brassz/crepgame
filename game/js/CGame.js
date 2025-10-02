@@ -115,7 +115,7 @@ function CGame(oData){
         _oInterface.disableClearButton();
 
         // Se conectado ao servidor, pedi-lo para rolar (autoritativo)
-        if (window.Realtime && Realtime.getSocket()){
+        if (window.Realtime && (Realtime.getSocket() || Realtime.isUsingSupabase())){
             Realtime.requestRoll();
             return;
         }
