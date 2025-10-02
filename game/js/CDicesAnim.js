@@ -109,6 +109,23 @@ function CDicesAnim(iX,iY){
     };
     
     this.startRolling = function(aDicesResult){
+        // Safety check: ensure dice results are valid before starting animation
+        if (!aDicesResult || aDicesResult.length < 2 || 
+            typeof aDicesResult[0] === 'undefined' || typeof aDicesResult[1] === 'undefined') {
+            console.error('❌ CDicesAnim.startRolling: Invalid dice result data:', aDicesResult);
+            console.log('🔄 Cannot start dice animation with invalid data');
+            return;
+        }
+        
+        // Validate dice values are within expected range (1-6)
+        if (aDicesResult[0] < 1 || aDicesResult[0] > 6 || aDicesResult[1] < 1 || aDicesResult[1] > 6) {
+            console.error('❌ CDicesAnim.startRolling: Dice values out of range:', aDicesResult);
+            console.log('🔄 Cannot start dice animation with invalid dice values');
+            return;
+        }
+        
+        console.log('✅ CDicesAnim.startRolling: Starting animation with dice:', aDicesResult[0], aDicesResult[1]);
+        
         _aDiceResult = aDicesResult;
         this.playToFrame(0);
 
@@ -122,6 +139,13 @@ function CDicesAnim(iX,iY){
     };
     
     this.setShowNumberInfo = function(){
+        // Safety check: ensure _aDiceResult is valid before showing number info
+        if (!_aDiceResult || _aDiceResult.length < 2 || 
+            typeof _aDiceResult[0] === 'undefined' || typeof _aDiceResult[1] === 'undefined') {
+            console.error('❌ CDicesAnim.setShowNumberInfo: Invalid dice result data:', _aDiceResult);
+            return;
+        }
+        
         _oDiceTopDownView.setDiceResult(_aDiceResult[0],_aDiceResult[1]);
     };
     
@@ -140,6 +164,25 @@ function CDicesAnim(iX,iY){
     };
     
     this._setAnimForDiceResult = function(){
+        // Safety check: ensure _aDiceResult is properly initialized
+        if (!_aDiceResult || _aDiceResult.length < 2 || 
+            typeof _aDiceResult[0] === 'undefined' || typeof _aDiceResult[1] === 'undefined') {
+            console.error('❌ CDicesAnim._setAnimForDiceResult: Invalid dice result data:', _aDiceResult);
+            console.log('🔄 Hiding dice animation due to invalid data');
+            this.hide();
+            return;
+        }
+        
+        // Validate dice values are within expected range (1-6)
+        if (_aDiceResult[0] < 1 || _aDiceResult[0] > 6 || _aDiceResult[1] < 1 || _aDiceResult[1] > 6) {
+            console.error('❌ CDicesAnim._setAnimForDiceResult: Dice values out of range:', _aDiceResult);
+            console.log('🔄 Hiding dice animation due to invalid dice values');
+            this.hide();
+            return;
+        }
+        
+        console.log('✅ CDicesAnim._setAnimForDiceResult: Setting animation for dice:', _aDiceResult[0], _aDiceResult[1]);
+        
         _aDicesAnimSprites[_iCurDiceIndex].visible = false;
         
         _oDiceASprite.visible = true;

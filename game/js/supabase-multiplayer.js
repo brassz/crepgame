@@ -69,13 +69,48 @@ window.SupabaseMultiplayer = (function(){
     // Join a room (automatically finds best available room of the type)
     async function joinRoom(roomType, socketId = null) {
         try {
+            // First, check if we're already in a room and leave it
+            if (currentRoomId) {
+                console.log('🔄 Already in a room, leaving first...');
+                try {
+                    await leaveRoom();
+                } catch (leaveError) {
+                    console.warn('⚠️  Error leaving previous room (continuing anyway):', leaveError);
+                }
+            }
+
+            console.log('🚪 Attempting to join room type:', roomType);
+            
             const { data, error } = await supabase.rpc('join_room', {
                 p_room_type: roomType,
                 p_socket_id: socketId
             });
 
             if (error) {
-                console.error('Error joining room:', error);
+                console.error('❌ Error joining room:', error);
+                
+                // Handle specific error cases
+                if (error.code === '23505' || error.message?.includes('duplicate') || error.message?.includes('already exists')) {
+                    console.log('🔄 Duplicate entry detected, attempting to leave and retry...');
+                    try {
+                        await leaveRoom();
+                        // Retry once after cleanup
+                        const retryResult = await supabase.rpc('join_room', {
+                            p_room_type: roomType,
+                            p_socket_id: socketId
+                        });
+                        
+                        if (retryResult.error) {
+                            throw retryResult.error;
+                        }
+                        
+                        return await handleJoinSuccess(retryResult.data);
+                    } catch (retryError) {
+                        console.error('❌ Retry failed:', retryError);
+                        throw new Error('Não foi possível entrar na sala. Tente recarregar a página.');
+                    }
+                }
+                
                 throw error;
             }
 
@@ -83,49 +118,112 @@ window.SupabaseMultiplayer = (function(){
                 throw new Error(data.error || 'Failed to join room');
             }
 
-            // Store room information
-            currentRoomId = data.room.id;
-            currentGameSessionId = data.game_session_id;
-            playerSessionId = data.player_session_id;
-
-            // Set up real-time subscription
-            await setupRealtimeSubscription();
-
-            console.log('Joined room:', data.room);
-            return data;
+            return await handleJoinSuccess(data);
 
         } catch (error) {
-            console.error('Join room error:', error);
+            console.error('❌ Join room error:', error);
+            
+            // Clean up any partial state
+            currentRoomId = null;
+            currentGameSessionId = null;
+            playerSessionId = null;
+            
             throw error;
         }
+    }
+
+    // Helper function to handle successful room join
+    async function handleJoinSuccess(data) {
+        // Store room information
+        currentRoomId = data.room.id;
+        currentGameSessionId = data.game_session_id;
+        playerSessionId = data.player_session_id;
+
+        console.log('✅ Successfully joined room:', data.room.room_name);
+        console.log('📍 Room ID:', currentRoomId);
+        console.log('🎮 Game session ID:', currentGameSessionId);
+        console.log('👤 Player session ID:', playerSessionId);
+
+        // Set up real-time subscription
+        try {
+            await setupRealtimeSubscription();
+            console.log('📡 Real-time subscription established');
+        } catch (subscriptionError) {
+            console.error('⚠️  Failed to set up real-time subscription:', subscriptionError);
+            // Don't fail the join for subscription errors, just log them
+        }
+
+        return data;
     }
 
     // Leave current room
     async function leaveRoom() {
         try {
+            console.log('🚪 Leaving room...');
+            console.log('📍 Current room ID:', currentRoomId);
+            console.log('🎮 Current game session ID:', currentGameSessionId);
+            
             // Clean up subscription first
             if (realtimeSubscription) {
-                await supabase.removeChannel(realtimeSubscription);
+                console.log('🧹 Cleaning up real-time subscription...');
+                try {
+                    await supabase.removeChannel(realtimeSubscription);
+                    console.log('✅ Real-time subscription cleaned up');
+                } catch (subscriptionError) {
+                    console.warn('⚠️  Error cleaning up subscription:', subscriptionError);
+                }
                 realtimeSubscription = null;
             }
 
-            const { data, error } = await supabase.rpc('leave_room');
+            // Only call leave_room if we have a room to leave
+            if (currentRoomId || currentGameSessionId || playerSessionId) {
+                console.log('📤 Calling leave_room RPC...');
+                const { data, error } = await supabase.rpc('leave_room');
 
-            if (error) {
-                console.error('Error leaving room:', error);
-                throw error;
+                if (error) {
+                    console.error('❌ Error leaving room:', error);
+                    // Don't throw here - we still want to clean up local state
+                    console.log('🔄 Continuing with local cleanup despite RPC error');
+                }
+
+                console.log('✅ Leave room RPC completed:', data);
+            } else {
+                console.log('ℹ️  No active room to leave');
             }
 
-            // Clear room info
+            // Always clear room info regardless of RPC success
+            const previousRoomId = currentRoomId;
             currentRoomId = null;
             currentGameSessionId = null;
             playerSessionId = null;
 
-            return data;
+            console.log('🧹 Local room state cleared');
+            console.log('📍 Previous room ID was:', previousRoomId);
+
+            return { success: true };
 
         } catch (error) {
-            console.error('Leave room error:', error);
-            throw error;
+            console.error('❌ Leave room error:', error);
+            
+            // Still clean up local state even if there's an error
+            currentRoomId = null;
+            currentGameSessionId = null;
+            playerSessionId = null;
+            
+            // Clean up subscription if it still exists
+            if (realtimeSubscription) {
+                try {
+                    await supabase.removeChannel(realtimeSubscription);
+                } catch (subscriptionError) {
+                    console.warn('⚠️  Error cleaning up subscription during error handling:', subscriptionError);
+                }
+                realtimeSubscription = null;
+            }
+            
+            console.log('🧹 Emergency cleanup completed');
+            
+            // Don't re-throw the error - we've cleaned up what we can
+            return { success: false, error: error.message };
         }
     }
 
@@ -609,14 +707,70 @@ window.SupabaseMultiplayer = (function(){
 
     // Clean up when leaving
     async function cleanup() {
-        if (realtimeSubscription) {
-            await supabase.removeChannel(realtimeSubscription);
+        console.log('🧹 SupabaseMultiplayer.cleanup() called');
+        
+        try {
+            // Leave room if we're in one
+            if (currentRoomId || currentGameSessionId || playerSessionId) {
+                console.log('🚪 Leaving room during cleanup...');
+                await leaveRoom();
+            }
+            
+            // Clean up subscription
+            if (realtimeSubscription) {
+                console.log('📡 Removing real-time subscription...');
+                await supabase.removeChannel(realtimeSubscription);
+                realtimeSubscription = null;
+            }
+
+            // Clear all state
+            currentRoomId = null;
+            currentGameSessionId = null;
+            playerSessionId = null;
+            
+            console.log('✅ SupabaseMultiplayer cleanup completed');
+        } catch (error) {
+            console.error('❌ Error during SupabaseMultiplayer cleanup:', error);
+            
+            // Force clear state even if cleanup fails
+            currentRoomId = null;
+            currentGameSessionId = null;
+            playerSessionId = null;
             realtimeSubscription = null;
         }
+    }
 
-        currentRoomId = null;
-        currentGameSessionId = null;
-        playerSessionId = null;
+    // Auto-cleanup on page unload
+    if (typeof window !== 'undefined') {
+        window.addEventListener('beforeunload', function() {
+            console.log('🔄 Page unloading, cleaning up multiplayer...');
+            // Use sendBeacon for reliable cleanup during page unload
+            if (currentRoomId && navigator.sendBeacon) {
+                // Send a quick cleanup signal
+                try {
+                    const cleanupData = JSON.stringify({
+                        action: 'leave_room',
+                        room_id: currentRoomId,
+                        session_id: currentGameSessionId
+                    });
+                    navigator.sendBeacon('/api/cleanup', cleanupData);
+                } catch (e) {
+                    console.warn('Could not send cleanup beacon:', e);
+                }
+            }
+            
+            // Synchronous cleanup
+            cleanup().catch(function(error) {
+                console.warn('Cleanup error during page unload:', error);
+            });
+        });
+
+        window.addEventListener('pagehide', function() {
+            console.log('🔄 Page hiding, cleaning up multiplayer...');
+            cleanup().catch(function(error) {
+                console.warn('Cleanup error during page hide:', error);
+            });
+        });
     }
 
     // Get room statistics
