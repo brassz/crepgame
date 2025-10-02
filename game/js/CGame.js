@@ -116,16 +116,20 @@ function CGame(oData){
 
         // Se conectado ao servidor, pedi-lo para rolar (autoritativo)
         if (window.Realtime && (Realtime.getSocket() || Realtime.isUsingSupabase())){
+            console.log('🌐 Connected to multiplayer - requesting synchronized roll');
             Realtime.requestRoll();
             return;
         }
 
+        // Fallback para modo offline
+        console.log('🔌 Offline mode - generating local dice roll');
         _iContRolling++;
         _aDiceResult = new Array();
         this._generateWinLoss();
         _aDiceResultHistory.push(_aDiceResult);
 
         _iTimeElaps = 0;
+        this._startRollingAnim();
     };
     
     this._generateWinLoss = function(){
@@ -594,8 +598,10 @@ function CGame(oData){
         }
         
         $(s_oMain).trigger("bet_placed",_oMySeat.getCurBet());
+        
+        // _prepareForRolling() already handles the synchronized roll request
+        console.log('🎲 Player clicked roll button - preparing for synchronized roll');
         this._prepareForRolling();
-        this._startRollingAnim();    
     };
     
     this._onSitDown = function(){
