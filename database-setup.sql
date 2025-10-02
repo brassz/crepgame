@@ -107,7 +107,22 @@ CREATE TABLE IF NOT EXISTS public.dice_rolls (
 );
 
 -- ==============================================
--- 7. GAME EVENTS TABLE (For real-time updates)
+-- 7. GAME ROLLS TABLE (For real-time dice animation synchronization)
+-- ==============================================
+CREATE TABLE IF NOT EXISTS public.game_rolls (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    room_id UUID REFERENCES public.game_rooms(id) ON DELETE CASCADE,
+    game_session_id UUID REFERENCES public.game_sessions(id) ON DELETE CASCADE,
+    player_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    die1 INTEGER NOT NULL CHECK (die1 >= 1 AND die1 <= 6),
+    die2 INTEGER NOT NULL CHECK (die2 >= 1 AND die2 <= 6),
+    total INTEGER GENERATED ALWAYS AS (die1 + die2) STORED,
+    animation_synced BOOLEAN DEFAULT false, -- Track if animation was triggered
+    rolled_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- ==============================================
+-- 8. GAME EVENTS TABLE (For real-time updates)
 -- ==============================================
 CREATE TABLE IF NOT EXISTS public.game_events (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -127,6 +142,8 @@ CREATE INDEX IF NOT EXISTS idx_player_sessions_active ON public.player_sessions(
 CREATE INDEX IF NOT EXISTS idx_game_sessions_status ON public.game_sessions(status, room_id);
 CREATE INDEX IF NOT EXISTS idx_game_bets_active ON public.game_bets(game_session_id, status);
 CREATE INDEX IF NOT EXISTS idx_dice_rolls_session ON public.dice_rolls(game_session_id, rolled_at);
+CREATE INDEX IF NOT EXISTS idx_game_rolls_room ON public.game_rolls(room_id, rolled_at);
+CREATE INDEX IF NOT EXISTS idx_game_rolls_session ON public.game_rolls(game_session_id, animation_synced);
 CREATE INDEX IF NOT EXISTS idx_game_events_room ON public.game_events(room_id, created_at);
 
 -- Prevent duplicate active sessions (partial unique index)
@@ -145,6 +162,7 @@ ALTER TABLE public.game_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.player_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.game_bets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.dice_rolls ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.game_rolls ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.game_events ENABLE ROW LEVEL SECURITY;
 
 -- Profiles: Users can read all profiles but only update their own
@@ -200,6 +218,24 @@ CREATE POLICY "Players can view dice rolls" ON public.dice_rolls FOR SELECT USIN
         SELECT gs.id FROM public.game_sessions gs
         JOIN public.player_sessions ps ON ps.room_id = gs.room_id
         WHERE ps.player_id = auth.uid() AND ps.is_active = true
+    )
+);
+
+-- Game rolls: Players can view and insert rolls in their games
+DROP POLICY IF EXISTS "Players can view game rolls" ON public.game_rolls;
+CREATE POLICY "Players can view game rolls" ON public.game_rolls FOR SELECT USING (
+    room_id IN (
+        SELECT room_id FROM public.player_sessions 
+        WHERE player_id = auth.uid() AND is_active = true
+    )
+);
+
+DROP POLICY IF EXISTS "Players can insert game rolls" ON public.game_rolls;
+CREATE POLICY "Players can insert game rolls" ON public.game_rolls FOR INSERT WITH CHECK (
+    player_id = auth.uid() AND
+    room_id IN (
+        SELECT room_id FROM public.player_sessions 
+        WHERE player_id = auth.uid() AND is_active = true
     )
 );
 
@@ -414,6 +450,69 @@ BEGIN
     );
 
     RETURN json_build_object('success', true);
+END;
+$$;
+
+-- Function to record synchronized dice roll for animation
+CREATE OR REPLACE FUNCTION record_synchronized_roll(
+    p_die1 INTEGER,
+    p_die2 INTEGER
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    player_session RECORD;
+    roll_record RECORD;
+BEGIN
+    -- Check if user is authenticated
+    IF auth.uid() IS NULL THEN
+        RETURN json_build_object('success', false, 'error', 'User not authenticated');
+    END IF;
+
+    -- Get player's active session
+    SELECT ps.*, gr.id as room_id, gs.id as game_session_id
+    INTO player_session
+    FROM public.player_sessions ps
+    JOIN public.game_rooms gr ON gr.id = ps.room_id
+    JOIN public.game_sessions gs ON gs.room_id = gr.id
+    WHERE ps.player_id = auth.uid() AND ps.is_active = true;
+
+    IF NOT FOUND THEN
+        RETURN json_build_object('success', false, 'error', 'Not in an active game session');
+    END IF;
+
+    -- Insert synchronized roll for all players in the room
+    INSERT INTO public.game_rolls (
+        room_id,
+        game_session_id,
+        player_id,
+        die1,
+        die2,
+        animation_synced
+    )
+    VALUES (
+        player_session.room_id,
+        player_session.game_session_id,
+        auth.uid(),
+        p_die1,
+        p_die2,
+        false
+    )
+    RETURNING * INTO roll_record;
+
+    RETURN json_build_object(
+        'success', true,
+        'roll', json_build_object(
+            'id', roll_record.id,
+            'room_id', roll_record.room_id,
+            'die1', p_die1,
+            'die2', p_die2,
+            'total', p_die1 + p_die2,
+            'rolled_at', roll_record.rolled_at
+        )
+    );
 END;
 $$;
 
@@ -718,6 +817,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.game_sessions;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.player_sessions;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.game_bets;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.dice_rolls;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.game_rolls;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.game_rooms;
 
 -- ==============================================

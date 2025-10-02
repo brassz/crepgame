@@ -183,7 +183,41 @@ function CGame(oData){
         _oDicesAnim.startRolling(_aDiceResult);
     };
 
-    // Recebe rolagem do servidor e anima localmente
+    // Recebe rolagem sincronizada para animação (novo método otimizado)
+    this.onSynchronizedRoll = function(roll){
+        console.log('Synchronized dice animation triggered:', roll);
+        
+        _aDiceResult = [roll.d1, roll.d2];
+        _aDiceResultHistory.push(_aDiceResult);
+        
+        // Determina se a rolagem foi feita pelo jogador atual
+        var isMyRoll = false;
+        if (window.sb && window.sb.auth) {
+            window.sb.auth.getUser().then(function(response) {
+                var user = response.data && response.data.user;
+                isMyRoll = (user && roll.playerId && user.id === roll.playerId);
+                
+                // Mostra mensagem adequada
+                if (roll.playerName) {
+                    if (isMyRoll) {
+                        _oInterface.refreshMsgHelp("Você jogou: " + roll.d1 + " + " + roll.d2 + " = " + roll.total, false);
+                    } else {
+                        _oInterface.refreshMsgHelp(roll.playerName + " jogou: " + roll.d1 + " + " + roll.d2 + " = " + roll.total, false);
+                    }
+                }
+            });
+        } else {
+            // Fallback se não conseguir identificar o usuário
+            if (roll.playerName) {
+                _oInterface.refreshMsgHelp(roll.playerName + " jogou: " + roll.d1 + " + " + roll.d2 + " = " + roll.total, false);
+            }
+        }
+        
+        _iTimeElaps = 0;
+        this._startRollingAnim();
+    };
+
+    // Recebe rolagem do servidor e anima localmente (método original - mantido para compatibilidade)
     this.onServerRoll = function(roll){
         _aDiceResult = [roll.d1, roll.d2];
         _aDiceResultHistory.push(_aDiceResult);
