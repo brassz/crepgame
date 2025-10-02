@@ -198,8 +198,23 @@ function CGame(oData){
             var s = Realtime.getSocket();
             isMyTurn = (data && data.playerId && s && s.id === data.playerId);
         }
-        // Só permite rolar se for meu turno
+        
+        // Mostra notificação de turno
+        _oInterface.showTurnNotification(isMyTurn);
+        
+        // Só permite rolar se for meu turno e tiver apostado
         _oInterface.enableRoll(isMyTurn && _oMySeat.getCurBet() > 0);
+        
+        // Desabilita fichas e outras ações se não for sua vez
+        if (!isMyTurn) {
+            _oInterface.disableBetFiches();
+            _oInterface.disableClearButton();
+        } else {
+            // Se for sua vez, habilita as fichas para apostar
+            if (_oMySeat.getCurBet() === 0) {
+                _oInterface.enableBetFiches();
+            }
+        }
     };
     
     this.dicesAnimEnded = function(){
@@ -598,6 +613,11 @@ function CGame(oData){
         _oInterface.enableClearButton();
         _oInterface.refreshMsgHelp("APOSTE AQUI - Clique para apostar e lançar os dados",true);
         
+        // Enviar informação da aposta para outros jogadores
+        if (window.Realtime && Realtime.sendBetPlacement){
+            Realtime.sendBetPlacement(szBut, iFicheValue);
+        }
+        
         playSound("chip", 1, false);
     };
 
@@ -639,7 +659,10 @@ function CGame(oData){
         _oInterface.enableRoll(false);
         _oInterface.disableClearButton();
         
-        
+        // Enviar informação de limpeza das apostas para outros jogadores
+        if (window.Realtime && Realtime.sendClearBets){
+            Realtime.sendClearBets();
+        }
     };
    
     this.onExit = function(bForceExit){
