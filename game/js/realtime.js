@@ -72,6 +72,37 @@ window.Realtime = (function(){
                 window.s_oInterface.updateTurnTimer(data.remaining);
             }
         });
+        
+        socket.on('your_turn', function(data){
+            if(window.s_oInterface && window.s_oInterface.showYourTurnMessage){
+                window.s_oInterface.showYourTurnMessage(data.message);
+            }
+        });
+        
+        socket.on('player_rolling', function(data){
+            if(window.s_oInterface && window.s_oInterface.showPlayerRolling){
+                window.s_oInterface.showPlayerRolling(data);
+            }
+        });
+        
+        socket.on('player_rolled', function(data){
+            if(window.s_oInterface && window.s_oInterface.showPlayerRolled){
+                window.s_oInterface.showPlayerRolled(data);
+            }
+        });
+        
+        socket.on('player_joined', function(data){
+            if(window.s_oInterface && window.s_oInterface.showPlayerJoined){
+                window.s_oInterface.showPlayerJoined(data);
+            }
+        });
+        
+        socket.on('player_left', function(data){
+            if(window.s_oInterface && window.s_oInterface.showPlayerLeft){
+                window.s_oInterface.showPlayerLeft(data);
+            }
+        });
+        
         return socket;
     }
 
