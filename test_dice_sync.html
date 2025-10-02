@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste de Sincronização de Dados</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        
+        .test-section {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        button:hover {
+            background: #45a049;
+        }
+        
+        .log {
+            background: #000;
+            padding: 10px;
+            border-radius: 4px;
+            min-height: 100px;
+            overflow-y: scroll;
+            max-height: 300px;
+            font-family: monospace;
+            margin-top: 10px;
+        }
+        
+        .dice-result {
+            font-size: 24px;
+            text-align: center;
+            padding: 20px;
+            background: #444;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        
+        .connected {
+            background: #4CAF50;
+        }
+        
+        .disconnected {
+            background: #f44336;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎲 Teste de Sincronização de Dados</h1>
+    
+    <div class="test-section">
+        <h2>Status da Conexão</h2>
+        <div id="status" class="status disconnected">Desconectado</div>
+        <button onclick="testConnection()">Testar Conexão</button>
+        <button onclick="joinRoom()">Entrar na Sala Bronze</button>
+        <button onclick="leaveRoom()">Sair da Sala</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>Teste de Rolagem Sincronizada</h2>
+        <button onclick="rollDice()">🎲 Rolar Dados</button>
+        <button onclick="simulateRoll()">🎯 Simular Rolagem (4,3)</button>
+        <div id="diceResult" class="dice-result">Clique para rolar</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Logs do Sistema</h2>
+        <button onclick="clearLogs()">Limpar Logs</button>
+        <div id="logContainer" class="log"></div>
+    </div>
+
+    <!-- Include Supabase -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    
+    <script>
+        // Mock do sistema de jogo para teste
+        let logs = [];
+        let isConnected = false;
+        
+        // Simular configuração do Supabase (substitua pelas suas credenciais reais)
+        window.SUPABASE_URL = 'YOUR_SUPABASE_URL';
+        window.SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+        
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            logs.push(`[${timestamp}] ${message}`);
+            updateLogs();
+            console.log(message);
+        }
+        
+        function updateLogs() {
+            const container = document.getElementById('logContainer');
+            container.innerHTML = logs.map(log => `<div>${log}</div>`).join('');
+            container.scrollTop = container.scrollHeight;
+        }
+        
+        function clearLogs() {
+            logs = [];
+            updateLogs();
+        }
+        
+        function updateStatus(connected) {
+            const statusEl = document.getElementById('status');
+            isConnected = connected;
+            statusEl.textContent = connected ? 'Conectado ✅' : 'Desconectado ❌';
+            statusEl.className = 'status ' + (connected ? 'connected' : 'disconnected');
+        }
+        
+        function testConnection() {
+            log('Testando conexão com Supabase...');
+            
+            if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) {
+                log('❌ Erro: Credenciais do Supabase não configuradas');
+                log('Configure SUPABASE_URL e SUPABASE_ANON_KEY no script');
+                return;
+            }
+            
+            try {
+                window.sb = window.supabase.createClient(
+                    window.SUPABASE_URL,
+                    window.SUPABASE_ANON_KEY
+                );
+                
+                // Test basic connection
+                window.sb.from('profiles').select('count').limit(1)
+                    .then(response => {
+                        if (response.error) {
+                            log('❌ Erro na conexão: ' + response.error.message);
+                            updateStatus(false);
+                        } else {
+                            log('✅ Conexão com Supabase bem-sucedida');
+                            updateStatus(true);
+                        }
+                    })
+                    .catch(error => {
+                        log('❌ Erro: ' + error.message);
+                        updateStatus(false);
+                    });
+            } catch (error) {
+                log('❌ Erro ao inicializar Supabase: ' + error.message);
+                updateStatus(false);
+            }
+        }
+        
+        function joinRoom() {
+            if (!isConnected) {
+                log('❌ Primeiro estabeleça conexão com Supabase');
+                return;
+            }
+            
+            log('Tentando entrar na sala Bronze...');
+            
+            // Simular entrada na sala (requer implementação completa do SupabaseMultiplayer)
+            if (window.SupabaseMultiplayer) {
+                window.SupabaseMultiplayer.joinRoom('bronze')
+                    .then(result => {
+                        log('✅ Entrou na sala: ' + JSON.stringify(result, null, 2));
+                    })
+                    .catch(error => {
+                        log('❌ Erro ao entrar na sala: ' + error.message);
+                    });
+            } else {
+                log('⚠️  SupabaseMultiplayer não disponível - incluir game/js/supabase-multiplayer.js');
+            }
+        }
+        
+        function leaveRoom() {
+            log('Saindo da sala...');
+            if (window.SupabaseMultiplayer) {
+                window.SupabaseMultiplayer.leaveRoom()
+                    .then(result => {
+                        log('✅ Saiu da sala');
+                    })
+                    .catch(error => {
+                        log('❌ Erro ao sair da sala: ' + error.message);
+                    });
+            } else {
+                log('⚠️  SupabaseMultiplayer não disponível');
+            }
+        }
+        
+        function generateRandomDice() {
+            return [
+                Math.floor(Math.random() * 6) + 1,
+                Math.floor(Math.random() * 6) + 1
+            ];
+        }
+        
+        function rollDice() {
+            log('🎲 Rolando dados...');
+            
+            const [die1, die2] = generateRandomDice();
+            const total = die1 + die2;
+            
+            displayDiceResult(die1, die2, total);
+            log(`Dados rolados: ${die1} + ${die2} = ${total}`);
+            
+            if (window.SupabaseMultiplayer) {
+                window.SupabaseMultiplayer.recordSynchronizedRoll(die1, die2)
+                    .then(result => {
+                        log('✅ Rolagem sincronizada enviada: ' + JSON.stringify(result, null, 2));
+                    })
+                    .catch(error => {
+                        log('❌ Erro ao sincronizar rolagem: ' + error.message);
+                    });
+            } else {
+                log('⚠️  SupabaseMultiplayer não disponível para sincronização');
+            }
+        }
+        
+        function simulateRoll() {
+            log('🎯 Simulando rolagem específica (4,3)...');
+            
+            displayDiceResult(4, 3, 7);
+            log('Dados simulados: 4 + 3 = 7');
+            
+            if (window.SupabaseMultiplayer) {
+                window.SupabaseMultiplayer.recordSynchronizedRoll(4, 3)
+                    .then(result => {
+                        log('✅ Rolagem simulada sincronizada: ' + JSON.stringify(result, null, 2));
+                    })
+                    .catch(error => {
+                        log('❌ Erro ao sincronizar rolagem simulada: ' + error.message);
+                    });
+            } else {
+                log('⚠️  SupabaseMultiplayer não disponível');
+            }
+        }
+        
+        function displayDiceResult(die1, die2, total) {
+            const resultEl = document.getElementById('diceResult');
+            resultEl.innerHTML = `
+                <div>🎲 ${die1}  🎲 ${die2}</div>
+                <div>Total: ${total}</div>
+            `;
+        }
+        
+        // Mock do sistema de jogo para receber rolagens sincronizadas
+        window.s_oGame = {
+            onSynchronizedRoll: function(roll) {
+                log('🎬 Animação sincronizada recebida: ' + JSON.stringify(roll, null, 2));
+                displayDiceResult(roll.d1, roll.d2, roll.total);
+                
+                if (roll.playerName) {
+                    log(`Jogador ${roll.playerName} rolou: ${roll.d1} + ${roll.d2} = ${roll.total}`);
+                }
+            },
+            
+            onServerRoll: function(roll) {
+                log('🎲 Rolagem do servidor (fallback): ' + JSON.stringify(roll, null, 2));
+                displayDiceResult(roll.d1, roll.d2, roll.total);
+            }
+        };
+        
+        // Inicialização
+        log('🚀 Sistema de teste carregado');
+        log('Para testar completamente, você precisa:');
+        log('1. Configurar as credenciais do Supabase');
+        log('2. Incluir o arquivo game/js/supabase-multiplayer.js');
+        log('3. Executar o database-setup.sql no Supabase');
+        log('4. Abrir esta página em múltiplas abas/dispositivos');
+        
+    </script>
+</body>
+</html>

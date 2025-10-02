@@ -151,21 +151,26 @@ window.Realtime = (function(){
                 return;
             }
             
-            // For Supabase, generate dice roll locally and record it
-            // This will trigger real-time events for all players in the room
+            // For Supabase, generate dice roll locally and record it for synchronized animation
             if (window.s_oGame && window.s_oGame._generateRandomDices) {
                 var dice = window.s_oGame._generateRandomDices();
                 var die1 = dice[0];
                 var die2 = dice[1];
                 var total = die1 + die2;
                 
-                console.log('Rolling dice for all players in room:', die1, die2, 'total:', total);
+                console.log('Rolling dice with synchronized animation for all players:', die1, die2, 'total:', total);
                 
-                // Record the roll in the database, which will trigger real-time events
-                window.SupabaseMultiplayer.recordDiceRoll(die1, die2, 'come_out', total)
+                // Record the synchronized roll - this will trigger animation on all players' screens
+                window.SupabaseMultiplayer.recordSynchronizedRoll(die1, die2)
                     .then(function(result) {
-                        console.log('Dice roll recorded successfully - all players will see animation:', die1, die2, 'total:', total);
-                        // The real-time subscription will handle broadcasting to all players
+                        console.log('Synchronized dice roll recorded successfully:', result);
+                        // All players in the room will see the animation via real-time subscription
+                        
+                        // Also record the roll in the game history for game logic
+                        return window.SupabaseMultiplayer.recordDiceRoll(die1, die2, 'come_out', total);
+                    })
+                    .then(function(result) {
+                        console.log('Game dice roll recorded successfully:', result);
                     })
                     .catch(function(error) {
                         console.error('Failed to record dice roll:', error);

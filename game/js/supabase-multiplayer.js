@@ -164,6 +164,32 @@ window.SupabaseMultiplayer = (function(){
         }
     }
 
+    // Record synchronized dice roll for animation
+    async function recordSynchronizedRoll(die1, die2) {
+        try {
+            const { data, error } = await supabase.rpc('record_synchronized_roll', {
+                p_die1: die1,
+                p_die2: die2
+            });
+
+            if (error) {
+                console.error('Error recording synchronized roll:', error);
+                throw error;
+            }
+
+            if (!data.success) {
+                throw new Error(data.error || 'Failed to record synchronized roll');
+            }
+
+            console.log('Synchronized roll recorded - all players will see animation:', die1, die2);
+            return data;
+
+        } catch (error) {
+            console.error('Record synchronized roll error:', error);
+            throw error;
+        }
+    }
+
     // Record dice roll
     async function recordDiceRoll(die1, die2, phase = 'come_out', result = null) {
         if (!currentGameSessionId) {
@@ -234,6 +260,12 @@ window.SupabaseMultiplayer = (function(){
                 table: 'dice_rolls',
                 filter: `game_session_id=eq.${currentGameSessionId}`
             }, handleDiceRoll)
+            .on('postgres_changes', {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'game_rolls',
+                filter: `room_id=eq.${currentRoomId}`
+            }, handleGameRoll)
             .subscribe();
 
         console.log('Real-time subscription set up for room:', currentRoomId);
@@ -311,6 +343,64 @@ window.SupabaseMultiplayer = (function(){
                 }
             });
         }
+    }
+
+    // Handle synchronized game roll events (for animation)
+    function handleGameRoll(payload) {
+        console.log('Synchronized game roll event:', payload);
+        
+        const roll = payload.new;
+        
+        // Get player name for the roller
+        supabase.from('profiles')
+            .select('username')
+            .eq('id', roll.player_id)
+            .single()
+            .then(function(response) {
+                const profile = response.data;
+                // Get current user ID for comparison
+                supabase.auth.getUser().then(function(userResponse) {
+                    const currentUserId = userResponse.data?.user?.id;
+                    const rollData = {
+                        d1: roll.die1,
+                        d2: roll.die2,
+                        total: roll.total,
+                        ts: Date.parse(roll.rolled_at),
+                        playerName: profile ? profile.username : 'Jogador',
+                        playerId: roll.player_id,
+                        isMyRoll: roll.player_id === currentUserId
+                    };
+
+                    // Trigger dice animation for all players in the room
+                    if (window.s_oGame && window.s_oGame.onSynchronizedRoll) {
+                        window.s_oGame.onSynchronizedRoll(rollData);
+                    } else if (window.s_oGame && window.s_oGame.onServerRoll) {
+                        // Fallback to existing method
+                        window.s_oGame.onServerRoll(rollData);
+                    }
+                });
+            }).catch(function(error) {
+                console.warn('Could not get player profile for roll:', error);
+                // Still trigger animation without player info
+                supabase.auth.getUser().then(function(userResponse) {
+                    const currentUserId = userResponse.data?.user?.id;
+                    const rollData = {
+                        d1: roll.die1,
+                        d2: roll.die2,
+                        total: roll.total,
+                        ts: Date.parse(roll.rolled_at),
+                        playerName: 'Jogador',
+                        playerId: roll.player_id,
+                        isMyRoll: roll.player_id === currentUserId
+                    };
+
+                    if (window.s_oGame && window.s_oGame.onSynchronizedRoll) {
+                        window.s_oGame.onSynchronizedRoll(rollData);
+                    } else if (window.s_oGame && window.s_oGame.onServerRoll) {
+                        window.s_oGame.onServerRoll(rollData);
+                    }
+                });
+            });
     }
 
     // Handle dice roll events
@@ -509,6 +599,7 @@ window.SupabaseMultiplayer = (function(){
         leaveRoom,
         placeBet,
         recordDiceRoll,
+        recordSynchronizedRoll,
         getCurrentRoomInfo,
         getCurrentGameSession,
         getActiveBets,
