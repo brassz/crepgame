@@ -71,9 +71,7 @@ CREATE TABLE IF NOT EXISTS public.player_sessions (
     left_at TIMESTAMP WITH TIME ZONE,
     is_active BOOLEAN DEFAULT true,
     player_order INTEGER, -- Turn order in the room
-    socket_id TEXT, -- For real-time tracking
-    -- Prevent duplicate active sessions
-    UNIQUE(player_id, room_id) WHERE is_active = true
+    socket_id TEXT -- For real-time tracking
 );
 
 -- ==============================================
@@ -130,6 +128,11 @@ CREATE INDEX IF NOT EXISTS idx_game_sessions_status ON public.game_sessions(stat
 CREATE INDEX IF NOT EXISTS idx_game_bets_active ON public.game_bets(game_session_id, status);
 CREATE INDEX IF NOT EXISTS idx_dice_rolls_session ON public.dice_rolls(game_session_id, rolled_at);
 CREATE INDEX IF NOT EXISTS idx_game_events_room ON public.game_events(room_id, created_at);
+
+-- Prevent duplicate active sessions (partial unique index)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_player_sessions_unique_active 
+ON public.player_sessions(player_id, room_id) 
+WHERE is_active = true;
 
 -- ==============================================
 -- ROW LEVEL SECURITY (RLS) POLICIES
