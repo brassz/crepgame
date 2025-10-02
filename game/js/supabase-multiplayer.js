@@ -318,16 +318,37 @@ window.SupabaseMultiplayer = (function(){
         console.log('Dice roll event:', payload);
         
         const roll = payload.new;
-        const rollData = {
-            d1: roll.die1,
-            d2: roll.die2,
-            total: roll.total,
-            ts: Date.parse(roll.rolled_at)
-        };
+        
+        // Get player name if available
+        getUserProfile().then(function(profile) {
+            const rollData = {
+                d1: roll.die1,
+                d2: roll.die2,
+                total: roll.total,
+                ts: Date.parse(roll.rolled_at),
+                playerName: profile ? profile.username : 'Jogador',
+                playerId: roll.shooter_id
+            };
 
-        if (window.s_oGame && window.s_oGame.onServerRoll) {
-            window.s_oGame.onServerRoll(rollData);
-        }
+            if (window.s_oGame && window.s_oGame.onServerRoll) {
+                window.s_oGame.onServerRoll(rollData);
+            }
+        }).catch(function(error) {
+            console.warn('Could not get player profile:', error);
+            // Still trigger animation without player info
+            const rollData = {
+                d1: roll.die1,
+                d2: roll.die2,
+                total: roll.total,
+                ts: Date.parse(roll.rolled_at),
+                playerName: 'Jogador',
+                playerId: roll.shooter_id
+            };
+
+            if (window.s_oGame && window.s_oGame.onServerRoll) {
+                window.s_oGame.onServerRoll(rollData);
+            }
+        });
     }
 
     // Get current room information
