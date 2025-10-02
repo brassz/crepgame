@@ -187,6 +187,22 @@ function CGame(oData){
     this.onServerRoll = function(roll){
         _aDiceResult = [roll.d1, roll.d2];
         _aDiceResultHistory.push(_aDiceResult);
+        
+        // Mostra quem jogou os dados se a informação estiver disponível
+        if (roll.playerName) {
+            var isMyRoll = false;
+            if (Realtime && Realtime.getSocket()){
+                var s = Realtime.getSocket();
+                isMyRoll = (roll.playerId && s && s.id === roll.playerId);
+            }
+            
+            if (isMyRoll) {
+                _oInterface.refreshMsgHelp("Você jogou: " + roll.d1 + " + " + roll.d2 + " = " + roll.total, false);
+            } else {
+                _oInterface.refreshMsgHelp(roll.playerName + " jogou: " + roll.d1 + " + " + roll.d2 + " = " + roll.total, false);
+            }
+        }
+        
         _iTimeElaps = 0;
         this._startRollingAnim();
     };
@@ -198,8 +214,30 @@ function CGame(oData){
             var s = Realtime.getSocket();
             isMyTurn = (data && data.playerId && s && s.id === data.playerId);
         }
-        // Só permite rolar se for meu turno
-        _oInterface.enableRoll(isMyTurn && _oMySeat.getCurBet() > 0);
+        
+        // Atualiza interface baseado em quem é o turno
+        if (isMyTurn){
+            _oInterface.enableRoll(_oMySeat.getCurBet() > 0);
+            if (_oMySeat.getCurBet() > 0) {
+                _oInterface.refreshMsgHelp("É SUA VEZ! Clique em LANÇAR", true);
+            } else {
+                _oInterface.refreshMsgHelp("Faça uma aposta primeiro!", true);
+            }
+        } else {
+            _oInterface.enableRoll(false);
+            if (data && data.playerId) {
+                _oInterface.refreshMsgHelp("Aguardando outro jogador...", false);
+            } else {
+                _oInterface.refreshMsgHelp("Aguardando jogadores...", false);
+            }
+        }
+    };
+    
+    // Método para mostrar mensagem usando CMsgBox
+    this.showMsgBox = function(message) {
+        if (_oMsgBox && _oMsgBox.show) {
+            _oMsgBox.show(message);
+        }
     };
     
     this.dicesAnimEnded = function(){
@@ -538,22 +576,25 @@ function CGame(oData){
             _oInterface.setCurBet(0);
         }
         
-        console.log("Sala alterada para:", oRoomConfig.name, "Aposta mínima:", oRoomConfig.min_bet, "Aposta máxima:", oRoomConfig.max_bet || "Sem limite");
-
-        // Informar servidor para entrar na sala
-        if (window.Realtime && Realtime.connect()){
-            Realtime.join(sRoomType);
+        // Conectar ao multiplayer na nova sala
+        if (window.Realtime) {
+            window.Realtime.join(sRoomType);
+            _oInterface.refreshMsgHelp("Conectando à sala " + oRoomConfig.name.toUpperCase() + "...", true);
         }
+        
+        console.log("Sala alterada para:", oRoomConfig.name, "Aposta mínima:", oRoomConfig.min_bet, "Aposta máxima:", oRoomConfig.max_bet || "Sem limite");
     };
-
+    
+    // Getter para sala atual
+    this.getCurrentRoom = function(){
+        return _sCurrentRoom || "bronze";
+    };
+    
+    // Callback quando recebe configuração da sala do servidor
     this.onRoomConfig = function(cfg){
         MIN_BET = cfg.min_bet;
         MAX_BET = cfg.max_bet;
         _oInterface.updateBetLimits(MIN_BET, MAX_BET);
-    };
-
-    this.getCurrentRoom = function(){
-        return _sCurrentRoom || "bronze";
     };
     
     this._onShowBetOnTable = function(oParams){

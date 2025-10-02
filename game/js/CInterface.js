@@ -284,6 +284,64 @@ function CInterface(){
         }
     };
     
+    // Mostra mensagem "AGORA É SUA VEZ!" usando CMsgBox
+    this.showYourTurnMessage = function(message){
+        // Usa o CMsgBox para uma mensagem mais destacada
+        if (window.s_oGame && window.s_oGame.showMsgBox) {
+            window.s_oGame.showMsgBox(message);
+        } else {
+            // Fallback para texto normal
+            _oHelpText.refreshText(message);
+        }
+        
+        // Também atualiza o timer com a mensagem
+        if (_oTurnTimerText){
+            _oTurnTimerText.refreshText(">>> " + message + " <<<");
+        }
+        
+        // Remove a mensagem especial do timer após 3 segundos
+        setTimeout(function(){
+            if (_oTurnTimerText){
+                _oTurnTimerText.refreshText("");
+            }
+        }, 3000);
+    };
+    
+    // Mostra que um jogador está rolando os dados
+    this.showPlayerRolling = function(data){
+        _oHelpText.refreshText(data.playerName + " está jogando os dados...");
+    };
+    
+    // Mostra resultado de um jogador
+    this.showPlayerRolled = function(data){
+        var message = data.playerName + " jogou: " + data.result;
+        _oHelpText.refreshText(message);
+        // Remove mensagem após 2 segundos
+        setTimeout(function(){
+            _oHelpText.refreshText(_szLastMsgHelp);
+        }, 2000);
+    };
+    
+    // Mostra quando um jogador entra na sala
+    this.showPlayerJoined = function(data){
+        var message = data.playerName + " entrou na sala (" + data.playerCount + "/" + data.maxPlayers + ")";
+        _oHelpText.refreshText(message);
+        // Remove mensagem após 2 segundos
+        setTimeout(function(){
+            _oHelpText.refreshText(_szLastMsgHelp);
+        }, 2000);
+    };
+    
+    // Mostra quando um jogador sai da sala  
+    this.showPlayerLeft = function(data){
+        var message = data.playerName + " saiu da sala (" + data.playerCount + " jogadores)";
+        _oHelpText.refreshText(message);
+        // Remove mensagem após 2 segundos
+        setTimeout(function(){
+            _oHelpText.refreshText(_szLastMsgHelp);
+        }, 2000);
+    };
+    
     this._initFichesBut = function(){
         var oFicheBg = createBitmap(s_oSpriteLibrary.getSprite('chip_box'));
         oFicheBg.x = 50;  // Movido mais para a esquerda para dar espaço
