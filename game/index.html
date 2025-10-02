@@ -163,13 +163,25 @@
            if (window.Profile && window.sb && window.sb.auth) {
                window.sb.auth.getUser().then(function(u){
                    var user = u.data && u.data.user;
-                   if(!user){ startWithBalance(1000); return; }
+                   if(!user){ 
+                       console.log('No authenticated user found, starting with default balance');
+                       startWithBalance(1000); 
+                       return; 
+                   }
+                   console.log('Authenticated user found, loading profile for ID:', user.id);
                    window.Profile.ensureProfile(user.id).then(function(){
                        return window.Profile.getBalance(user.id);
                    }).then(function(res){
                        var bal = (res && res.data && typeof res.data.balance === 'number') ? res.data.balance : window.Profile.DEFAULT_BALANCE;
+                       console.log('Loaded user balance:', bal);
                        startWithBalance(bal);
-                   }).catch(function(){ startWithBalance(window.Profile.DEFAULT_BALANCE); });
+                   }).catch(function(err){ 
+                       console.error('Error loading user profile:', err);
+                       startWithBalance(window.Profile.DEFAULT_BALANCE); 
+                   });
+               }).catch(function(err){
+                   console.error('Error getting authenticated user:', err);
+                   startWithBalance(1000);
                });
            } else {
                startWithBalance(1000);
