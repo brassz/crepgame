@@ -579,11 +579,7 @@ function CGame(oData){
         
         $(s_oMain).trigger("bet_placed",_oMySeat.getCurBet());
         this._prepareForRolling();
-        
-        // Só inicia a animação se não estiver conectado ao servidor (modo offline)
-        if (!window.Realtime || (!Realtime.getSocket() && !Realtime.isUsingSupabase())){
-            this._startRollingAnim();    
-        }
+        this._startRollingAnim();    
     };
     
     this._onSitDown = function(){
