@@ -88,10 +88,27 @@ window.SupabaseMultiplayer = (function(){
             currentGameSessionId = data.game_session_id;
             playerSessionId = data.player_session_id;
 
+            console.log('✅ Room join successful:', {
+                roomId: currentRoomId,
+                gameSessionId: currentGameSessionId,
+                playerSessionId: playerSessionId,
+                roomName: data.room.room_name
+            });
+
+            // Validate that we have all required IDs
+            if (!currentRoomId || !currentGameSessionId || !playerSessionId) {
+                console.error('❌ Missing required IDs after room join:', {
+                    currentRoomId,
+                    currentGameSessionId,
+                    playerSessionId
+                });
+                throw new Error('Incomplete room join - missing required session IDs');
+            }
+
             // Set up real-time subscription
             await setupRealtimeSubscription();
 
-            console.log('Joined room:', data.room);
+            console.log('✅ Successfully joined room and set up subscriptions');
             return data;
 
         } catch (error) {
@@ -166,6 +183,26 @@ window.SupabaseMultiplayer = (function(){
 
     // Record synchronized dice roll for animation
     async function recordSynchronizedRoll(die1, die2) {
+        // Validate dice values
+        if (!die1 || !die2 || die1 < 1 || die1 > 6 || die2 < 1 || die2 > 6) {
+            console.error('❌ Invalid dice values for synchronized roll:', { die1, die2 });
+            throw new Error('Invalid dice values');
+        }
+
+        // Check if we have a valid room connection
+        if (!currentRoomId) {
+            console.error('❌ Cannot record synchronized roll: Not connected to a room');
+            console.log('Debug info:', {
+                currentRoomId,
+                currentGameSessionId,
+                playerSessionId,
+                isConnected: supabase && currentRoomId
+            });
+            throw new Error('Not connected to a room');
+        }
+
+        console.log('🎬 Recording synchronized roll for animation:', { die1, die2, currentRoomId });
+
         try {
             const { data, error } = await supabase.rpc('record_synchronized_roll', {
                 p_die1: die1,
@@ -173,19 +210,30 @@ window.SupabaseMultiplayer = (function(){
             });
 
             if (error) {
-                console.error('Error recording synchronized roll:', error);
+                console.error('❌ Supabase RPC error recording synchronized roll:', error);
+                console.error('Error details:', {
+                    message: error.message,
+                    details: error.details,
+                    hint: error.hint,
+                    code: error.code
+                });
                 throw error;
             }
 
-            if (!data.success) {
-                throw new Error(data.error || 'Failed to record synchronized roll');
+            if (!data || !data.success) {
+                const errorMsg = data?.error || 'Failed to record synchronized roll';
+                console.error('❌ Synchronized roll recording failed:', errorMsg);
+                console.error('Response data:', data);
+                throw new Error(errorMsg);
             }
 
-            console.log('Synchronized roll recorded - all players will see animation:', die1, die2);
+            console.log('✅ Synchronized roll recorded - all players will see animation:', die1, die2);
             return data;
 
         } catch (error) {
-            console.error('Record synchronized roll error:', error);
+            console.error('❌ Record synchronized roll error:', error);
+            console.error('Error type:', error.constructor.name);
+            console.error('Error message:', error.message);
             throw error;
         }
     }
@@ -193,8 +241,23 @@ window.SupabaseMultiplayer = (function(){
     // Record dice roll
     async function recordDiceRoll(die1, die2, phase = 'come_out', result = null) {
         if (!currentGameSessionId) {
+            console.error('❌ Cannot record dice roll: Not in a game session');
+            console.log('Debug info:', {
+                currentRoomId,
+                currentGameSessionId,
+                playerSessionId,
+                isConnected: supabase && currentRoomId
+            });
             throw new Error('Not in a game session');
         }
+
+        // Validate dice values
+        if (!die1 || !die2 || die1 < 1 || die1 > 6 || die2 < 1 || die2 > 6) {
+            console.error('❌ Invalid dice values:', { die1, die2 });
+            throw new Error('Invalid dice values');
+        }
+
+        console.log('🎲 Recording dice roll:', { die1, die2, phase, result, currentGameSessionId });
 
         try {
             const { data, error } = await supabase.rpc('record_dice_roll', {
@@ -206,18 +269,30 @@ window.SupabaseMultiplayer = (function(){
             });
 
             if (error) {
-                console.error('Error recording dice roll:', error);
+                console.error('❌ Supabase RPC error recording dice roll:', error);
+                console.error('Error details:', {
+                    message: error.message,
+                    details: error.details,
+                    hint: error.hint,
+                    code: error.code
+                });
                 throw error;
             }
 
-            if (!data.success) {
-                throw new Error(data.error || 'Failed to record dice roll');
+            if (!data || !data.success) {
+                const errorMsg = data?.error || 'Failed to record dice roll';
+                console.error('❌ Dice roll recording failed:', errorMsg);
+                console.error('Response data:', data);
+                throw new Error(errorMsg);
             }
 
+            console.log('✅ Dice roll recorded successfully:', data);
             return data;
 
         } catch (error) {
-            console.error('Record dice roll error:', error);
+            console.error('❌ Record dice roll error:', error);
+            console.error('Error type:', error.constructor.name);
+            console.error('Error message:', error.message);
             throw error;
         }
     }
@@ -619,6 +694,59 @@ window.SupabaseMultiplayer = (function(){
         playerSessionId = null;
     }
 
+    // Debug function to check connection status
+    async function debugConnectionStatus() {
+        console.log('🔍 === SUPABASE MULTIPLAYER DEBUG STATUS ===');
+        
+        // Check Supabase client
+        console.log('📡 Supabase client:', !!supabase);
+        
+        // Check authentication
+        if (supabase) {
+            try {
+                const { data: { user }, error } = await supabase.auth.getUser();
+                console.log('👤 User authenticated:', !!user);
+                if (user) {
+                    console.log('   - User ID:', user.id);
+                    console.log('   - Email:', user.email);
+                } else {
+                    console.log('   - Error:', error);
+                }
+            } catch (authError) {
+                console.error('❌ Auth check failed:', authError);
+            }
+        }
+        
+        // Check connection state
+        console.log('🏠 Current room ID:', currentRoomId);
+        console.log('🎮 Current game session ID:', currentGameSessionId);
+        console.log('👤 Player session ID:', playerSessionId);
+        console.log('🔗 Is connected:', supabase && currentRoomId);
+        console.log('📺 Realtime subscription:', !!realtimeSubscription);
+        
+        // Check room info if connected
+        if (currentRoomId) {
+            try {
+                const roomInfo = await getCurrentRoomInfo();
+                console.log('🏠 Room info:', roomInfo);
+            } catch (roomError) {
+                console.error('❌ Failed to get room info:', roomError);
+            }
+        }
+        
+        // Check game session if available
+        if (currentGameSessionId) {
+            try {
+                const sessionInfo = await getCurrentGameSession();
+                console.log('🎮 Game session info:', sessionInfo);
+            } catch (sessionError) {
+                console.error('❌ Failed to get session info:', sessionError);
+            }
+        }
+        
+        console.log('🔍 === END DEBUG STATUS ===');
+    }
+
     // Get room statistics
     async function getRoomStats(roomType = null) {
         let query = supabase
@@ -672,6 +800,7 @@ window.SupabaseMultiplayer = (function(){
         updatePlayerBalance,
         getRoomStats,
         cleanup,
+        debugConnectionStatus,
         
         // Getters
         get currentRoomId() { return currentRoomId; },

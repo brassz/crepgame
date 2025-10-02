@@ -209,6 +209,27 @@ window.Realtime = (function(){
                         console.error('❌ Failed to record dice roll:', error);
                         console.error('Error details:', error);
                         
+                        // Show user-friendly error message
+                        let errorMessage = 'Erro ao registrar jogada dos dados';
+                        if (error.message) {
+                            if (error.message.includes('Not in a game session')) {
+                                errorMessage = 'Erro: Não conectado a uma sessão de jogo. Tente recarregar a página.';
+                            } else if (error.message.includes('Not connected to a room')) {
+                                errorMessage = 'Erro: Não conectado a uma sala. Tente recarregar a página.';
+                            } else if (error.message.includes('User not authenticated')) {
+                                errorMessage = 'Erro: Usuário não autenticado. Faça login novamente.';
+                            } else if (error.message.includes('Invalid dice values')) {
+                                errorMessage = 'Erro: Valores dos dados inválidos.';
+                            }
+                        }
+                        
+                        // Try to show error to user
+                        if (window.s_oGame && window.s_oGame.showMsgBox) {
+                            window.s_oGame.showMsgBox(errorMessage);
+                        } else if (window.alert) {
+                            window.alert(errorMessage);
+                        }
+                        
                         // Fallback: trigger local animation if recording fails
                         if (window.s_oGame && window.s_oGame.onSynchronizedRoll) {
                             console.log('🔄 Using fallback local animation (onSynchronizedRoll)');
