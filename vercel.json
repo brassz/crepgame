@@ -1,15 +1,55 @@
 {
   "version": 2,
-  "outputDirectory": "game",
-  "rewrites": [
+  "functions": {
+    "api/socket.js": {
+      "runtime": "nodejs18.x",
+      "maxDuration": 30
+    }
+  },
+  "builds": [
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "src": "game/**",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "api/socket.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/socket",
+      "dest": "/api/socket.js"
+    },
+    {
+      "src": "/socket.io/(.*)",
+      "dest": "/api/socket.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/game/$1"
     }
   ],
   "headers": [
     {
-      "source": "/assets/(.*)",
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, Authorization"
+        }
+      ]
+    },
+    {
+      "source": "/game/js/(.*)",
       "headers": [
         {
           "key": "Cache-Control",
@@ -18,16 +58,7 @@
       ]
     },
     {
-      "source": "/js/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=31536000, immutable"
-        }
-      ]
-    },
-    {
-      "source": "/css/(.*)",
+      "source": "/game/css/(.*)",
       "headers": [
         {
           "key": "Cache-Control",
