@@ -180,6 +180,22 @@ function CGame(oData){
     };
     
     this._startRollingAnim = function(){
+        // Safety check: ensure _aDiceResult is properly initialized before starting animation
+        if (!_aDiceResult || _aDiceResult.length < 2 || 
+            typeof _aDiceResult[0] === 'undefined' || typeof _aDiceResult[1] === 'undefined') {
+            console.error('❌ CGame._startRollingAnim: Invalid dice result data:', _aDiceResult);
+            console.log('🔄 Generating fallback dice results for animation');
+            
+            // Generate fallback dice results
+            _aDiceResult = [
+                Math.floor(Math.random() * 6) + 1,
+                Math.floor(Math.random() * 6) + 1
+            ];
+            
+            console.log('🎲 Using fallback dice results:', _aDiceResult);
+        }
+        
+        console.log('✅ CGame._startRollingAnim: Starting animation with dice:', _aDiceResult[0], _aDiceResult[1]);
         _oDicesAnim.startRolling(_aDiceResult);
     };
 

@@ -134,7 +134,11 @@ window.Realtime = (function(){
         
         if (useSupabase && window.SupabaseMultiplayer) {
             // Use Supabase for room joining
+            console.log('🚪 Realtime.join() - Attempting to join Supabase room:', room);
+            
             window.SupabaseMultiplayer.joinRoom(room).then(function(result) {
+                console.log('✅ Realtime.join() - Join result:', result);
+                
                 if (result && result.success) {
                     // Update game with room config
                     if (window.s_oGame && window.s_oGame.onRoomConfig) {
@@ -144,19 +148,54 @@ window.Realtime = (function(){
                             max_bet: result.room.max_bet,
                             max_players: result.room.max_players
                         };
+                        console.log('🎮 Updating game with room config:', roomConfig);
                         window.s_oGame.onRoomConfig(roomConfig);
                     }
                     
                     // Update interface with player count
                     if (window.s_oInterface && window.s_oInterface.updateRoomInfo) {
+                        console.log('👥 Updating interface with player count:', result.room.current_players);
                         window.s_oInterface.updateRoomInfo(room, result.room.current_players);
                     }
                     
-                    console.log('Successfully joined Supabase room:', result.room.room_name);
+                    console.log('✅ Successfully joined Supabase room:', result.room.room_name);
+                    
+                    // Notify game that room join was successful
+                    if (window.s_oGame && window.s_oGame.onRoomJoined) {
+                        window.s_oGame.onRoomJoined(result);
+                    }
+                } else {
+                    console.error('❌ Room join failed - no success flag in result:', result);
+                    throw new Error('Falha ao entrar na sala - resultado inválido');
                 }
             }).catch(function(error) {
-                console.error('Failed to join Supabase room:', error);
-                alert('Erro ao entrar na sala: ' + (error.message || 'Erro desconhecido'));
+                console.error('❌ Failed to join Supabase room:', error);
+                
+                // More user-friendly error messages
+                var errorMessage = 'Erro ao entrar na sala';
+                if (error.message) {
+                    if (error.message.includes('duplicate') || error.message.includes('already exists')) {
+                        errorMessage = 'Você já está em uma sala. Recarregue a página para tentar novamente.';
+                    } else if (error.message.includes('full')) {
+                        errorMessage = 'A sala está cheia. Tente outra sala.';
+                    } else if (error.message.includes('not found')) {
+                        errorMessage = 'Sala não encontrada. Tente recarregar a página.';
+                    } else {
+                        errorMessage = 'Erro ao entrar na sala: ' + error.message;
+                    }
+                }
+                
+                // Show error to user
+                if (window.s_oGame && window.s_oGame.showMsgBox) {
+                    window.s_oGame.showMsgBox(errorMessage);
+                } else {
+                    alert(errorMessage);
+                }
+                
+                // Notify game of join failure
+                if (window.s_oGame && window.s_oGame.onRoomJoinFailed) {
+                    window.s_oGame.onRoomJoinFailed(error);
+                }
             });
         } else {
             // Fallback to Socket.io
