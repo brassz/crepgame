@@ -234,12 +234,12 @@ BEGIN
         UNION ALL
         SELECT 'ouro' as room_type, 200.00 as min_bet, 5000.00 as max_bet
     LOOP
-        -- Create simple room name (just the type in uppercase)
+        -- Room name = tipo em maiúsculo
         v_room_name := UPPER(room_configs.room_type);
         
         INSERT INTO public.game_rooms (room_type, room_name, min_bet, max_bet, max_players)
         VALUES (room_configs.room_type, v_room_name, room_configs.min_bet, room_configs.max_bet, 8)
-        ON CONFLICT (room_type, room_name) DO NOTHING;
+        ON CONFLICT (room_type) DO NOTHING;
     END LOOP;
 END;
 $$;
