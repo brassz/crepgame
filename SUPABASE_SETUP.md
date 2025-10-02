@@ -19,7 +19,7 @@ Este guia explica como configurar o banco de dados Supabase para funcionar com o
 
 O script criará:
 - ✅ Tabelas necessárias para o jogo multiplayer
-- ✅ 15 salas (5 de cada tipo: Bronze, Prata, Ouro) com IDs únicos
+- ✅ 3 salas únicas (Bronze, Prata, Ouro) - uma de cada tipo
 - ✅ Funções para gerenciar salas e jogadores
 - ✅ Políticas de segurança (RLS)
 - ✅ Triggers para atualizações em tempo real
@@ -40,42 +40,44 @@ Após executar o script, execute esta consulta no SQL Editor para verificar:
 ```sql
 SELECT 
     room_type,
-    count(*) as total_salas,
-    string_agg(room_name, ', ' ORDER BY room_name) as nomes_salas
+    room_name,
+    min_bet,
+    max_bet,
+    current_players,
+    max_players
 FROM public.game_rooms 
-GROUP BY room_type 
 ORDER BY room_type;
 ```
 
-Você deve ver algo como:
+Você deve ver exatamente 3 salas:
 ```
-bronze | 5 | BRONZE-001, BRONZE-002, BRONZE-003, BRONZE-004, BRONZE-005
-ouro   | 5 | OURO-001, OURO-002, OURO-003, OURO-004, OURO-005  
-prata  | 5 | PRATA-001, PRATA-002, PRATA-003, PRATA-004, PRATA-005
+bronze | BRONZE | 50.00  | 1000.00 | 0 | 8
+ouro   | OURO   | 200.00 | 5000.00 | 0 | 8  
+prata  | PRATA  | 100.00 | 3000.00 | 0 | 8
 ```
 
 ## 🎮 Como Funcionam as Salas
 
 ### Sistema de Salas Únicas
 
-Cada tipo de sala (Bronze, Prata, Ouro) possui múltiplas instâncias com IDs únicos:
+Existe apenas uma sala de cada tipo:
 
-- **BRONZE-001, BRONZE-002, etc.** - Limite: R$50 - R$1.000
-- **PRATA-001, PRATA-002, etc.** - Limite: R$100 - R$3.000  
-- **OURO-001, OURO-002, etc.** - Limite: R$200 - R$5.000
+- **BRONZE** - Limite: R$50 - R$1.000
+- **PRATA** - Limite: R$100 - R$3.000  
+- **OURO** - Limite: R$200 - R$5.000
 
 ### Distribuição Automática
 
 Quando um jogador escolhe entrar numa sala "Bronze", o sistema:
-1. Procura a sala Bronze com menos jogadores
-2. Atribui o jogador à sala encontrada
-3. Retorna os dados da sala específica (ex: "BRONZE-003")
+1. Direciona para a única sala Bronze existente
+2. Verifica se há vagas disponíveis
+3. Atribui o jogador à sala se houver espaço
 
 ### Limite de Jogadores
 
 - Máximo: 8 jogadores por sala
-- Se uma sala estiver cheia, o jogador é direcionado para a próxima disponível
-- Se todas estiverem cheias, retorna erro "Nenhuma sala disponível"
+- Se a sala estiver cheia, retorna erro "Nenhuma sala disponível"
+- Total máximo no sistema: 24 jogadores simultâneos (8 por cada tipo)
 
 ## 🔄 Funcionalidades em Tempo Real
 
@@ -152,7 +154,7 @@ await SupabaseMultiplayer.init();
 
 // Entrar numa sala bronze
 const result = await SupabaseMultiplayer.joinRoom('bronze');
-console.log('Entrou na sala:', result.room.room_name); // Ex: "BRONZE-003"
+console.log('Entrou na sala:', result.room.room_name); // "BRONZE"
 
 // Fazer uma aposta
 await SupabaseMultiplayer.placeBet('pass_line', 100);
@@ -173,9 +175,9 @@ await SupabaseMultiplayer.leaveRoom();
 const stats = await SupabaseMultiplayer.getRoomStats();
 console.log(stats);
 // {
-//   bronze: { total_rooms: 5, total_players: 12, available_spots: 28 },
-//   prata: { total_rooms: 5, total_players: 8, available_spots: 32 },
-//   ouro: { total_rooms: 5, total_players: 3, available_spots: 37 }
+//   bronze: { total_rooms: 1, total_players: 4, available_spots: 4 },
+//   prata: { total_rooms: 1, total_players: 2, available_spots: 6 },
+//   ouro: { total_rooms: 1, total_players: 1, available_spots: 7 }
 // }
 ```
 
@@ -201,7 +203,7 @@ LIMIT 20;
 ## ✅ Checklist de Verificação
 
 - [ ] Script `database-setup.sql` executado com sucesso
-- [ ] 15 salas criadas (5 de cada tipo)
+- [ ] 3 salas únicas criadas (bronze, prata, ouro)
 - [ ] Credenciais configuradas em `auth-config.js`
 - [ ] Funções testadas no SQL Editor
 - [ ] Real-time habilitado nas tabelas necessárias
@@ -219,4 +221,4 @@ Acesse `http://localhost:3000` e entre numa sala para testar o sistema multiplay
 
 ---
 
-**🎯 Resultado**: Sistema de salas totalmente funcional com IDs únicos, distribuição automática, e sincronização em tempo real através do Supabase!
+**🎯 Resultado**: Sistema com 3 salas únicas (bronze, prata, ouro), distribuição automática, e sincronização em tempo real através do Supabase!

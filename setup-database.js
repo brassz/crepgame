@@ -104,7 +104,7 @@ console.log();
 
 console.log('🎯 FUNCIONALIDADES IMPLEMENTADAS:');
 console.log('==================================');
-console.log('✅ Salas com IDs únicos (BRONZE-001, PRATA-003, etc.)');
+console.log('✅ Salas únicas por tipo (BRONZE, PRATA, OURO)');
 console.log('✅ Distribuição automática de jogadores');
 console.log('✅ Sistema de apostas em tempo real');
 console.log('✅ Sincronização de dados entre jogadores');
@@ -116,11 +116,11 @@ console.log();
 
 console.log('🔄 SISTEMA DE SALAS:');
 console.log('====================');
-console.log('• BRONZE (5 salas): R$50 - R$1.000');
-console.log('• PRATA  (5 salas): R$100 - R$3.000');
-console.log('• OURO   (5 salas): R$200 - R$5.000');
+console.log('• BRONZE (1 sala): R$50 - R$1.000');
+console.log('• PRATA  (1 sala): R$100 - R$3.000');
+console.log('• OURO   (1 sala): R$200 - R$5.000');
 console.log('• Máximo: 8 jogadores por sala');
-console.log('• Total: 15 salas simultâneas');
+console.log('• Total: 3 salas únicas (bronze, prata, ouro)');
 console.log();
 
 console.log('🎮 COMO TESTAR:');
