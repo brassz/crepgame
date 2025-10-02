@@ -217,6 +217,7 @@ CREATE POLICY "Players can view game events" ON public.game_events FOR SELECT US
 -- ==============================================
 
 -- Function to create room instances
+-- Function to create room instances
 CREATE OR REPLACE FUNCTION create_room_instances()
 RETURNS void
 LANGUAGE plpgsql
@@ -225,7 +226,7 @@ AS $$
 DECLARE
     room_configs RECORD;
     room_counter INTEGER;
-    room_name TEXT;
+    v_room_name TEXT; -- renomeada para evitar conflito
 BEGIN
     -- Room configurations
     FOR room_configs IN 
@@ -237,15 +238,16 @@ BEGIN
     LOOP
         -- Create 5 instances of each room type
         FOR room_counter IN 1..5 LOOP
-            room_name := UPPER(room_configs.room_type) || '-' || LPAD(room_counter::TEXT, 3, '0');
+            v_room_name := UPPER(room_configs.room_type) || '-' || LPAD(room_counter::TEXT, 3, '0');
             
             INSERT INTO public.game_rooms (room_type, room_name, min_bet, max_bet, max_players)
-            VALUES (room_configs.room_type, room_name, room_configs.min_bet, room_configs.max_bet, 8)
+            VALUES (room_configs.room_type, v_room_name, room_configs.min_bet, room_configs.max_bet, 8)
             ON CONFLICT (room_type, room_name) DO NOTHING;
         END LOOP;
     END LOOP;
 END;
 $$;
+
 
 -- Function to join a room
 CREATE OR REPLACE FUNCTION join_room(p_room_type TEXT, p_socket_id TEXT DEFAULT NULL)
