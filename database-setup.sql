@@ -263,6 +263,11 @@ DECLARE
     game_session RECORD;
     result JSON;
 BEGIN
+    -- Check if user is authenticated
+    IF auth.uid() IS NULL THEN
+        RETURN json_build_object('success', false, 'error', 'User not authenticated');
+    END IF;
+
     -- Get player profile
     SELECT * INTO player_profile FROM public.profiles WHERE id = auth.uid();
     IF NOT FOUND THEN
@@ -371,6 +376,11 @@ DECLARE
     player_session RECORD;
     room_info RECORD;
 BEGIN
+    -- Check if user is authenticated
+    IF auth.uid() IS NULL THEN
+        RETURN json_build_object('success', false, 'error', 'User not authenticated');
+    END IF;
+
     -- Find active session
     SELECT ps.*, gr.id as room_id, gr.current_players, gs.id as game_session_id
     INTO player_session
@@ -428,6 +438,11 @@ DECLARE
     roll_record RECORD;
     roll_number INTEGER;
 BEGIN
+    -- Check if user is authenticated
+    IF auth.uid() IS NULL THEN
+        RETURN json_build_object('success', false, 'error', 'User not authenticated');
+    END IF;
+
     -- Validate player is in this game session
     SELECT gs.*, gr.id as room_id INTO game_session
     FROM public.game_sessions gs
@@ -524,6 +539,11 @@ DECLARE
     game_session RECORD;
     new_bet RECORD;
 BEGIN
+    -- Check if user is authenticated
+    IF auth.uid() IS NULL THEN
+        RETURN json_build_object('success', false, 'error', 'User not authenticated');
+    END IF;
+
     -- Get player profile
     SELECT * INTO player_profile FROM public.profiles WHERE id = auth.uid();
     IF NOT FOUND THEN
@@ -616,6 +636,21 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+-- Function to automatically create profile when user signs up
+CREATE OR REPLACE FUNCTION handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO public.profiles (id, email, username, balance)
+    VALUES (
+        NEW.id,
+        NEW.email,
+        COALESCE(NEW.raw_user_meta_data->>'username', split_part(NEW.email, '@', 1)),
+        1000.00
+    );
+    RETURN NEW;
+END;
+$$ language 'plpgsql' SECURITY DEFINER;
+
 -- Apply the trigger to relevant tables
 DROP TRIGGER IF EXISTS update_profiles_updated_at ON public.profiles;
 CREATE TRIGGER update_profiles_updated_at BEFORE UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -626,6 +661,12 @@ CREATE TRIGGER update_game_rooms_updated_at BEFORE UPDATE ON public.game_rooms F
 DROP TRIGGER IF EXISTS update_game_sessions_updated_at ON public.game_sessions;
 CREATE TRIGGER update_game_sessions_updated_at BEFORE UPDATE ON public.game_sessions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+-- Trigger to automatically create profiles for new users
+DROP TRIGGER IF EXISTS create_profile_on_signup ON auth.users;
+CREATE TRIGGER create_profile_on_signup
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION handle_new_user();
+
 -- ==============================================
 -- INITIAL DATA SETUP
 -- ==============================================
@@ -635,13 +676,15 @@ SELECT create_room_instances();
 
 -- Insert a test profile (optional - for testing purposes)
 -- This will be replaced by actual user signups
-INSERT INTO public.profiles (id, email, username, balance) 
-VALUES (
-    '00000000-0000-0000-0000-000000000000', 
-    'test@example.com', 
-    'TestPlayer', 
-    5000.00
-) ON CONFLICT (id) DO NOTHING;
+-- NOTE: Commented out to avoid foreign key constraint violations
+-- The profile will be created automatically when a real user signs up
+-- INSERT INTO public.profiles (id, email, username, balance) 
+-- VALUES (
+--     '00000000-0000-0000-0000-000000000000', 
+--     'test@example.com', 
+--     'TestPlayer', 
+--     5000.00
+-- ) ON CONFLICT (id) DO NOTHING;
 
 -- ==============================================
 -- REAL-TIME SUBSCRIPTIONS SETUP
