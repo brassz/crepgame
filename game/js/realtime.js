@@ -55,8 +55,11 @@ window.Realtime = (function(){
             }
         });
         socket.on('dice_result', function(roll){
+            console.log("dice_result recebido via Socket.io:", roll);
             if(window.s_oGame && window.s_oGame.onServerRoll){
                 window.s_oGame.onServerRoll(roll);
+            } else {
+                console.log("s_oGame ou onServerRoll não disponível");
             }
         });
         socket.on('room_full', function(){
@@ -145,9 +148,25 @@ window.Realtime = (function(){
 
     function requestRoll(){
         if (useSupabase && window.SupabaseMultiplayer) {
-            // For Supabase, dice rolling will be handled differently
-            // The actual roll logic will be in the game logic, then recorded
-            console.log('Supabase dice roll requested');
+            // For Supabase, generate dice locally and then record it
+            console.log('Supabase dice roll requested - generating local roll');
+            
+            // Generate dice locally
+            var die1 = Math.floor(Math.random() * 6) + 1;
+            var die2 = Math.floor(Math.random() * 6) + 1;
+            var total = die1 + die2;
+            
+            console.log('Generated dice:', die1, die2, 'total:', total);
+            
+            // Record the roll in Supabase
+            window.SupabaseMultiplayer.recordDiceRoll(die1, die2, 'come_out', total)
+                .then(function(result) {
+                    console.log('Dice roll recorded in Supabase:', result);
+                })
+                .catch(function(error) {
+                    console.error('Error recording dice roll:', error);
+                });
+                
             return;
         }
         

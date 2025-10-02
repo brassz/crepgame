@@ -114,12 +114,16 @@ function CGame(oData){
         _oInterface.disableBetFiches();
         _oInterface.disableClearButton();
 
+        console.log("_prepareForRolling chamado");
+        
         // Se conectado ao servidor, pedi-lo para rolar (autoritativo)
         if (window.Realtime && Realtime.getSocket()){
+            console.log("Usando sistema multiplayer - enviando requestRoll");
             Realtime.requestRoll();
             return;
         }
 
+        console.log("Jogo local - gerando dados localmente");
         _iContRolling++;
         _aDiceResult = new Array();
         this._generateWinLoss();
@@ -185,6 +189,7 @@ function CGame(oData){
 
     // Recebe rolagem do servidor e anima localmente
     this.onServerRoll = function(roll){
+        console.log("onServerRoll chamado:", roll);
         _aDiceResult = [roll.d1, roll.d2];
         _aDiceResultHistory.push(_aDiceResult);
         
@@ -204,6 +209,7 @@ function CGame(oData){
         }
         
         _iTimeElaps = 0;
+        console.log("Iniciando animação para todos os jogadores...");
         this._startRollingAnim();
     };
 
@@ -540,7 +546,11 @@ function CGame(oData){
         
         $(s_oMain).trigger("bet_placed",_oMySeat.getCurBet());
         this._prepareForRolling();
-        this._startRollingAnim();    
+        
+        // Se não está conectado ao servidor, inicia animação localmente
+        if (!(window.Realtime && Realtime.getSocket())){
+            this._startRollingAnim();
+        }
     };
     
     this._onSitDown = function(){

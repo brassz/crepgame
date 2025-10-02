@@ -295,6 +295,7 @@ window.SupabaseMultiplayer = (function(){
 
         // Handle dice results
         if (session.dice_result && window.s_oGame && window.s_oGame.onServerRoll) {
+            console.log("Supabase: dice_result recebido:", session.dice_result);
             window.s_oGame.onServerRoll(session.dice_result);
         }
     }
@@ -326,6 +327,7 @@ window.SupabaseMultiplayer = (function(){
         };
 
         if (window.s_oGame && window.s_oGame.onServerRoll) {
+            console.log("Supabase: handleDiceRoll chamado:", rollData);
             window.s_oGame.onServerRoll(rollData);
         }
     }
