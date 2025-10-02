@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 );
 
 -- ==============================================
--- 2. GAME ROOMS TABLE (With unique IDs per room type)
+-- 2. GAME ROOMS TABLE (Single room per type)
 -- ==============================================
 CREATE TABLE IF NOT EXISTS public.game_rooms (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -37,8 +37,8 @@ CREATE TABLE IF NOT EXISTS public.game_rooms (
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    -- Generate unique room names like "BRONZE-001", "PRATA-015", etc
-    UNIQUE(room_type, room_name)
+    -- Ensure only one room per type exists
+    UNIQUE(room_type)
 );
 
 -- ==============================================
@@ -216,8 +216,7 @@ CREATE POLICY "Players can view game events" ON public.game_events FOR SELECT US
 -- FUNCTIONS FOR GAME LOGIC
 -- ==============================================
 
--- Function to create room instances
--- Function to create room instances
+-- Function to create room instances (only one room per type)
 CREATE OR REPLACE FUNCTION create_room_instances()
 RETURNS void
 LANGUAGE plpgsql
@@ -225,10 +224,9 @@ SECURITY DEFINER
 AS $$
 DECLARE
     room_configs RECORD;
-    room_counter INTEGER;
-    v_room_name TEXT; -- renomeada para evitar conflito
+    v_room_name TEXT;
 BEGIN
-    -- Room configurations
+    -- Room configurations - Create only ONE room per type
     FOR room_configs IN 
         SELECT 'bronze' as room_type, 50.00 as min_bet, 1000.00 as max_bet
         UNION ALL
@@ -236,14 +234,12 @@ BEGIN
         UNION ALL
         SELECT 'ouro' as room_type, 200.00 as min_bet, 5000.00 as max_bet
     LOOP
-        -- Create 5 instances of each room type
-        FOR room_counter IN 1..5 LOOP
-            v_room_name := UPPER(room_configs.room_type) || '-' || LPAD(room_counter::TEXT, 3, '0');
-            
-            INSERT INTO public.game_rooms (room_type, room_name, min_bet, max_bet, max_players)
-            VALUES (room_configs.room_type, v_room_name, room_configs.min_bet, room_configs.max_bet, 8)
-            ON CONFLICT (room_type, room_name) DO NOTHING;
-        END LOOP;
+        -- Create simple room name (just the type in uppercase)
+        v_room_name := UPPER(room_configs.room_type);
+        
+        INSERT INTO public.game_rooms (room_type, room_name, min_bet, max_bet, max_players)
+        VALUES (room_configs.room_type, v_room_name, room_configs.min_bet, room_configs.max_bet, 8)
+        ON CONFLICT (room_type, room_name) DO NOTHING;
     END LOOP;
 END;
 $$;
@@ -668,10 +664,36 @@ CREATE TRIGGER create_profile_on_signup
   FOR EACH ROW EXECUTE FUNCTION handle_new_user();
 
 -- ==============================================
+-- CLEANUP AND SETUP FUNCTIONS
+-- ==============================================
+
+-- Function to clean up existing duplicate rooms
+CREATE OR REPLACE FUNCTION cleanup_duplicate_rooms()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    -- Remove all existing rooms first (to start fresh)
+    DELETE FROM public.game_rooms;
+    
+    -- Reset any related session data if needed
+    DELETE FROM public.player_sessions;
+    DELETE FROM public.game_sessions;
+    DELETE FROM public.game_bets;
+    DELETE FROM public.dice_rolls;
+    DELETE FROM public.game_events;
+    
+    RAISE NOTICE 'All existing rooms and related data cleaned up';
+END;
+$$;
+
+-- ==============================================
 -- INITIAL DATA SETUP
 -- ==============================================
 
--- Create initial room instances
+-- Clean existing rooms and create fresh unique rooms
+SELECT cleanup_duplicate_rooms();
 SELECT create_room_instances();
 
 -- Insert a test profile (optional - for testing purposes)
