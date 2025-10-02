@@ -128,7 +128,21 @@ function clearTimer(room){
 function emitTurnUpdate(room){
   const state = roomState[room];
   const playerId = state.order[state.currentIndex] || null;
+  
+  // Emitir para todos os jogadores na sala
   io.to(room).emit('turn_update', { playerId, endsAt: state.turnEndsAt });
+  
+  // Emitir evento específico para o jogador cuja vez chegou
+  if (playerId) {
+    io.to(playerId).emit('your_turn_now');
+  }
+  
+  // Emitir para outros jogadores que devem esperar
+  state.players.forEach(socketId => {
+    if (socketId !== playerId) {
+      io.to(socketId).emit('wait_for_turn', { currentPlayerId: playerId });
+    }
+  });
 }
 
 function startNextTurn(room){

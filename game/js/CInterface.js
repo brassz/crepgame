@@ -22,6 +22,8 @@ function CInterface(){
     var _oButRoomPrata;
     var _oButRoomOuro;
     var _oTurnTimerText;
+    var _oTurnMessageText;
+    var _iTurnMessageTimer;
     var _fRequestFullScreen = null;
     var _fCancelFullScreen = null;
     
@@ -144,6 +146,16 @@ function CInterface(){
                     "",
                     true, true, false,
                     false );
+
+        // Mensagem de turno (centro da tela)
+        _oTurnMessageText = new CTLText(s_oStage, 
+                    CANVAS_WIDTH/2, CANVAS_HEIGHT/2 - 50, 400, 80, 
+                    36, "center", "#ff0000", FONT2, 1,
+                    2, 2,
+                    "",
+                    true, true, false,
+                    false );
+        _oTurnMessageText.visible = false;
       
         _oClearAllBet = new CGfxButton(764,636,s_oSpriteLibrary.getSprite('but_clear_all'),s_oStage);
         _oClearAllBet.addEventListener(ON_MOUSE_UP, this._onClearAllBet, this);
@@ -195,6 +207,12 @@ function CInterface(){
     };
     
     this.unload = function(){
+        // Limpar timer de mensagem de turno
+        if (_iTurnMessageTimer) {
+            clearTimeout(_iTurnMessageTimer);
+            _iTurnMessageTimer = null;
+        }
+        
         _oButExit.unload();
 	if(DISABLE_SOUND_MOBILE === false || s_bMobile === false){
             _oAudioToggle.unload();
@@ -281,6 +299,42 @@ function CInterface(){
         if (_oTurnTimerText){
             var s = (iSeconds>0) ? ("TURNO: "+iSeconds+"s") : "";
             _oTurnTimerText.refreshText(s);
+        }
+    };
+
+    // Mostra mensagem "AGORA É SUA VEZ!" quando for o turno do jogador
+    this.showYourTurnMessage = function(){
+        if (_oTurnMessageText){
+            _oTurnMessageText.refreshText("AGORA É SUA VEZ!");
+            _oTurnMessageText.visible = true;
+            
+            // Remove a mensagem após 3 segundos
+            if (_iTurnMessageTimer) {
+                clearTimeout(_iTurnMessageTimer);
+            }
+            _iTurnMessageTimer = setTimeout(function(){
+                if (_oTurnMessageText) {
+                    _oTurnMessageText.visible = false;
+                }
+            }, 3000);
+        }
+    };
+
+    // Mostra mensagem de espera quando for o turno de outro jogador
+    this.showWaitMessage = function(currentPlayerId){
+        if (_oTurnMessageText){
+            _oTurnMessageText.refreshText("AGUARDE SUA VEZ...");
+            _oTurnMessageText.visible = true;
+            
+            // Remove a mensagem após 2 segundos
+            if (_iTurnMessageTimer) {
+                clearTimeout(_iTurnMessageTimer);
+            }
+            _iTurnMessageTimer = setTimeout(function(){
+                if (_oTurnMessageText) {
+                    _oTurnMessageText.visible = false;
+                }
+            }, 2000);
         }
     };
     
