@@ -185,35 +185,40 @@ function CGame(oData){
 
     // Recebe rolagem sincronizada para animação (novo método otimizado)
     this.onSynchronizedRoll = function(roll){
-        console.log('Synchronized dice animation triggered:', roll);
+        console.log('🎬 onSynchronizedRoll() called with data:', roll);
+        
+        if (!roll || typeof roll.d1 === 'undefined' || typeof roll.d2 === 'undefined') {
+            console.error('❌ Invalid roll data in onSynchronizedRoll:', roll);
+            return;
+        }
+        
+        console.log(`🎲 Processing synchronized dice animation: ${roll.d1} + ${roll.d2} = ${roll.total}`);
         
         _aDiceResult = [roll.d1, roll.d2];
         _aDiceResultHistory.push(_aDiceResult);
         
         // Determina se a rolagem foi feita pelo jogador atual
-        var isMyRoll = false;
-        if (window.sb && window.sb.auth) {
-            window.sb.auth.getUser().then(function(response) {
-                var user = response.data && response.data.user;
-                isMyRoll = (user && roll.playerId && user.id === roll.playerId);
-                
-                // Mostra mensagem adequada
-                if (roll.playerName) {
-                    if (isMyRoll) {
-                        _oInterface.refreshMsgHelp("Você jogou: " + roll.d1 + " + " + roll.d2 + " = " + roll.total, false);
-                    } else {
-                        _oInterface.refreshMsgHelp(roll.playerName + " jogou: " + roll.d1 + " + " + roll.d2 + " = " + roll.total, false);
-                    }
-                }
-            });
-        } else {
-            // Fallback se não conseguir identificar o usuário
-            if (roll.playerName) {
-                _oInterface.refreshMsgHelp(roll.playerName + " jogou: " + roll.d1 + " + " + roll.d2 + " = " + roll.total, false);
+        var isMyRoll = roll.isMyRoll || false;
+        
+        console.log(`👤 Roll belongs to: ${isMyRoll ? 'current player' : 'other player'} (${roll.playerName})`);
+        
+        // Mostra mensagem adequada
+        if (roll.playerName) {
+            var message = "";
+            if (isMyRoll) {
+                message = "Você jogou: " + roll.d1 + " + " + roll.d2 + " = " + roll.total;
+                console.log('📝 Showing message for own roll:', message);
+            } else {
+                message = roll.playerName + " jogou: " + roll.d1 + " + " + roll.d2 + " = " + roll.total;
+                console.log('📝 Showing message for other player roll:', message);
             }
+            _oInterface.refreshMsgHelp(message, false);
+        } else {
+            console.log('⚠️  No player name available for roll message');
         }
         
         _iTimeElaps = 0;
+        console.log('🎬 Starting dice animation...');
         this._startRollingAnim();
     };
 

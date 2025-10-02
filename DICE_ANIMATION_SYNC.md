@@ -107,9 +107,33 @@ Synchronized dice animation triggered: {d1: 4, d2: 3, ...}
 ## Troubleshooting
 
 ### Animação não aparece em outros jogadores
-- Verifique se todos estão na mesma sala
-- Confirme que o Realtime está habilitado nas tabelas
-- Verifique os logs do console para erros
+1. **Verifique os logs do console** - O sistema agora inclui logs detalhados com emojis:
+   ```
+   🎲 requestRoll() called - useSupabase: true
+   🎯 Rolling dice with synchronized animation for all players: 4 3 total: 7
+   ✅ Synchronized dice roll recorded successfully: {...}
+   🎬 SYNCHRONIZED GAME ROLL received: {...}
+   🎬 onSynchronizedRoll() called with data: {...}
+   ```
+
+2. **Verifique se todos estão na mesma sala**:
+   - Execute no console: `debugSyncSetup()`
+   - Confirme que `currentRoomId` é o mesmo para todos os jogadores
+
+3. **Confirme que o Realtime está habilitado**:
+   - Execute no console: `showRealtimeInfo()`
+   - Deve mostrar canais ativos e estado "SUBSCRIBED"
+
+4. **Verifique autenticação**:
+   - Execute no console: `debugSyncSetup()`
+   - Confirme que usuário está autenticado
+
+### Script de Depuração
+Adicionado script `game/test-sync-debug.js` com funções úteis:
+- `debugSyncSetup()` - Diagnóstico completo do sistema
+- `testRoll()` - Testa animação local
+- `testSync()` - Testa sincronização real
+- `showRealtimeInfo()` - Mostra estado das conexões
 
 ### Múltiplas animações
 - Se estiver vendo animações duplicadas, pode ser que tanto o sistema antigo quanto o novo estejam ativos
@@ -118,6 +142,12 @@ Synchronized dice animation triggered: {d1: 4, d2: 3, ...}
 ### Problemas de Permissão  
 - Verifique se as RLS policies estão configuradas corretamente
 - Certifique-se que o usuário está autenticado
+
+### Logs de Erro Comuns
+1. **❌ Not connected to a Supabase room**: Usuário não está em uma sala
+2. **❌ Invalid roll data**: Dados corrompidos na sincronização
+3. **❌ No animation handler available**: Métodos do jogo não encontrados
+4. **⏰ Real-time subscription timed out**: Problemas de conexão
 
 ## Próximos Passos
 

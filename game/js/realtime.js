@@ -5,24 +5,47 @@ window.Realtime = (function(){
 
     // Initialize based on available services
     function init() {
+        console.log('🚀 Realtime.init() called');
+        console.log('📦 Available services check:');
+        console.log('  - SupabaseMultiplayer:', !!window.SupabaseMultiplayer);
+        console.log('  - Supabase client (sb):', !!window.sb);
+        console.log('  - Supabase auth:', !!(window.sb && window.sb.auth));
+        
         // Check if Supabase multiplayer is available and user is authenticated
         if (window.SupabaseMultiplayer && window.sb && window.sb.auth) {
+            console.log('🔍 Checking user authentication...');
             window.sb.auth.getUser().then(function(response) {
                 var user = response.data && response.data.user;
                 if (user) {
                     useSupabase = true;
+                    console.log('✅ User authenticated:', user.email || user.id);
+                    console.log('🌐 Switching to Supabase multiplayer mode');
+                    
                     if (window.SupabaseMultiplayer.init) {
-                        window.SupabaseMultiplayer.init();
+                        console.log('🔧 Initializing SupabaseMultiplayer...');
+                        var initResult = window.SupabaseMultiplayer.init();
+                        console.log('📡 SupabaseMultiplayer init result:', initResult);
+                    } else {
+                        console.warn('⚠️  SupabaseMultiplayer.init() method not found');
                     }
-                    console.log('Using Supabase for multiplayer');
                 } else {
                     useSupabase = false;
-                    console.log('User not authenticated, falling back to Socket.io');
+                    console.log('❌ User not authenticated, falling back to Socket.io');
                 }
+            }).catch(function(error) {
+                console.error('❌ Error checking user authentication:', error);
+                useSupabase = false;
+                console.log('🔄 Falling back to Socket.io due to auth error');
             });
         } else {
             useSupabase = false;
-            console.log('Supabase not available, using Socket.io');
+            console.log('❌ Supabase not fully available, using Socket.io');
+            
+            var missing = [];
+            if (!window.SupabaseMultiplayer) missing.push('SupabaseMultiplayer');
+            if (!window.sb) missing.push('Supabase client (sb)');
+            if (!window.sb?.auth) missing.push('Supabase auth');
+            console.log('🔍 Missing components:', missing.join(', '));
         }
     }
 
@@ -144,10 +167,21 @@ window.Realtime = (function(){
     }
 
     function requestRoll(){
+        console.log('🎲 requestRoll() called - useSupabase:', useSupabase);
+        
         if (useSupabase && window.SupabaseMultiplayer) {
+            console.log('Using Supabase for dice roll synchronization');
+            
             // Check if properly connected to a room before rolling
             if (!window.SupabaseMultiplayer.isConnected) {
-                console.error('Not connected to a Supabase room. Cannot roll dice.');
+                console.error('❌ Not connected to a Supabase room. Cannot roll dice.');
+                console.log('Current room ID:', window.SupabaseMultiplayer.currentRoomId);
+                console.log('Current session ID:', window.SupabaseMultiplayer.currentGameSessionId);
+                
+                // Try to show error to user
+                if (window.s_oGame && window.s_oGame.showMsgBox) {
+                    window.s_oGame.showMsgBox("Erro: Não conectado a uma sala. Tente recarregar a página.");
+                }
                 return;
             }
             
@@ -158,40 +192,56 @@ window.Realtime = (function(){
                 var die2 = dice[1];
                 var total = die1 + die2;
                 
-                console.log('Rolling dice with synchronized animation for all players:', die1, die2, 'total:', total);
+                console.log('🎯 Rolling dice with synchronized animation for all players:', die1, die2, 'total:', total);
                 
                 // Record the synchronized roll - this will trigger animation on all players' screens
                 window.SupabaseMultiplayer.recordSynchronizedRoll(die1, die2)
                     .then(function(result) {
-                        console.log('Synchronized dice roll recorded successfully:', result);
-                        // All players in the room will see the animation via real-time subscription
+                        console.log('✅ Synchronized dice roll recorded successfully:', result);
                         
                         // Also record the roll in the game history for game logic
                         return window.SupabaseMultiplayer.recordDiceRoll(die1, die2, 'come_out', total);
                     })
                     .then(function(result) {
-                        console.log('Game dice roll recorded successfully:', result);
+                        console.log('✅ Game dice roll recorded successfully:', result);
                     })
                     .catch(function(error) {
-                        console.error('Failed to record dice roll:', error);
+                        console.error('❌ Failed to record dice roll:', error);
+                        console.error('Error details:', error);
+                        
                         // Fallback: trigger local animation if recording fails
-                        if (window.s_oGame && window.s_oGame.onServerRoll) {
-                            console.log('Using fallback local animation');
+                        if (window.s_oGame && window.s_oGame.onSynchronizedRoll) {
+                            console.log('🔄 Using fallback local animation (onSynchronizedRoll)');
+                            window.s_oGame.onSynchronizedRoll({
+                                d1: die1,
+                                d2: die2,
+                                total: total,
+                                ts: Date.now(),
+                                playerName: 'Você (Local)',
+                                playerId: 'local',
+                                isMyRoll: true
+                            });
+                        } else if (window.s_oGame && window.s_oGame.onServerRoll) {
+                            console.log('🔄 Using fallback local animation (onServerRoll)');
                             window.s_oGame.onServerRoll({
                                 d1: die1,
                                 d2: die2,
                                 total: total,
                                 ts: Date.now(),
-                                playerName: 'Jogador'
+                                playerName: 'Você (Local)'
                             });
+                        } else {
+                            console.error('❌ No fallback animation method available!');
                         }
                     });
             } else {
-                console.error('Game instance or dice generation method not available');
+                console.error('❌ Game instance or dice generation method not available');
+                console.log('Available s_oGame methods:', window.s_oGame ? Object.keys(window.s_oGame) : 's_oGame not found');
             }
             return;
         }
         
+        console.log('Using Socket.IO fallback for dice roll');
         if(!socket) return;
         socket.emit('request_roll');
     }
