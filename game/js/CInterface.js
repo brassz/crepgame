@@ -22,6 +22,7 @@ function CInterface(){
     var _oButRoomPrata;
     var _oButRoomOuro;
     var _oTurnTimerText;
+    var _oTurnNotification;
     var _fRequestFullScreen = null;
     var _fCancelFullScreen = null;
     
@@ -144,6 +145,16 @@ function CInterface(){
                     "",
                     true, true, false,
                     false );
+
+        // Notification for player turns
+        _oTurnNotification = new CTLText(s_oStage, 
+                    CANVAS_WIDTH/2, 150, 400, 60, 
+                    32, "center", "#ff0000", FONT2, 1.2,
+                    2, 2,
+                    "",
+                    true, true, true,
+                    false );
+        _oTurnNotification.visible = false;
       
         _oClearAllBet = new CGfxButton(764,636,s_oSpriteLibrary.getSprite('but_clear_all'),s_oStage);
         _oClearAllBet.addEventListener(ON_MOUSE_UP, this._onClearAllBet, this);
@@ -281,6 +292,72 @@ function CInterface(){
         if (_oTurnTimerText){
             var s = (iSeconds>0) ? ("TURNO: "+iSeconds+"s") : "";
             _oTurnTimerText.refreshText(s);
+        }
+    };
+
+    // Mostra notificação de turno do jogador
+    this.showTurnNotification = function(isMyTurn){
+        if (_oTurnNotification){
+            if (isMyTurn){
+                _oTurnNotification.refreshText("AGORA É SUA VEZ!");
+                _oTurnNotification.setColor("#00ff00"); // Verde para sua vez
+            } else {
+                _oTurnNotification.refreshText("Aguarde sua vez...");
+                _oTurnNotification.setColor("#ffaa00"); // Laranja para esperar
+            }
+            _oTurnNotification.visible = true;
+            
+            // Auto-hide after 3 seconds
+            setTimeout(function(){
+                if (_oTurnNotification){
+                    _oTurnNotification.visible = false;
+                }
+            }, 3000);
+        }
+    };
+
+    // Esconde notificação de turno
+    this.hideTurnNotification = function(){
+        if (_oTurnNotification){
+            _oTurnNotification.visible = false;
+        }
+    };
+
+    // Mostra quando outro jogador fez uma aposta
+    this.onOtherPlayerBetPlaced = function(data){
+        // Show a brief notification that another player placed a bet
+        var playerNumber = data.playerIndex + 1;
+        var message = "Jogador " + playerNumber + " apostou " + data.betAmount;
+        this.showBriefMessage(message, "#00aaff");
+        
+        console.log("Player", playerNumber, "placed bet:", data.betAmount, "on", data.betType);
+    };
+
+    // Mostra quando outro jogador limpou apostas
+    this.onOtherPlayerBetsCleared = function(data){
+        var playerNumber = data.playerIndex + 1;
+        var message = "Jogador " + playerNumber + " limpou apostas";
+        this.showBriefMessage(message, "#ffaa00");
+        
+        console.log("Player", playerNumber, "cleared bets");
+    };
+
+    // Mostra mensagem breve na tela
+    this.showBriefMessage = function(message, color){
+        if (_oHelpText){
+            var originalMessage = _szLastMsgHelp;
+            _oHelpText.refreshText(message);
+            if (color) {
+                _oHelpText.setColor(color);
+            }
+            
+            // Restore original message after 2 seconds
+            setTimeout(function(){
+                if (_oHelpText){
+                    _oHelpText.refreshText(originalMessage);
+                    _oHelpText.setColor("#ffde00");
+                }
+            }, 2000);
         }
     };
     

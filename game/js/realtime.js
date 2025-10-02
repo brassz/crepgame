@@ -72,6 +72,21 @@ window.Realtime = (function(){
                 window.s_oInterface.updateTurnTimer(data.remaining);
             }
         });
+        
+        // Handle other players' bet placements
+        socket.on('player_bet_placed', function(data){
+            if(window.s_oInterface && window.s_oInterface.onOtherPlayerBetPlaced){
+                window.s_oInterface.onOtherPlayerBetPlaced(data);
+            }
+        });
+        
+        // Handle other players clearing bets
+        socket.on('player_bets_cleared', function(data){
+            if(window.s_oInterface && window.s_oInterface.onOtherPlayerBetsCleared){
+                window.s_oInterface.onOtherPlayerBetsCleared(data);
+            }
+        });
+        
         return socket;
     }
 
@@ -124,6 +139,26 @@ window.Realtime = (function(){
         socket.emit('request_roll');
     }
 
+    function sendBetPlacement(betType, betAmount){
+        if (useSupabase && window.SupabaseMultiplayer) {
+            return window.SupabaseMultiplayer.placeBet(betType, betAmount);
+        }
+        
+        if(!socket) return;
+        socket.emit('place_bet', { betType: betType, betAmount: betAmount });
+    }
+
+    function sendClearBets(){
+        if (useSupabase && window.SupabaseMultiplayer) {
+            // Handle clearing bets in Supabase
+            console.log('Clearing bets via Supabase');
+            return;
+        }
+        
+        if(!socket) return;
+        socket.emit('clear_bets');
+    }
+
     function placeBet(betType, betAmount) {
         if (useSupabase && window.SupabaseMultiplayer) {
             return window.SupabaseMultiplayer.placeBet(betType, betAmount);
@@ -168,6 +203,8 @@ window.Realtime = (function(){
         connect: connect,
         join: join,
         requestRoll: requestRoll,
+        sendBetPlacement: sendBetPlacement,
+        sendClearBets: sendClearBets,
         placeBet: placeBet,
         recordRoll: recordRoll,
         leave: leave,

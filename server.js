@@ -82,6 +82,38 @@ io.on('connection', (socket) => {
     startNextTurn(currentRoom);
   });
 
+  // Handle player bet placement (for syncing between players)
+  socket.on('place_bet', (data) => {
+    if (!currentRoom) return;
+    const state = roomState[currentRoom];
+    const currentPlayer = state.order[state.currentIndex];
+    if (socket.id !== currentPlayer) return; // not your turn
+    
+    // Broadcast bet placement to other players in the room
+    socket.to(currentRoom).emit('player_bet_placed', {
+      playerId: socket.id,
+      betType: data.betType,
+      betAmount: data.betAmount,
+      playerIndex: state.currentIndex,
+      timestamp: Date.now()
+    });
+  });
+
+  // Handle clear bets (for syncing between players)
+  socket.on('clear_bets', () => {
+    if (!currentRoom) return;
+    const state = roomState[currentRoom];
+    const currentPlayer = state.order[state.currentIndex];
+    if (socket.id !== currentPlayer) return; // not your turn
+    
+    // Broadcast bet clearing to other players in the room
+    socket.to(currentRoom).emit('player_bets_cleared', {
+      playerId: socket.id,
+      playerIndex: state.currentIndex,
+      timestamp: Date.now()
+    });
+  });
+
   socket.on('disconnect', () => {
     if (currentRoom) {
       const state = roomState[currentRoom];
@@ -128,7 +160,18 @@ function clearTimer(room){
 function emitTurnUpdate(room){
   const state = roomState[room];
   const playerId = state.order[state.currentIndex] || null;
-  io.to(room).emit('turn_update', { playerId, endsAt: state.turnEndsAt });
+  const remainingTime = state.turnEndsAt ? Math.max(0, Math.ceil((state.turnEndsAt - Date.now())/1000)) : 0;
+  
+  // Send turn update to all players in the room
+  io.to(room).emit('turn_update', { 
+    playerId, 
+    endsAt: state.turnEndsAt, 
+    remainingTime,
+    totalPlayers: state.order.length,
+    currentPlayerIndex: state.currentIndex
+  });
+  
+  console.log(`Turn update for room ${room}: Player ${playerId} (${state.currentIndex + 1}/${state.order.length}), ${remainingTime}s remaining`);
 }
 
 function startNextTurn(room){
