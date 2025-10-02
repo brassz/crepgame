@@ -552,9 +552,9 @@ BEGIN
     END IF;
 
     -- Get next roll number
-    SELECT COALESCE(MAX(roll_number), 0) + 1 INTO roll_number
-    FROM public.dice_rolls
-    WHERE game_session_id = p_game_session_id;
+    SELECT COALESCE(MAX(dr.roll_number), 0) + 1 INTO roll_number
+    FROM public.dice_rolls dr
+    WHERE dr.game_session_id = p_game_session_id;
 
     -- Record the roll
     INSERT INTO public.dice_rolls (
