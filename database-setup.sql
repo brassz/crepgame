@@ -241,7 +241,7 @@ BEGIN
             
             INSERT INTO public.game_rooms (room_type, room_name, min_bet, max_bet, max_players)
             VALUES (room_configs.room_type, room_name, room_configs.min_bet, room_configs.max_bet, 8)
-            ON CONFLICT (room_type, room_name) DO NOTHING;
+            ON CONFLICT (public.game_rooms.room_type, public.game_rooms.room_name) DO NOTHING;
         END LOOP;
     END LOOP;
 END;
