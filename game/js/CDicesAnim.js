@@ -169,7 +169,9 @@ function CDicesAnim(iX,iY){
     this._onDiceBAnimEnded = function(evt){
         if(evt.currentTarget.currentAnimation.indexOf("stop_anim") !== -1){
             _oThis.setShowNumberInfo();
-            setTimeout(function(){_oThis.hide();},TIME_SHOW_DICES_RESULT);
+            // Reduced delay for faster gameplay
+            var reducedTime = Math.max(1000, TIME_SHOW_DICES_RESULT * 0.5); // At least 1 second, but 50% faster
+            setTimeout(function(){_oThis.hide();}, reducedTime);
         }
         
     };

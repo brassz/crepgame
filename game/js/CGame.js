@@ -38,6 +38,9 @@ function CGame(oData){
         _bDistributeFiches = false;
         _iHandCont = 0;
         _iState=-1;
+        
+        // Initialize rolling flag to prevent double-clicks
+        this._isRolling = false;
 
         _iNumberPoint = -1;
 
@@ -116,8 +119,16 @@ function CGame(oData){
 
         // Se conectado ao servidor, pedi-lo para rolar (autoritativo)
         if (window.Realtime && Realtime.isConnected()){
+            // Show immediate feedback to user
+            _oInterface.showMessage("Lançando dados...");
+            
             Realtime.requestRoll().catch(function(error) {
                 console.error('Failed to request roll:', error);
+                
+                // Hide loading message
+                if (_oInterface && _oInterface.hideMessage) {
+                    _oInterface.hideMessage();
+                }
                 
                 // Show user-friendly message for common errors
                 var errorMessage = "Erro de conexão. Jogando localmente...";
@@ -136,7 +147,7 @@ function CGame(oData){
                         if (_oInterface && _oInterface.hideMessage) {
                             _oInterface.hideMessage();
                         }
-                    }, 2000);
+                    }, 1500); // Reduced timeout
                 }
                 
                 // Fallback to local roll if server request fails
@@ -275,8 +286,28 @@ function CGame(oData){
                 }
             });
         }
-        // Só permite rolar se for meu turno
-        _oInterface.enableRoll(isMyTurn && _oMySeat.getCurBet() > 0);
+        // Só permite rolar se for meu turno E se há aposta ativa
+        var canRoll = isMyTurn && _oMySeat.getCurBet() > 0;
+        _oInterface.enableRoll(canRoll);
+        
+        // Show clear feedback about turn status
+        if (isMyTurn) {
+            if (_oMySeat.getCurBet() > 0) {
+                _oInterface.showMessage("SUA VEZ! Clique para lançar os dados");
+                setTimeout(function() {
+                    if (_oInterface && _oInterface.hideMessage) {
+                        _oInterface.hideMessage();
+                    }
+                }, 2000);
+            } else {
+                _oInterface.showMessage("Faça uma aposta primeiro!");
+                setTimeout(function() {
+                    if (_oInterface && _oInterface.hideMessage) {
+                        _oInterface.hideMessage();
+                    }
+                }, 2000);
+            }
+        }
         
         // Update turn display immediately
         if(_oInterface && _oInterface.updateTurnTimer){
@@ -380,12 +411,16 @@ function CGame(oData){
         _oInterface.enableBetFiches();
         $(s_oMain).trigger("save_score",[_oMySeat.getCredit()]);
         
+        // Reset rolling flag to allow next roll
+        this._isRolling = false;
+        
         } catch(error) {
             console.error("Erro em dicesAnimEnded:", error);
             // Reset do estado em caso de erro
             _aBetsToRemove = new Array();
             _aFichesToMove = new Array();
             _iState = STATE_GAME_WAITING_FOR_BET;
+            this._isRolling = false; // Reset flag on error too
         }
     };
     
@@ -568,6 +603,11 @@ function CGame(oData){
     };
     
     this.onRoll = function(){
+        // Prevent multiple rapid clicks
+        if (this._isRolling) {
+            return;
+        }
+        
         if (_oMySeat.getCurBet() === 0) {
                 return;
         }
@@ -583,6 +623,9 @@ function CGame(oData){
                 return;
         }
 
+        // Set rolling flag to prevent double-clicks
+        this._isRolling = true;
+        
         _oInterface.showBlock();
         
         if(_iState === STATE_GAME_WAITING_FOR_BET){
