@@ -72,21 +72,6 @@ window.Realtime = (function(){
                 window.s_oInterface.updateTurnTimer(data.remaining);
             }
         });
-        socket.on('player_rolled', function(data){
-            if(window.s_oGame && window.s_oGame.onPlayerRolled){
-                window.s_oGame.onPlayerRolled(data);
-            }
-        });
-        socket.on('waiting_for_players', function(){
-            if(window.s_oInterface && window.s_oInterface.showWaitingForPlayers){
-                window.s_oInterface.showWaitingForPlayers();
-            }
-        });
-        socket.on('no_players_left', function(){
-            if(window.s_oInterface && window.s_oInterface.showWaitingForPlayers){
-                window.s_oInterface.showWaitingForPlayers();
-            }
-        });
         return socket;
     }
 
