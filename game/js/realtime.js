@@ -120,7 +120,22 @@ window.Realtime = (function(){
                 }
             }).catch(function(error) {
                 console.error('Failed to join Supabase room:', error);
-                alert('Erro ao entrar na sala: ' + (error.message || 'Erro desconhecido'));
+                
+                // Provide more specific error messages
+                let errorMessage = 'Erro desconhecido';
+                if (error.message) {
+                    if (error.message.includes('session conflict') || error.message.includes('duplicate')) {
+                        errorMessage = 'Conflito de sessão detectado. Tente novamente em alguns segundos.';
+                    } else if (error.message.includes('No available rooms')) {
+                        errorMessage = 'Não há salas disponíveis deste tipo no momento.';
+                    } else if (error.message.includes('not authenticated')) {
+                        errorMessage = 'Você precisa fazer login para entrar em uma sala.';
+                    } else {
+                        errorMessage = error.message;
+                    }
+                }
+                
+                alert('Erro ao entrar na sala: ' + errorMessage);
             });
         } else {
             // Fallback to Socket.io

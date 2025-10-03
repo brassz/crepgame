@@ -307,42 +307,70 @@ BEGIN
         RETURNING * INTO game_session;
     END IF;
 
-    -- Join the room
-    INSERT INTO public.player_sessions (
-        player_id, 
-        room_id, 
-        game_session_id, 
-        socket_id,
-        player_order
-    )
-    VALUES (
-        auth.uid(), 
-        available_room.id, 
-        game_session.id, 
-        p_socket_id,
-        available_room.current_players + 1
-    )
-    RETURNING * INTO new_session;
+    -- Check if player already has an active session in this specific room
+    SELECT * INTO new_session 
+    FROM public.player_sessions 
+    WHERE player_id = auth.uid() 
+    AND room_id = available_room.id 
+    AND is_active = true;
 
-    -- Update room player count
-    UPDATE public.game_rooms 
-    SET current_players = current_players + 1,
-        updated_at = NOW()
-    WHERE id = available_room.id;
+    IF FOUND THEN
+        -- Player is already in this room, return existing session
+        -- Update the socket_id if provided
+        IF p_socket_id IS NOT NULL THEN
+            UPDATE public.player_sessions 
+            SET socket_id = p_socket_id, updated_at = NOW()
+            WHERE id = new_session.id;
+        END IF;
+    ELSE
+        -- Join the room with new session
+        INSERT INTO public.player_sessions (
+            player_id, 
+            room_id, 
+            game_session_id, 
+            socket_id,
+            player_order
+        )
+        VALUES (
+            auth.uid(), 
+            available_room.id, 
+            game_session.id, 
+            p_socket_id,
+            available_room.current_players + 1
+        )
+        RETURNING * INTO new_session;
 
-    -- Log join event
-    INSERT INTO public.game_events (room_id, game_session_id, event_type, event_data, created_by)
-    VALUES (
-        available_room.id,
-        game_session.id,
-        'player_joined',
-        json_build_object(
-            'player_id', auth.uid(),
-            'username', player_profile.username,
-            'player_count', available_room.current_players + 1
-        ),
-        auth.uid()
-    );
+        -- Update room player count
+        UPDATE public.game_rooms 
+        SET current_players = current_players + 1,
+            updated_at = NOW()
+        WHERE id = available_room.id;
+    END IF;
+
+    -- Log join event (only for new joins, not reconnections)
+    IF NOT EXISTS (
+        SELECT 1 FROM public.player_sessions 
+        WHERE player_id = auth.uid() 
+        AND room_id = available_room.id 
+        AND is_active = true 
+        AND id != new_session.id
+    ) THEN
+        INSERT INTO public.game_events (room_id, game_session_id, event_type, event_data, created_by)
+        VALUES (
+            available_room.id,
+            game_session.id,
+            'player_joined',
+            json_build_object(
+                'player_id', auth.uid(),
+                'username', player_profile.username,
+                'player_count', (SELECT current_players FROM public.game_rooms WHERE id = available_room.id)
+            ),
+            auth.uid()
+        );
+    END IF;
+
+    -- Get updated room info for return
+    SELECT * INTO available_room FROM public.game_rooms WHERE id = available_room.id;
 
     -- Return success with room info
     RETURN json_build_object(
@@ -353,7 +381,7 @@ BEGIN
             'room_name', available_room.room_name,
             'min_bet', available_room.min_bet,
             'max_bet', available_room.max_bet,
-            'current_players', available_room.current_players + 1,
+            'current_players', available_room.current_players,
             'max_players', available_room.max_players
         ),
         'game_session_id', game_session.id,

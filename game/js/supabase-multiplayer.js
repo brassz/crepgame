@@ -76,6 +76,23 @@ window.SupabaseMultiplayer = (function(){
 
             if (error) {
                 console.error('Error joining room:', error);
+                
+                // Handle specific error cases
+                if (error.code === '23505' || error.message?.includes('duplicate') || error.message?.includes('unique')) {
+                    console.warn('Duplicate session detected, attempting to resolve...');
+                    // Try to leave current room and rejoin
+                    try {
+                        await leaveRoom();
+                        // Wait a moment for cleanup
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        // Retry the join
+                        return await joinRoom(roomType, socketId);
+                    } catch (retryError) {
+                        console.error('Failed to resolve duplicate session:', retryError);
+                        throw new Error('Unable to join room due to session conflict. Please refresh the page.');
+                    }
+                }
+                
                 throw error;
             }
 
