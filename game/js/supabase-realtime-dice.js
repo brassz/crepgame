@@ -152,7 +152,15 @@ window.SupabaseRealtimeDice = (function() {
             p_dice_2: dice2
         }).then(function(response) {
             if (response.error) {
-                throw response.error;
+                console.error('Supabase RPC error:', response.error);
+                // Provide more specific error information
+                var errorMsg = response.error.message || 'Unknown database error';
+                if (response.error.code === '42883') {
+                    errorMsg = 'Database function not found. Please check database setup.';
+                } else if (response.error.code === '42501') {
+                    errorMsg = 'Permission denied. Please check authentication.';
+                }
+                throw new Error(errorMsg);
             }
 
             const rollData = response.data;
@@ -160,6 +168,13 @@ window.SupabaseRealtimeDice = (function() {
 
             // The database trigger will notify other players via realtime
             return rollData;
+        }).catch(function(error) {
+            console.error('Request roll failed:', error);
+            // Re-throw with more context
+            if (error.message && error.message.includes('fetch')) {
+                throw new Error('Network error: Unable to connect to server');
+            }
+            throw error;
         });
     }
 

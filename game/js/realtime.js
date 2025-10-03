@@ -143,11 +143,15 @@ window.Realtime = (function(){
         document.addEventListener('DOMContentLoaded', function() {
             init().catch(function(error) {
                 console.error('Failed to initialize on load:', error);
+                // Don't prevent game from starting if realtime fails
+                isInitialized = false;
             });
         });
     } else {
         init().catch(function(error) {
             console.error('Failed to initialize:', error);
+            // Don't prevent game from starting if realtime fails
+            isInitialized = false;
         });
     }
 

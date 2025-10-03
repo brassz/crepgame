@@ -118,8 +118,34 @@ function CGame(oData){
         if (window.Realtime && Realtime.isConnected()){
             Realtime.requestRoll().catch(function(error) {
                 console.error('Failed to request roll:', error);
+                
+                // Show user-friendly message for common errors
+                var errorMessage = "Erro de conexão. Jogando localmente...";
+                if (error && error.message) {
+                    if (error.message.includes('not authenticated')) {
+                        errorMessage = "Sessão expirada. Jogando localmente...";
+                    } else if (error.message.includes('Not in a room')) {
+                        errorMessage = "Não conectado à sala. Jogando localmente...";
+                    }
+                }
+                
+                // Show brief message to user
+                if (_oInterface && _oInterface.showMessage) {
+                    _oInterface.showMessage(errorMessage);
+                    setTimeout(function() {
+                        if (_oInterface && _oInterface.hideMessage) {
+                            _oInterface.hideMessage();
+                        }
+                    }, 2000);
+                }
+                
                 // Fallback to local roll if server request fails
-                _oDicesAnim.rollDices(_aDiceResult);
+                _iContRolling++;
+                _aDiceResult = new Array();
+                s_oGame._generateWinLoss();
+                _aDiceResultHistory.push(_aDiceResult);
+                _iTimeElaps = 0;
+                _oDicesAnim.startRolling(_aDiceResult);
             });
             return;
         }

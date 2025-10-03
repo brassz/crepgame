@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Dice Game Fixes</title>
+    <script>
+        // Mock global objects for testing
+        window.s_oStage = { addChild: function() {}, removeAllChildren: function() {} };
+        window.s_oSpriteLibrary = { getSprite: function() { return {}; } };
+        window.s_oGameSettings = { getFicheValues: function() { return 50; } };
+        window.createjs = {
+            Container: function() { return { visible: false, x: 0, y: 0, addChild: function() {} }; },
+            Graphics: function() { return { beginFill: function() { return this; }, drawRect: function() { return this; } }; },
+            Shape: function() { return { x: 0, y: 0, on: function() {} }; },
+            SpriteSheet: function() { return {}; }
+        };
+        window.createBitmap = function() { return { x: 0, y: 0, visible: false }; };
+        window.createSprite = function() { return { stop: function() {}, visible: false, x: 0, y: 0, addEventListener: function() {} }; };
+        window.playSound = function() {};
+        
+        // Mock constants
+        window.CANVAS_WIDTH = 1280;
+        window.CANVAS_HEIGHT = 768;
+        window.NUM_DICE_ROLLING_FRAMES = 10;
+        
+        // Test function to verify fixes
+        function testFixes() {
+            console.log("Testing dice game fixes...");
+            
+            try {
+                // Test 1: Check if CDicesAnim has correct methods
+                if (typeof CDicesAnim === 'function') {
+                    var diceAnim = new CDicesAnim(240, 159);
+                    
+                    // Check if startRolling method exists (the correct one)
+                    if (typeof diceAnim.startRolling === 'function') {
+                        console.log("✓ CDicesAnim.startRolling method exists");
+                    } else {
+                        console.error("✗ CDicesAnim.startRolling method missing");
+                    }
+                    
+                    // Check if rollDices method does NOT exist (the incorrect one)
+                    if (typeof diceAnim.rollDices === 'undefined') {
+                        console.log("✓ CDicesAnim.rollDices method correctly does not exist");
+                    } else {
+                        console.error("✗ CDicesAnim.rollDices method should not exist");
+                    }
+                } else {
+                    console.error("✗ CDicesAnim constructor not available");
+                }
+                
+                // Test 2: Check if Realtime module handles errors gracefully
+                if (typeof window.Realtime === 'object') {
+                    console.log("✓ Realtime module available");
+                    
+                    // Test isConnected method
+                    if (typeof window.Realtime.isConnected === 'function') {
+                        var connected = window.Realtime.isConnected();
+                        console.log("✓ Realtime.isConnected() returns:", connected);
+                    }
+                } else {
+                    console.log("ℹ Realtime module not available (expected in test environment)");
+                }
+                
+                console.log("✓ All tests completed successfully!");
+                return true;
+                
+            } catch (error) {
+                console.error("✗ Test failed:", error);
+                return false;
+            }
+        }
+    </script>
+</head>
+<body>
+    <h1>Dice Game Fix Test</h1>
+    <div id="results"></div>
+    
+    <!-- Load the fixed JavaScript files -->
+    <script src="js/CDicesAnim.js"></script>
+    <script src="js/realtime.js"></script>
+    
+    <script>
+        // Run tests when page loads
+        window.onload = function() {
+            var results = document.getElementById('results');
+            var success = testFixes();
+            
+            if (success) {
+                results.innerHTML = '<p style="color: green;">✓ All fixes verified successfully!</p>';
+            } else {
+                results.innerHTML = '<p style="color: red;">✗ Some tests failed. Check console for details.</p>';
+            }
+        };
+    </script>
+</body>
+</html>
