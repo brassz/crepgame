@@ -4,10 +4,8 @@ const http = require('http');
 const { Server } = require('socket.io');
 
 const app = express();
-const server = http.createServer(app);
-const io = new Server(server, {
-  cors: { origin: '*' }
-});
+let server = null;
+let io = null;
 
 // Static files (serve the game)
 app.use('/', express.static(path.join(__dirname, 'game')));
@@ -31,125 +29,161 @@ function getRoomPlayerCount(room) {
   return roomState[room] ? roomState[room].players.size : 0;
 }
 
-io.on('connection', (socket) => {
-  let currentRoom = null;
 
-  socket.on('join_room', (room) => {
-    if (!ROOM_CONFIGS[room]) return;
-    if (currentRoom) {
-      socket.leave(currentRoom);
-      roomState[currentRoom].players.delete(socket.id);
-      io.to(currentRoom).emit('players_update', getRoomPlayerCount(currentRoom));
-    }
+const PORT = parseInt(process.env.PORT) || 3000;
 
-    const cfg = ROOM_CONFIGS[room];
-    if (getRoomPlayerCount(room) >= cfg.max_players) {
-      socket.emit('room_full');
-      return;
-    }
-
-    currentRoom = room;
-    socket.join(room);
-    const state = roomState[room];
-    state.players.add(socket.id);
-    if (!state.order.includes(socket.id)) state.order.push(socket.id);
-    
-    const playerIndex = state.order.indexOf(socket.id) + 1;
-    const playerName = `Jogador ${playerIndex}`;
-    
-    socket.emit('room_config', cfg);
-    io.to(room).emit('players_update', getRoomPlayerCount(room));
-    
-    // Notify all players that someone joined
-    io.to(room).emit('player_joined', { 
-      playerName: playerName,
-      playerCount: getRoomPlayerCount(room),
-      maxPlayers: cfg.max_players
-    });
-
-    // start turn cycle if not running
-    if (state.currentIndex === -1 && state.order.length > 0){
-      startNextTurn(room);
-    } else {
-      // sync current turn to the newcomer
-      emitTurnUpdate(room);
-    }
-
-    // send last roll to newcomer (optional)
-    if (roomState[room].lastRoll) {
-      socket.emit('dice_result', roomState[room].lastRoll);
-    }
+// Handle server startup with error handling
+let serverStarted = false;
+function startServer(port) {
+  if (serverStarted) {
+    return;
+  }
+  
+  // Create server and Socket.IO instance
+  server = http.createServer(app);
+  io = new Server(server, {
+    cors: { origin: '*' }
   });
-
-  // Authoritative roll from server
-  socket.on('request_roll', () => {
-    if (!currentRoom) {
-      console.log('❌ request_roll: No current room for socket', socket.id);
-      return;
-    }
-    const state = roomState[currentRoom];
-    const currentPlayer = state.order[state.currentIndex];
-    if (socket.id !== currentPlayer) {
-      console.log('❌ request_roll: Not current player turn. Current:', currentPlayer, 'Requesting:', socket.id);
-      return; // not your turn
-    }
-    // check timer
-    if (state.turnEndsAt && Date.now() > state.turnEndsAt) {
-      console.log('❌ request_roll: Turn time expired');
-      return;
-    }
-    
-    const playerIndex = state.order.indexOf(socket.id) + 1;
-    const playerName = `Jogador ${playerIndex}`;
-    
-    console.log(`🎲 ${playerName} (${socket.id}) is rolling dice in room ${currentRoom}`);
-    
-    // Notify all players that this player is rolling
-    io.to(currentRoom).emit('player_rolling', { 
-      playerId: socket.id, 
-      playerName: playerName 
+  
+  // Set up Socket.IO event handlers
+  setupSocketHandlers();
+  
+  server.listen(port)
+    .on('listening', () => {
+      serverStarted = true;
+      console.log(`✅ Server successfully started on http://localhost:${port}`);
+      console.log(`🎮 Game available at: http://localhost:${port}/`);
+      console.log(`🔌 Socket.IO client available at: http://localhost:${port}/socket.io/socket.io.js`);
+    })
+    .on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.log(`⚠️  Port ${port} is busy, trying port ${port + 1}`);
+        startServer(port + 1);
+      } else {
+        console.error('❌ Server error:', err);
+        process.exit(1);
+      }
     });
-    
-    performRoll(currentRoom);
-    startNextTurn(currentRoom);
-  });
+}
 
-  socket.on('disconnect', () => {
-    if (currentRoom) {
-      const state = roomState[currentRoom];
+function setupSocketHandlers() {
+  io.on('connection', (socket) => {
+    let currentRoom = null;
+
+    socket.on('join_room', (room) => {
+      if (!ROOM_CONFIGS[room]) return;
+      if (currentRoom) {
+        socket.leave(currentRoom);
+        roomState[currentRoom].players.delete(socket.id);
+        io.to(currentRoom).emit('players_update', getRoomPlayerCount(currentRoom));
+      }
+
+      const cfg = ROOM_CONFIGS[room];
+      if (getRoomPlayerCount(room) >= cfg.max_players) {
+        socket.emit('room_full');
+        return;
+      }
+
+      currentRoom = room;
+      socket.join(room);
+      const state = roomState[room];
+      state.players.add(socket.id);
+      if (!state.order.includes(socket.id)) state.order.push(socket.id);
+      
       const playerIndex = state.order.indexOf(socket.id) + 1;
       const playerName = `Jogador ${playerIndex}`;
       
-      state.players.delete(socket.id);
-      const idx = state.order.indexOf(socket.id);
-      if (idx !== -1) {
-        state.order.splice(idx,1);
-        if (idx <= state.currentIndex) state.currentIndex--;
+      socket.emit('room_config', cfg);
+      io.to(room).emit('players_update', getRoomPlayerCount(room));
+      
+      // Notify all players that someone joined
+      io.to(room).emit('player_joined', { 
+        playerName: playerName,
+        playerCount: getRoomPlayerCount(room),
+        maxPlayers: cfg.max_players
+      });
+
+      // start turn cycle if not running
+      if (state.currentIndex === -1 && state.order.length > 0){
+        startNextTurn(room);
+      } else {
+        // sync current turn to the newcomer
+        emitTurnUpdate(room);
+      }
+
+      // send last roll to newcomer (optional)
+      if (roomState[room].lastRoll) {
+        socket.emit('dice_result', roomState[room].lastRoll);
+      }
+    });
+
+    // Authoritative roll from server
+    socket.on('request_roll', () => {
+      if (!currentRoom) {
+        console.log('❌ request_roll: No current room for socket', socket.id);
+        return;
+      }
+      const state = roomState[currentRoom];
+      const currentPlayer = state.order[state.currentIndex];
+      if (socket.id !== currentPlayer) {
+        console.log('❌ request_roll: Not current player turn. Current:', currentPlayer, 'Requesting:', socket.id);
+        return; // not your turn
+      }
+      // check timer
+      if (state.turnEndsAt && Date.now() > state.turnEndsAt) {
+        console.log('❌ request_roll: Turn time expired');
+        return;
       }
       
-      // Notify remaining players
-      io.to(currentRoom).emit('players_update', getRoomPlayerCount(currentRoom));
-      io.to(currentRoom).emit('player_left', {
-        playerName: playerName,
-        playerCount: getRoomPlayerCount(currentRoom)
+      const playerIndex = state.order.indexOf(socket.id) + 1;
+      const playerName = `Jogador ${playerIndex}`;
+      
+      console.log(`🎲 ${playerName} (${socket.id}) is rolling dice in room ${currentRoom}`);
+      
+      // Notify all players that this player is rolling
+      io.to(currentRoom).emit('player_rolling', { 
+        playerId: socket.id, 
+        playerName: playerName 
       });
       
-      if (state.order.length === 0){
-        clearTimer(currentRoom);
-        state.currentIndex = -1;
-      } else {
-        // if current index out of bounds or current player missing, advance
-        const cur = state.order[state.currentIndex];
-        if (!cur) startNextTurn(currentRoom);
-      }
-    }
-  });
-});
+      performRoll(currentRoom);
+      startNextTurn(currentRoom);
+    });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Server listening on http://localhost:${PORT}`);
-});
+    socket.on('disconnect', () => {
+      if (currentRoom) {
+        const state = roomState[currentRoom];
+        const playerIndex = state.order.indexOf(socket.id) + 1;
+        const playerName = `Jogador ${playerIndex}`;
+        
+        state.players.delete(socket.id);
+        const idx = state.order.indexOf(socket.id);
+        if (idx !== -1) {
+          state.order.splice(idx,1);
+          if (idx <= state.currentIndex) state.currentIndex--;
+        }
+        
+        // Notify remaining players
+        io.to(currentRoom).emit('players_update', getRoomPlayerCount(currentRoom));
+        io.to(currentRoom).emit('player_left', {
+          playerName: playerName,
+          playerCount: getRoomPlayerCount(currentRoom)
+        });
+        
+        if (state.order.length === 0){
+          clearTimer(currentRoom);
+          state.currentIndex = -1;
+        } else {
+          // if current index out of bounds or current player missing, advance
+          const cur = state.order[state.currentIndex];
+          if (!cur) startNextTurn(currentRoom);
+        }
+      }
+    });
+  });
+}
+
+startServer(PORT);
 
 function performRoll(room){
   const d1 = Math.floor(Math.random() * 6) + 1;
