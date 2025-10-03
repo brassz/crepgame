@@ -439,86 +439,82 @@ window.SupabaseMultiplayer = (function(){
         
         console.log(`🎲 Roll data: ${roll.die1} + ${roll.die2} = ${roll.total} by player ${roll.player_id}`);
         
-        // Get player name for the roller
-        supabase.from('profiles')
-            .select('username')
-            .eq('id', roll.player_id)
-            .single()
-            .then(function(response) {
-                const profile = response.data;
-                // Get current user ID for comparison
-                supabase.auth.getUser().then(function(userResponse) {
-                    const currentUserId = userResponse.data?.user?.id;
-                    const rollData = {
-                        d1: roll.die1,
-                        d2: roll.die2,
-                        total: roll.total,
-                        ts: roll.rolled_at ? Date.parse(roll.rolled_at) : Date.now(),
-                        playerName: profile ? profile.username : 'Jogador',
-                        playerId: roll.player_id,
-                        isMyRoll: roll.player_id === currentUserId
-                    };
+        // Process roll immediately to avoid delays
+        processRollAnimation(roll);
+    }
+    
+    // Separate function to process roll animation
+    async function processRollAnimation(roll) {
+        try {
+            // Get current user first
+            const { data: { user }, error: userError } = await supabase.auth.getUser();
+            if (userError) {
+                console.warn('Could not get current user:', userError);
+            }
+            
+            const currentUserId = user?.id;
+            
+            // Try to get player profile
+            let playerName = 'Jogador';
+            try {
+                const { data: profile, error: profileError } = await supabase
+                    .from('profiles')
+                    .select('username')
+                    .eq('id', roll.player_id)
+                    .single();
+                    
+                if (profile && profile.username) {
+                    playerName = profile.username;
+                }
+            } catch (profileError) {
+                console.warn('Could not get player profile:', profileError);
+            }
+            
+            const rollData = {
+                d1: roll.die1,
+                d2: roll.die2,
+                total: roll.total,
+                ts: roll.rolled_at ? Date.parse(roll.rolled_at) : Date.now(),
+                playerName: playerName,
+                playerId: roll.player_id,
+                isMyRoll: roll.player_id === currentUserId
+            };
 
-                    console.log('🎯 Triggering synchronized animation for all players:', rollData);
+            console.log('🎯 Triggering synchronized animation for all players:', rollData);
 
-                    // Trigger dice animation for all players in the room
-                    if (window.s_oGame && typeof window.s_oGame.onSynchronizedRoll === 'function') {
-                        window.s_oGame.onSynchronizedRoll(rollData);
-                        console.log('✅ Synchronized roll animation triggered successfully');
-                    } else if (window.s_oGame && typeof window.s_oGame.onServerRoll === 'function') {
-                        // Fallback to existing method
-                        console.log('⚠️ Using fallback onServerRoll method');
-                        window.s_oGame.onServerRoll(rollData);
-                    } else {
-                        console.error('❌ No valid roll handler found in game object');
-                    }
-                }).catch(function(userError) {
-                    console.error('Error getting current user:', userError);
-                    // Still trigger animation without user comparison
-                    const rollData = {
-                        d1: roll.die1,
-                        d2: roll.die2,
-                        total: roll.total,
-                        ts: roll.rolled_at ? Date.parse(roll.rolled_at) : Date.now(),
-                        playerName: profile ? profile.username : 'Jogador',
-                        playerId: roll.player_id,
-                        isMyRoll: false
-                    };
-
-                    if (window.s_oGame && typeof window.s_oGame.onSynchronizedRoll === 'function') {
-                        window.s_oGame.onSynchronizedRoll(rollData);
-                    } else if (window.s_oGame && typeof window.s_oGame.onServerRoll === 'function') {
-                        window.s_oGame.onServerRoll(rollData);
-                    }
-                });
-            }).catch(function(error) {
-                console.warn('Could not get player profile for roll:', error);
-                // Still trigger animation without player info
-                supabase.auth.getUser().then(function(userResponse) {
-                    const currentUserId = userResponse.data?.user?.id;
-                    const rollData = {
-                        d1: roll.die1,
-                        d2: roll.die2,
-                        total: roll.total,
-                        ts: roll.rolled_at ? Date.parse(roll.rolled_at) : Date.now(),
-                        playerName: 'Jogador',
-                        playerId: roll.player_id,
-                        isMyRoll: roll.player_id === currentUserId
-                    };
-
-                    console.log('🎯 Triggering animation with fallback player data:', rollData);
-
-                    if (window.s_oGame && typeof window.s_oGame.onSynchronizedRoll === 'function') {
-                        window.s_oGame.onSynchronizedRoll(rollData);
-                    } else if (window.s_oGame && typeof window.s_oGame.onServerRoll === 'function') {
-                        window.s_oGame.onServerRoll(rollData);
-                    } else {
-                        console.error('❌ No valid roll handler found in game object');
-                    }
-                }).catch(function(userError) {
-                    console.error('Error getting user for fallback roll:', userError);
-                });
-            });
+            // Trigger dice animation for all players in the room
+            if (window.s_oGame && typeof window.s_oGame.onSynchronizedRoll === 'function') {
+                window.s_oGame.onSynchronizedRoll(rollData);
+                console.log('✅ Synchronized roll animation triggered successfully');
+            } else if (window.s_oGame && typeof window.s_oGame.onServerRoll === 'function') {
+                // Fallback to existing method
+                console.log('⚠️ Using fallback onServerRoll method');
+                window.s_oGame.onServerRoll(rollData);
+            } else {
+                console.error('❌ No valid roll handler found in game object');
+                console.log('Available game methods:', Object.keys(window.s_oGame || {}));
+            }
+            
+        } catch (error) {
+            console.error('Error processing roll animation:', error);
+            
+            // Emergency fallback - trigger animation with minimal data
+            const fallbackRollData = {
+                d1: roll.die1,
+                d2: roll.die2,
+                total: roll.total,
+                ts: Date.now(),
+                playerName: 'Jogador',
+                playerId: roll.player_id,
+                isMyRoll: false
+            };
+            
+            if (window.s_oGame && typeof window.s_oGame.onSynchronizedRoll === 'function') {
+                window.s_oGame.onSynchronizedRoll(fallbackRollData);
+            } else if (window.s_oGame && typeof window.s_oGame.onServerRoll === 'function') {
+                window.s_oGame.onServerRoll(fallbackRollData);
+            }
+        }
     }
 
     // Handle dice roll events

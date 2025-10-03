@@ -201,39 +201,42 @@ function CGame(oData){
             return;
         }
         
+        // Verificar se a animação de dados já está rodando para evitar sobreposição
+        if (_oDicesAnim && _oDicesAnim.isVisible && _oDicesAnim.isVisible()) {
+            console.log('⚠️ Dice animation already running, skipping this synchronized roll');
+            return;
+        }
+        
         _aDiceResult = [roll.d1, roll.d2];
         _aDiceResultHistory.push(_aDiceResult);
         
-        // Determina se a rolagem foi feita pelo jogador atual
-        var isMyRoll = false;
-        if (window.sb && window.sb.auth) {
-            window.sb.auth.getUser().then(function(response) {
-                var user = response.data && response.data.user;
-                isMyRoll = (user && roll.playerId && user.id === roll.playerId);
-                
-                // Mostra mensagem adequada
-                if (roll.playerName) {
-                    var message;
-                    if (isMyRoll) {
-                        message = "Você jogou: " + roll.d1 + " + " + roll.d2 + " = " + roll.total;
-                        console.log('🎯 My synchronized roll:', message);
-                    } else {
-                        message = roll.playerName + " jogou: " + roll.d1 + " + " + roll.d2 + " = " + roll.total;
-                        console.log('👀 Other player synchronized roll:', message);
-                    }
-                    _oInterface.refreshMsgHelp(message, false);
-                }
-            });
-        } else {
-            // Fallback se não conseguir identificar o usuário
-            if (roll.playerName) {
-                var message = roll.playerName + " jogou: " + roll.d1 + " + " + roll.d2 + " = " + roll.total;
-                console.log('🎲 Synchronized roll (no auth):', message);
+        // Mostrar mensagem imediatamente (sem async)
+        if (roll.playerName) {
+            var message;
+            if (roll.isMyRoll) {
+                message = "Você jogou: " + roll.d1 + " + " + roll.d2 + " = " + roll.total;
+                console.log('🎯 My synchronized roll:', message);
+            } else {
+                message = roll.playerName + " jogou: " + roll.d1 + " + " + roll.d2 + " = " + roll.total;
+                console.log('👀 Other player synchronized roll:', message);
+            }
+            
+            // Atualizar interface imediatamente
+            if (_oInterface && _oInterface.refreshMsgHelp) {
                 _oInterface.refreshMsgHelp(message, false);
             }
         }
         
+        // Resetar tempo e iniciar animação
         _iTimeElaps = 0;
+        
+        // Garantir que o estado permite animação
+        if (_iState !== STATE_GAME_ROLLING) {
+            console.log('🎮 Setting game state to ROLLING for synchronized animation');
+            _iState = STATE_GAME_ROLLING;
+        }
+        
+        // Iniciar animação dos dados
         this._startRollingAnim();
         
         console.log('✅ Synchronized animation started for all players in room');

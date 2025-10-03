@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Sincronização de Dados</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        
+        .debug-section {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        button:hover {
+            background: #45a049;
+        }
+        
+        .danger {
+            background: #f44336;
+        }
+        
+        .danger:hover {
+            background: #da190b;
+        }
+        
+        .log {
+            background: #000;
+            padding: 10px;
+            border-radius: 4px;
+            min-height: 200px;
+            overflow-y: scroll;
+            max-height: 400px;
+            font-family: monospace;
+            margin-top: 10px;
+            font-size: 12px;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        
+        .connected {
+            background: #4CAF50;
+        }
+        
+        .disconnected {
+            background: #f44336;
+        }
+        
+        .warning {
+            background: #ff9800;
+            color: #000;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .dice-display {
+            font-size: 48px;
+            text-align: center;
+            padding: 20px;
+            background: #444;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎲 Debug Sincronização de Dados Multiplayer</h1>
+    
+    <div class="debug-section">
+        <h2>Status do Sistema</h2>
+        <div id="authStatus" class="status disconnected">Não autenticado</div>
+        <div id="roomStatus" class="status disconnected">Não conectado a sala</div>
+        <div id="realtimeStatus" class="status disconnected">Real-time desconectado</div>
+    </div>
+    
+    <div class="grid">
+        <div class="debug-section">
+            <h2>Controles de Conexão</h2>
+            <button onclick="checkAuth()">Verificar Autenticação</button>
+            <button onclick="joinTestRoom()">Entrar Sala Bronze</button>
+            <button onclick="leaveRoom()" class="danger">Sair da Sala</button>
+            <button onclick="debugConnection()">Debug Conexão</button>
+        </div>
+        
+        <div class="debug-section">
+            <h2>Teste de Dados</h2>
+            <button onclick="rollDice()">🎲 Rolar Dados</button>
+            <button onclick="testSpecificRoll()">🎯 Teste (5,2)</button>
+            <button onclick="simulateMultipleRolls()">🔄 Múltiplas Rolagens</button>
+            <div id="diceDisplay" class="dice-display">🎲 🎲</div>
+        </div>
+    </div>
+    
+    <div class="debug-section">
+        <h2>Logs Detalhados</h2>
+        <button onclick="clearLogs()">Limpar Logs</button>
+        <button onclick="exportLogs()">Exportar Logs</button>
+        <div id="logContainer" class="log"></div>
+    </div>
+
+    <!-- Include necessários -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="game/js/auth-config.js"></script>
+    <script src="game/js/supabase-multiplayer.js"></script>
+    
+    <script>
+        let logs = [];
+        let rollCount = 0;
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${type.toUpperCase()}: ${message}`;
+            logs.push(logEntry);
+            updateLogs();
+            
+            // Console log with appropriate method
+            if (type === 'error') {
+                console.error(message);
+            } else if (type === 'warn') {
+                console.warn(message);
+            } else {
+                console.log(message);
+            }
+        }
+        
+        function updateLogs() {
+            const container = document.getElementById('logContainer');
+            container.innerHTML = logs.map(log => `<div>${log}</div>`).join('');
+            container.scrollTop = container.scrollHeight;
+        }
+        
+        function clearLogs() {
+            logs = [];
+            updateLogs();
+        }
+        
+        function exportLogs() {
+            const logText = logs.join('\n');
+            const blob = new Blob([logText], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `dice_sync_debug_${new Date().toISOString().slice(0,19)}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        function updateStatus(elementId, connected, text) {
+            const statusEl = document.getElementById(elementId);
+            statusEl.textContent = text;
+            statusEl.className = 'status ' + (connected ? 'connected' : 'disconnected');
+        }
+        
+        async function checkAuth() {
+            log('Verificando status de autenticação...');
+            
+            try {
+                if (!window.SupabaseMultiplayer) {
+                    log('SupabaseMultiplayer não carregado', 'error');
+                    return;
+                }
+                
+                const profile = await window.SupabaseMultiplayer.getUserProfile();
+                if (profile) {
+                    log(`✅ Usuário autenticado: ${profile.username || profile.email}`, 'info');
+                    updateStatus('authStatus', true, `Autenticado: ${profile.username || 'Usuário'}`);
+                } else {
+                    log('❌ Usuário não autenticado', 'warn');
+                    updateStatus('authStatus', false, 'Não autenticado');
+                }
+            } catch (error) {
+                log(`Erro na verificação de auth: ${error.message}`, 'error');
+                updateStatus('authStatus', false, 'Erro de autenticação');
+            }
+        }
+        
+        async function joinTestRoom() {
+            log('🚪 Tentando entrar na sala Bronze...');
+            
+            try {
+                if (!window.SupabaseMultiplayer) {
+                    throw new Error('SupabaseMultiplayer não disponível');
+                }
+                
+                const result = await window.SupabaseMultiplayer.joinRoom('bronze');
+                
+                if (result && result.success) {
+                    log(`✅ Entrou na sala: ${result.room.room_name}`, 'info');
+                    log(`Jogadores na sala: ${result.room.current_players}/${result.room.max_players}`, 'info');
+                    updateStatus('roomStatus', true, `Sala: ${result.room.room_name} (${result.room.current_players} jogadores)`);
+                    updateStatus('realtimeStatus', true, 'Real-time ativo');
+                } else {
+                    throw new Error('Falha ao entrar na sala - resposta inválida');
+                }
+            } catch (error) {
+                log(`❌ Erro ao entrar na sala: ${error.message}`, 'error');
+                updateStatus('roomStatus', false, 'Erro ao conectar');
+            }
+        }
+        
+        async function leaveRoom() {
+            log('🚪 Saindo da sala...');
+            
+            try {
+                if (window.SupabaseMultiplayer) {
+                    await window.SupabaseMultiplayer.leaveRoom();
+                    log('✅ Saiu da sala com sucesso', 'info');
+                } else {
+                    log('SupabaseMultiplayer não disponível', 'warn');
+                }
+                
+                updateStatus('roomStatus', false, 'Não conectado');
+                updateStatus('realtimeStatus', false, 'Real-time desconectado');
+            } catch (error) {
+                log(`❌ Erro ao sair da sala: ${error.message}`, 'error');
+            }
+        }
+        
+        async function debugConnection() {
+            log('🔍 Executando debug completo da conexão...');
+            
+            try {
+                if (!window.SupabaseMultiplayer) {
+                    log('❌ SupabaseMultiplayer não carregado', 'error');
+                    return;
+                }
+                
+                const debug = await window.SupabaseMultiplayer.debugConnection();
+                log(`Debug result: ${JSON.stringify(debug, null, 2)}`, 'info');
+                
+                if (debug.success) {
+                    log('✅ Conexão com Supabase OK', 'info');
+                    if (debug.user) {
+                        log(`Usuário: ${debug.user.email}`, 'info');
+                    }
+                } else {
+                    log(`❌ Problema na conexão: ${debug.error}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Erro no debug: ${error.message}`, 'error');
+            }
+        }
+        
+        function generateDice() {
+            return [
+                Math.floor(Math.random() * 6) + 1,
+                Math.floor(Math.random() * 6) + 1
+            ];
+        }
+        
+        function displayDice(die1, die2) {
+            const display = document.getElementById('diceDisplay');
+            display.innerHTML = `🎲 ${die1} &nbsp;&nbsp; 🎲 ${die2}<br><small>Total: ${die1 + die2}</small>`;
+        }
+        
+        async function rollDice() {
+            rollCount++;
+            const [die1, die2] = generateDice();
+            const total = die1 + die2;
+            
+            log(`🎲 Rolagem #${rollCount}: ${die1} + ${die2} = ${total}`, 'info');
+            displayDice(die1, die2);
+            
+            try {
+                if (!window.SupabaseMultiplayer) {
+                    throw new Error('SupabaseMultiplayer não disponível');
+                }
+                
+                if (!window.SupabaseMultiplayer.isConnected) {
+                    throw new Error('Não conectado a uma sala');
+                }
+                
+                log('📤 Enviando rolagem sincronizada...', 'info');
+                const result = await window.SupabaseMultiplayer.recordSynchronizedRoll(die1, die2);
+                
+                if (result && result.success) {
+                    log('✅ Rolagem sincronizada enviada com sucesso', 'info');
+                    log(`Roll ID: ${result.roll_id}`, 'info');
+                } else {
+                    log(`❌ Falha ao sincronizar: ${result?.error || 'Erro desconhecido'}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Erro na rolagem: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testSpecificRoll() {
+            rollCount++;
+            const die1 = 5, die2 = 2, total = 7;
+            
+            log(`🎯 Teste específico #${rollCount}: ${die1} + ${die2} = ${total}`, 'info');
+            displayDice(die1, die2);
+            
+            try {
+                if (!window.SupabaseMultiplayer?.isConnected) {
+                    throw new Error('Não conectado a uma sala');
+                }
+                
+                const result = await window.SupabaseMultiplayer.recordSynchronizedRoll(die1, die2);
+                log(`Resultado do teste: ${JSON.stringify(result, null, 2)}`, 'info');
+            } catch (error) {
+                log(`❌ Erro no teste: ${error.message}`, 'error');
+            }
+        }
+        
+        async function simulateMultipleRolls() {
+            log('🔄 Simulando múltiplas rolagens...', 'info');
+            
+            const rolls = [
+                [1, 1], [6, 6], [3, 4], [2, 5], [1, 6]
+            ];
+            
+            for (let i = 0; i < rolls.length; i++) {
+                const [die1, die2] = rolls[i];
+                rollCount++;
+                
+                log(`🎲 Rolagem múltipla #${i+1}: ${die1} + ${die2} = ${die1 + die2}`, 'info');
+                displayDice(die1, die2);
+                
+                try {
+                    if (window.SupabaseMultiplayer?.isConnected) {
+                        await window.SupabaseMultiplayer.recordSynchronizedRoll(die1, die2);
+                        log(`✅ Rolagem ${i+1} sincronizada`, 'info');
+                    } else {
+                        log(`⚠️ Rolagem ${i+1} não sincronizada - não conectado`, 'warn');
+                    }
+                } catch (error) {
+                    log(`❌ Erro na rolagem ${i+1}: ${error.message}`, 'error');
+                }
+                
+                // Delay entre rolagens
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+            
+            log('🏁 Simulação de múltiplas rolagens concluída', 'info');
+        }
+        
+        // Mock do sistema de jogo para receber eventos sincronizados
+        window.s_oGame = {
+            onSynchronizedRoll: function(roll) {
+                log(`🎬 ANIMAÇÃO SINCRONIZADA RECEBIDA!`, 'info');
+                log(`Dados: ${roll.d1} + ${roll.d2} = ${roll.total}`, 'info');
+                log(`Jogador: ${roll.playerName} (ID: ${roll.playerId})`, 'info');
+                log(`É minha rolagem: ${roll.isMyRoll ? 'SIM' : 'NÃO'}`, 'info');
+                log(`Timestamp: ${new Date(roll.ts).toLocaleTimeString()}`, 'info');
+                
+                displayDice(roll.d1, roll.d2);
+                
+                // Simular feedback visual
+                const display = document.getElementById('diceDisplay');
+                display.style.background = roll.isMyRoll ? '#4CAF50' : '#2196F3';
+                setTimeout(() => {
+                    display.style.background = '#444';
+                }, 2000);
+            },
+            
+            onServerRoll: function(roll) {
+                log(`🎲 ROLAGEM SERVIDOR (fallback)`, 'warn');
+                log(`Dados: ${roll.d1} + ${roll.d2} = ${roll.total}`, 'info');
+                displayDice(roll.d1, roll.d2);
+            }
+        };
+        
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', function() {
+            log('🚀 Sistema de debug carregado', 'info');
+            log('Verificando componentes necessários...', 'info');
+            
+            if (window.SupabaseMultiplayer) {
+                log('✅ SupabaseMultiplayer disponível', 'info');
+                
+                // Inicializar
+                if (window.SupabaseMultiplayer.init) {
+                    window.SupabaseMultiplayer.init();
+                    log('✅ SupabaseMultiplayer inicializado', 'info');
+                }
+            } else {
+                log('❌ SupabaseMultiplayer NÃO disponível', 'error');
+            }
+            
+            // Verificar autenticação automaticamente
+            setTimeout(checkAuth, 1000);
+        });
+        
+    </script>
+</body>
+</html>

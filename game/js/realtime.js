@@ -195,11 +195,16 @@ window.Realtime = (function(){
                 
                 console.log('🎯 Rolling dice with synchronized animation for all players:', die1, die2, 'total:', total);
                 
+                // Show immediate feedback to the rolling player
+                if (window.s_oInterface && window.s_oInterface.refreshMsgHelp) {
+                    window.s_oInterface.refreshMsgHelp('Rolando dados...', false);
+                }
+                
                 // Record the synchronized roll - this will trigger animation on all players' screens
                 window.SupabaseMultiplayer.recordSynchronizedRoll(die1, die2)
                     .then(function(result) {
                         console.log('✅ Synchronized dice roll recorded successfully:', result);
-                        // All players in the room will see the animation via real-time subscription
+                        console.log('🎬 All players in the room should now see the dice animation');
                         
                         // Also record the roll in the game history for game logic
                         return window.SupabaseMultiplayer.recordDiceRoll(die1, die2, 'come_out', total);
@@ -220,14 +225,24 @@ window.Realtime = (function(){
                         }
                         
                         // Fallback: trigger local animation if recording fails
-                        if (window.s_oGame && typeof window.s_oGame.onServerRoll === 'function') {
-                            console.log('⚠️ Using fallback local animation');
+                        console.log('⚠️ Triggering fallback local animation due to recording error');
+                        if (window.s_oGame && typeof window.s_oGame.onSynchronizedRoll === 'function') {
+                            window.s_oGame.onSynchronizedRoll({
+                                d1: die1,
+                                d2: die2,
+                                total: total,
+                                ts: Date.now(),
+                                playerName: 'Você',
+                                playerId: 'local',
+                                isMyRoll: true
+                            });
+                        } else if (window.s_oGame && typeof window.s_oGame.onServerRoll === 'function') {
                             window.s_oGame.onServerRoll({
                                 d1: die1,
                                 d2: die2,
                                 total: total,
                                 ts: Date.now(),
-                                playerName: 'Jogador',
+                                playerName: 'Você',
                                 isMyRoll: true
                             });
                         } else {
