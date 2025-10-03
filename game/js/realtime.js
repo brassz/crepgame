@@ -54,6 +54,11 @@ window.Realtime = (function(){
                 window.s_oInterface.updateRoomInfo(room, count);
             }
         });
+        socket.on('dice_roll_start', function(data){
+            if(window.s_oGame && window.s_oGame.onDiceRollStart){
+                window.s_oGame.onDiceRollStart(data);
+            }
+        });
         socket.on('dice_result', function(roll){
             if(window.s_oGame && window.s_oGame.onServerRoll){
                 window.s_oGame.onServerRoll(roll);
@@ -69,7 +74,20 @@ window.Realtime = (function(){
         });
         socket.on('turn_tick', function(data){
             if(window.s_oInterface && window.s_oInterface.updateTurnTimer){
-                window.s_oInterface.updateTurnTimer(data.remaining);
+                // Get current turn info to determine if it's my turn
+                var playerInfo = null;
+                if(window.s_oGame && window.s_oGame._currentTurnData){
+                    var isMyTurn = false;
+                    if(socket && window.s_oGame._currentTurnData.playerId === socket.id){
+                        isMyTurn = true;
+                    }
+                    playerInfo = {
+                        isMyTurn: isMyTurn,
+                        playerIndex: window.s_oGame._currentTurnData.playerIndex,
+                        totalPlayers: window.s_oGame._currentTurnData.totalPlayers
+                    };
+                }
+                window.s_oInterface.updateTurnTimer(data.remaining, playerInfo);
             }
         });
         return socket;

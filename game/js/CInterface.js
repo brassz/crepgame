@@ -277,9 +277,18 @@ function CInterface(){
     };
 
     // Atualiza contador visual de turno (segundos restantes)
-    this.updateTurnTimer = function(iSeconds){
+    this.updateTurnTimer = function(iSeconds, playerInfo){
         if (_oTurnTimerText){
-            var s = (iSeconds>0) ? ("TURNO: "+iSeconds+"s") : "";
+            var s = "";
+            if(iSeconds > 0){
+                if(playerInfo && playerInfo.isMyTurn){
+                    s = "SEU TURNO: " + iSeconds + "s";
+                } else if(playerInfo && playerInfo.playerIndex){
+                    s = "JOGADOR " + playerInfo.playerIndex + "/" + playerInfo.totalPlayers + ": " + iSeconds + "s";
+                } else {
+                    s = "TURNO: " + iSeconds + "s";
+                }
+            }
             _oTurnTimerText.refreshText(s);
         }
     };
@@ -405,6 +414,31 @@ function CInterface(){
     
     this.isBlockVisible = function(){
         return _oBlock.visible;
+    };
+    
+    // Mostra mensagem temporária para os jogadores
+    this.showMessage = function(szMessage){
+        if(_oHelpText){
+            _oHelpText.refreshText(szMessage);
+        }
+        
+        // Criar um texto temporário se não houver help text
+        if(!_oHelpText){
+            var oTempMsg = new CTLText(s_oStage, 
+                        CANVAS_WIDTH/2 - 150, CANVAS_HEIGHT/2 - 100, 300, 50, 
+                        20, "center", "#ffff00", FONT1, 1,
+                        2, 2,
+                        szMessage,
+                        true, true, true,
+                        false );
+            
+            // Remove a mensagem após 3 segundos
+            setTimeout(function(){
+                if(oTempMsg && oTempMsg.unload){
+                    oTempMsg.unload();
+                }
+            }, 3000);
+        }
     };
     
     s_oInterface = this;

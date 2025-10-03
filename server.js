@@ -110,11 +110,23 @@ server.listen(PORT, () => {
 });
 
 function performRoll(room){
+  const state = roomState[room];
+  const currentPlayer = state.order[state.currentIndex];
   const d1 = Math.floor(Math.random() * 6) + 1;
   const d2 = Math.floor(Math.random() * 6) + 1;
-  const roll = { d1, d2, ts: Date.now() };
+  const roll = { d1, d2, ts: Date.now(), shooter: currentPlayer };
   roomState[room].lastRoll = roll;
-  io.to(room).emit('dice_result', roll);
+  
+  // First notify all players that dice rolling animation should start
+  io.to(room).emit('dice_roll_start', { 
+    shooter: currentPlayer, 
+    ts: Date.now() 
+  });
+  
+  // Then send the result after a short delay to allow animation to play
+  setTimeout(() => {
+    io.to(room).emit('dice_result', roll);
+  }, 1500); // 1.5 second delay for animation
 }
 
 function clearTimer(room){
@@ -128,7 +140,14 @@ function clearTimer(room){
 function emitTurnUpdate(room){
   const state = roomState[room];
   const playerId = state.order[state.currentIndex] || null;
-  io.to(room).emit('turn_update', { playerId, endsAt: state.turnEndsAt });
+  const playerIndex = state.currentIndex + 1; // 1-based index for display
+  const totalPlayers = state.order.length;
+  io.to(room).emit('turn_update', { 
+    playerId, 
+    endsAt: state.turnEndsAt,
+    playerIndex,
+    totalPlayers
+  });
 }
 
 function startNextTurn(room){
