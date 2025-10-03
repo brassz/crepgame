@@ -22,6 +22,9 @@ function CInterface(){
     var _oButRoomPrata;
     var _oButRoomOuro;
     var _oTurnTimerText;
+    var _oHistoryText;
+    var _oTurnBannerText;
+    var _aRollHistory = [];
     var _fRequestFullScreen = null;
     var _fCancelFullScreen = null;
     
@@ -142,6 +145,37 @@ function CInterface(){
                     18, "right", "#ffde00", FONT2, 1,
                     0, 0,
                     "",
+                    true, true, false,
+                    false );
+
+        // Histórico de jogadas (canto superior direito)
+        var oHistoryBg = createBitmap(s_oSpriteLibrary.getSprite('display_bg'));
+        oHistoryBg.x = 880;
+        oHistoryBg.y = 50;
+        oHistoryBg.scaleX = 0.8;
+        oHistoryBg.scaleY = 0.6;
+        s_oStage.addChild(oHistoryBg);
+        
+        _oHistoryText = new CTLText(s_oStage, 
+                    oHistoryBg.x+90, oHistoryBg.y + 8, 110, 60, 
+                    14, "center", "#fff", FONT1, 1,
+                    0, 0,
+                    "ÚLTIMAS JOGADAS\n-",
+                    true, true, true,
+                    false );
+
+        // Banner de turno (topo da tela, centralizado)
+        var oTurnBannerBg = createBitmap(s_oSpriteLibrary.getSprite('but_bets'));
+        oTurnBannerBg.x = CANVAS_WIDTH/2 - oTurnBannerBg.getBounds().width/2;
+        oTurnBannerBg.y = 10;
+        oTurnBannerBg.scaleX = 2;
+        s_oStage.addChild(oTurnBannerBg);
+        
+        _oTurnBannerText = new CTLText(s_oStage, 
+                    CANVAS_WIDTH/2 - 150, 20, 300, 30, 
+                    20, "center", "#ffde00", FONT2, 1,
+                    0, 0,
+                    "AGUARDANDO JOGADORES...",
                     true, true, false,
                     false );
       
@@ -281,6 +315,88 @@ function CInterface(){
         if (_oTurnTimerText){
             var s = (iSeconds>0) ? ("TURNO: "+iSeconds+"s") : "";
             _oTurnTimerText.refreshText(s);
+        }
+    };
+
+    // Atualiza informações do turno atual
+    this.updateTurnInfo = function(message, isMyTurn){
+        // Atualizar banner principal
+        if(_oTurnBannerText){
+            var color = isMyTurn ? "#00ff00" : "#ffde00"; // Verde para meu turno, amarelo para outros
+            _oTurnBannerText.setColor(color);
+            _oTurnBannerText.refreshText(message);
+        }
+        
+        // Também atualizar o texto de ajuda
+        if(_oHelpText){
+            var helpMessage = isMyTurn ? "CLIQUE EM LANÇAR DADOS!" : "AGUARDE SUA VEZ...";
+            _oHelpText.setColor(isMyTurn ? "#00ff00" : "#ffde00");
+            _oHelpText.refreshText(helpMessage);
+        }
+    };
+
+    // Mostra mensagem para espectadores
+    this.showSpectatorMessage = function(message){
+        if(_oHelpText){
+            _oHelpText.setColor("#ff8800"); // Laranja para mensagens de espectador
+            _oHelpText.refreshText(message);
+            
+            // Voltar para a mensagem padrão após 3 segundos
+            setTimeout(function(){
+                if(_oHelpText){
+                    _oHelpText.setColor("#ffde00");
+                    _oHelpText.refreshText(_szLastMsgHelp);
+                }
+            }, 3000);
+        }
+    };
+
+    // Adiciona jogada ao histórico
+    this.addToHistory = function(playerIndex, totalPlayers, dice1, dice2, result){
+        var rollText = "J" + playerIndex + "/" + totalPlayers + ": " + dice1 + "+" + dice2 + "=" + result;
+        _aRollHistory.push(rollText);
+        
+        // Manter apenas as últimas 4 jogadas
+        if(_aRollHistory.length > 4){
+            _aRollHistory.shift();
+        }
+        
+        // Atualizar display do histórico
+        if(_oHistoryText){
+            var historyDisplay = "ÚLTIMAS JOGADAS\n" + _aRollHistory.join("\n");
+            _oHistoryText.refreshText(historyDisplay);
+        }
+    };
+
+    // Mostra banner especial temporário para espectadores
+    this.showSpectatorBanner = function(message){
+        if(_oTurnBannerText){
+            var originalColor = _oTurnBannerText._oText.color;
+            var originalMessage = _oTurnBannerText._oText.text;
+            
+            // Mostrar mensagem especial em laranja
+            _oTurnBannerText.setColor("#ff8800");
+            _oTurnBannerText.refreshText(message);
+            
+            // Voltar ao estado original após 4 segundos
+            setTimeout(function(){
+                if(_oTurnBannerText){
+                    _oTurnBannerText.setColor(originalColor);
+                    _oTurnBannerText.refreshText(originalMessage);
+                }
+            }, 4000);
+        }
+    };
+
+    // Mostra mensagem de aguardando jogadores
+    this.showWaitingForPlayers = function(){
+        if(_oTurnBannerText){
+            _oTurnBannerText.setColor("#ffde00");
+            _oTurnBannerText.refreshText("AGUARDANDO MAIS JOGADORES...");
+        }
+        if(_oHelpText){
+            _oHelpText.setColor("#ffde00");
+            _oHelpText.refreshText("Convide amigos para jogar juntos!");
         }
     };
     

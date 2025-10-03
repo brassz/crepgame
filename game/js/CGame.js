@@ -188,6 +188,12 @@ function CGame(oData){
         _aDiceResult = [roll.d1, roll.d2];
         _aDiceResultHistory.push(_aDiceResult);
         _iTimeElaps = 0;
+        
+        // Adicionar ao histórico se tiver informações do jogador
+        if(roll.playerIndex && roll.totalPlayers && _oInterface.addToHistory){
+            _oInterface.addToHistory(roll.playerIndex, roll.totalPlayers, roll.d1, roll.d2, roll.d1 + roll.d2);
+        }
+        
         this._startRollingAnim();
     };
 
@@ -198,8 +204,62 @@ function CGame(oData){
             var s = Realtime.getSocket();
             isMyTurn = (data && data.playerId && s && s.id === data.playerId);
         }
+        
+        // Atualizar interface com informações do turno
+        if(data && data.playerIndex && data.totalPlayers){
+            var turnMessage = isMyTurn ? 
+                "SUA VEZ DE JOGAR!" : 
+                "JOGADOR " + data.playerIndex + "/" + data.totalPlayers + " ESTÁ JOGANDO";
+            
+            _oInterface.updateTurnInfo(turnMessage, isMyTurn);
+        }
+        
         // Só permite rolar se for meu turno
         _oInterface.enableRoll(isMyTurn && _oMySeat.getCurBet() > 0);
+    };
+
+    // Novo método para lidar com jogadas de outros jogadores
+    this.onPlayerRolled = function(data){
+        var isMyRoll = false;
+        if (Realtime && Realtime.getSocket()){
+            var s = Realtime.getSocket();
+            isMyRoll = (data && data.playerId && s && s.id === data.playerId);
+        }
+        
+        if(!isMyRoll){
+            // Mostrar notificação de que outro jogador jogou
+            var playerText = "JOGADOR " + data.playerIndex + "/" + data.totalPlayers;
+            var resultText = playerText + " JOGOU: " + data.dice[0] + " + " + data.dice[1] + " = " + data.result;
+            
+            // Mostrar mensagem na tela com efeito especial
+            new CScoreText(resultText, CANVAS_WIDTH/2, CANVAS_HEIGHT/2 - 100, "#ffde00", FONT2, 20);
+            
+            // Criar efeito de flash para chamar atenção
+            this._createSpectatorFlash();
+            
+            // Atualizar interface com informação do espectador
+            _oInterface.showSpectatorMessage(playerText + " JOGOU OS DADOS");
+            
+            // Som de notificação para espectadores
+            playSound("dice_roll", 0.3, false);
+            
+            // Mostrar banner especial temporário
+            _oInterface.showSpectatorBanner(resultText);
+        }
+    };
+
+    // Cria efeito visual de flash para espectadores
+    this._createSpectatorFlash = function(){
+        var oFlash = new createjs.Shape();
+        oFlash.graphics.beginFill("rgba(255,255,255,0.3)").drawRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+        s_oStage.addChild(oFlash);
+        
+        // Animar o flash
+        createjs.Tween.get(oFlash)
+            .to({alpha: 0}, 300, createjs.Ease.quadOut)
+            .call(function(){
+                s_oStage.removeChild(oFlash);
+            });
     };
     
     this.dicesAnimEnded = function(){
