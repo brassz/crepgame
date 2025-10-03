@@ -181,6 +181,58 @@ window.SupabaseMultiplayer = (function(){
         }
     }
 
+    // Request dice roll (starts animation for all players)
+    async function requestDiceRoll() {
+        if (!currentGameSessionId) {
+            throw new Error('Not in a game session');
+        }
+
+        try {
+            // First, start the dice roll animation for all players
+            const { data: startData, error: startError } = await supabase.rpc('start_dice_roll', {
+                p_game_session_id: currentGameSessionId
+            });
+
+            if (startError) {
+                console.error('Error starting dice roll:', startError);
+                throw startError;
+            }
+
+            if (!startData.success) {
+                throw new Error(startData.error || 'Failed to start dice roll');
+            }
+
+            // Generate dice result after a delay to allow animation to start
+            setTimeout(async () => {
+                try {
+                    const die1 = Math.floor(Math.random() * 6) + 1;
+                    const die2 = Math.floor(Math.random() * 6) + 1;
+                    
+                    // Record the dice roll result
+                    const { data, error } = await supabase.rpc('record_dice_roll', {
+                        p_game_session_id: currentGameSessionId,
+                        p_die1: die1,
+                        p_die2: die2,
+                        p_phase: 'come_out',
+                        p_result: null
+                    });
+
+                    if (error) {
+                        console.error('Error recording dice roll result:', error);
+                    }
+                } catch (error) {
+                    console.error('Error in delayed dice roll:', error);
+                }
+            }, 1000); // 1 second delay to allow animation to start
+
+            return startData;
+
+        } catch (error) {
+            console.error('Request dice roll error:', error);
+            throw error;
+        }
+    }
+
     // Record dice roll
     async function recordDiceRoll(die1, die2, phase = 'come_out', result = null) {
         if (!currentGameSessionId) {
@@ -289,8 +341,15 @@ window.SupabaseMultiplayer = (function(){
                 break;
 
             case 'dice_rolled':
-                if (window.s_oGame && window.s_oGame.onDiceRolled) {
-                    window.s_oGame.onDiceRolled(eventData);
+                if (window.s_oGame && window.s_oGame.onServerRoll) {
+                    // Convert event data to the format expected by onServerRoll
+                    const rollData = {
+                        d1: eventData.die1,
+                        d2: eventData.die2,
+                        total: eventData.total,
+                        ts: Date.parse(eventData.timestamp || new Date())
+                    };
+                    window.s_oGame.onServerRoll(rollData);
                 }
                 break;
 
@@ -510,6 +569,7 @@ window.SupabaseMultiplayer = (function(){
         joinRoom,
         leaveRoom,
         placeBet,
+        requestDiceRoll,
         recordDiceRoll,
         getCurrentRoomInfo,
         getCurrentGameSession,

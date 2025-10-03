@@ -120,6 +120,7 @@ function CGame(oData){
             return;
         }
 
+        // Só gera resultado local se não estiver conectado ao servidor
         _iContRolling++;
         _aDiceResult = new Array();
         this._generateWinLoss();
@@ -551,7 +552,12 @@ function CGame(oData){
         
         $(s_oMain).trigger("bet_placed",_oMySeat.getCurBet());
         this._prepareForRolling();
-        this._startRollingAnim();    
+        
+        // Se conectado ao servidor, não inicia animação aqui - aguarda evento do servidor
+        // Se offline, usa a animação local
+        if (!window.Realtime || !Realtime.getSocket()){
+            this._startRollingAnim();
+        }
     };
     
     this._onSitDown = function(){

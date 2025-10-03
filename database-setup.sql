@@ -445,6 +445,52 @@ BEGIN
 END;
 $$;
 
+-- Function to start dice roll animation
+CREATE OR REPLACE FUNCTION start_dice_roll(
+    p_game_session_id UUID
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    game_session RECORD;
+BEGIN
+    -- Check if user is authenticated
+    IF auth.uid() IS NULL THEN
+        RETURN json_build_object('success', false, 'error', 'User not authenticated');
+    END IF;
+
+    -- Validate player is in this game session
+    SELECT gs.*, gr.id as room_id INTO game_session
+    FROM public.game_sessions gs
+    JOIN public.game_rooms gr ON gr.id = gs.room_id
+    JOIN public.player_sessions ps ON ps.room_id = gr.id
+    WHERE gs.id = p_game_session_id 
+    AND ps.player_id = auth.uid() 
+    AND ps.is_active = true;
+
+    IF NOT FOUND THEN
+        RETURN json_build_object('success', false, 'error', 'Not authorized for this game session');
+    END IF;
+
+    -- Log dice roll start event (for animation)
+    INSERT INTO public.game_events (room_id, game_session_id, event_type, event_data, created_by)
+    VALUES (
+        game_session.room_id,
+        p_game_session_id,
+        'dice_roll_start',
+        json_build_object(
+            'shooter', auth.uid(),
+            'timestamp', NOW()
+        ),
+        auth.uid()
+    );
+
+    RETURN json_build_object('success', true);
+END;
+$$;
+
 -- Function to record dice roll
 CREATE OR REPLACE FUNCTION record_dice_roll(
     p_game_session_id UUID,

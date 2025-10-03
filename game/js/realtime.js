@@ -147,9 +147,12 @@ window.Realtime = (function(){
 
     function requestRoll(){
         if (useSupabase && window.SupabaseMultiplayer) {
-            // For Supabase, dice rolling will be handled differently
-            // The actual roll logic will be in the game logic, then recorded
-            console.log('Supabase dice roll requested');
+            // Use Supabase to request dice roll
+            window.SupabaseMultiplayer.requestDiceRoll().then(function(result) {
+                console.log('Dice roll requested via Supabase:', result);
+            }).catch(function(error) {
+                console.error('Failed to request dice roll:', error);
+            });
             return;
         }
         
