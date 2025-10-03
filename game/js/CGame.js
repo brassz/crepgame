@@ -115,8 +115,12 @@ function CGame(oData){
         _oInterface.disableClearButton();
 
         // Se conectado ao servidor, pedi-lo para rolar (autoritativo)
-        if (window.Realtime && Realtime.getSocket()){
-            Realtime.requestRoll();
+        if (window.Realtime && Realtime.isConnected()){
+            Realtime.requestRoll().catch(function(error) {
+                console.error('Failed to request roll:', error);
+                // Fallback to local roll if server request fails
+                _oDicesAnim.rollDices(_aDiceResult);
+            });
             return;
         }
 
@@ -187,9 +191,13 @@ function CGame(oData){
     this.onDiceRollStart = function(data){
         // Todos os jogadores na sala veem a animação começar
         var isMyRoll = false;
-        if (Realtime && Realtime.getSocket()){
-            var s = Realtime.getSocket();
-            isMyRoll = (data && data.shooter && s && s.id === data.shooter);
+        if (window.sb && window.sb.auth) {
+            window.sb.auth.getUser().then(function(response) {
+                var user = response.data && response.data.user;
+                if (user && data && data.shooter) {
+                    isMyRoll = (user.id === data.shooter);
+                }
+            });
         }
         
         // Mostrar mensagem indicando quem está lançando os dados
@@ -231,9 +239,15 @@ function CGame(oData){
         this._currentTurnData = data;
         
         var isMyTurn = false;
-        if (Realtime && Realtime.getSocket()){
-            var s = Realtime.getSocket();
-            isMyTurn = (data && data.playerId && s && s.id === data.playerId);
+        if (data && data.isMyTurn !== undefined) {
+            isMyTurn = data.isMyTurn;
+        } else if (window.sb && window.sb.auth && data && data.playerId) {
+            window.sb.auth.getUser().then(function(response) {
+                var user = response.data && response.data.user;
+                if (user) {
+                    isMyTurn = (user.id === data.playerId);
+                }
+            });
         }
         // Só permite rolar se for meu turno
         _oInterface.enableRoll(isMyTurn && _oMySeat.getCurBet() > 0);
