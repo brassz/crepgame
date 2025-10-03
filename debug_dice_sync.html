@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug - Sincronização de Dados</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        
+        .debug-section {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 2px solid #444;
+        }
+        
+        .player-section {
+            display: inline-block;
+            width: 45%;
+            margin: 10px;
+            vertical-align: top;
+        }
+        
+        .player1 { border-color: #4CAF50; }
+        .player2 { border-color: #2196F3; }
+        
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        button:hover { background: #45a049; }
+        button:disabled { background: #666; cursor: not-allowed; }
+        
+        .roll-button { background: #FF9800; font-size: 18px; }
+        .roll-button:hover { background: #F57C00; }
+        
+        .log {
+            background: #000;
+            padding: 10px;
+            border-radius: 4px;
+            min-height: 100px;
+            overflow-y: scroll;
+            max-height: 200px;
+            font-family: monospace;
+            margin-top: 10px;
+            font-size: 12px;
+        }
+        
+        .dice-result {
+            font-size: 24px;
+            text-align: center;
+            padding: 20px;
+            background: #444;
+            border-radius: 8px;
+            margin: 10px 0;
+            min-height: 60px;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            text-align: center;
+        }
+        
+        .connected { background: #4CAF50; }
+        .disconnected { background: #f44336; }
+        .waiting { background: #FF9800; }
+        
+        .animation-indicator {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-left: 10px;
+            background: #666;
+        }
+        
+        .animation-indicator.active {
+            background: #4CAF50;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <h1>🎲 Debug - Sincronização de Dados entre Jogadores</h1>
+    
+    <div class="debug-section">
+        <h2>Controles Globais</h2>
+        <button onclick="initializeDebug()">🚀 Inicializar Sistema</button>
+        <button onclick="connectToServer()">🔌 Conectar ao Servidor</button>
+        <button onclick="clearAllLogs()">🧹 Limpar Todos os Logs</button>
+        <div id="globalStatus" class="status disconnected">Sistema Desconectado</div>
+    </div>
+    
+    <div style="display: flex; justify-content: space-between;">
+        <!-- Player 1 Section -->
+        <div class="debug-section player-section player1">
+            <h2>🎮 Jogador 1 (Ativo)</h2>
+            <div id="player1Status" class="status waiting">Aguardando</div>
+            
+            <div>
+                <button id="player1JoinBtn" onclick="joinRoom('player1')">Entrar na Sala</button>
+                <button id="player1RollBtn" class="roll-button" onclick="rollDice('player1')" disabled>🎲 ROLAR DADOS</button>
+            </div>
+            
+            <div id="player1DiceResult" class="dice-result">Aguardando rolagem...</div>
+            <div>
+                Animação: <span class="animation-indicator" id="player1Animation"></span>
+                <span id="player1AnimStatus">Parada</span>
+            </div>
+            
+            <div class="log" id="player1Log"></div>
+        </div>
+        
+        <!-- Player 2 Section -->
+        <div class="debug-section player-section player2">
+            <h2>👁️ Jogador 2 (Observador)</h2>
+            <div id="player2Status" class="status waiting">Aguardando</div>
+            
+            <div>
+                <button id="player2JoinBtn" onclick="joinRoom('player2')">Entrar na Sala</button>
+                <span style="color: #888;">Apenas observa as rolagens do Jogador 1</span>
+            </div>
+            
+            <div id="player2DiceResult" class="dice-result">Aguardando rolagem...</div>
+            <div>
+                Animação: <span class="animation-indicator" id="player2Animation"></span>
+                <span id="player2AnimStatus">Parada</span>
+            </div>
+            
+            <div class="log" id="player2Log"></div>
+        </div>
+    </div>
+    
+    <div class="debug-section">
+        <h2>📊 Estatísticas do Teste</h2>
+        <div id="testStats">
+            <p>Rolagens enviadas: <span id="rollsSent">0</span></p>
+            <p>Rolagens recebidas pelo Jogador 1: <span id="rollsReceivedP1">0</span></p>
+            <p>Rolagens recebidas pelo Jogador 2: <span id="rollsReceivedP2">0</span></p>
+            <p>Animações executadas pelo Jogador 1: <span id="animationsP1">0</span></p>
+            <p>Animações executadas pelo Jogador 2: <span id="animationsP2">0</span></p>
+            <p>Taxa de sincronização: <span id="syncRate">0%</span></p>
+        </div>
+    </div>
+
+    <!-- Include Socket.IO -->
+    <script src="/socket.io/socket.io.js"></script>
+    
+    <script>
+        // Debug system state
+        let debugState = {
+            initialized: false,
+            connected: false,
+            players: {
+                player1: { socket: null, connected: false, logs: [], rollsSent: 0, rollsReceived: 0, animations: 0 },
+                player2: { socket: null, connected: false, logs: [], rollsSent: 0, rollsReceived: 0, animations: 0 }
+            },
+            totalRolls: 0
+        };
+        
+        function log(player, message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logMessage = `[${timestamp}] ${message}`;
+            debugState.players[player].logs.push(logMessage);
+            updatePlayerLog(player);
+            console.log(`[${player.toUpperCase()}] ${message}`);
+        }
+        
+        function updatePlayerLog(player) {
+            const logEl = document.getElementById(`${player}Log`);
+            const logs = debugState.players[player].logs;
+            logEl.innerHTML = logs.slice(-10).map(log => `<div>${log}</div>`).join('');
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+        
+        function updatePlayerStatus(player, status, className = 'waiting') {
+            const statusEl = document.getElementById(`${player}Status`);
+            statusEl.textContent = status;
+            statusEl.className = `status ${className}`;
+        }
+        
+        function updateGlobalStatus(status, className = 'waiting') {
+            const statusEl = document.getElementById('globalStatus');
+            statusEl.textContent = status;
+            statusEl.className = `status ${className}`;
+        }
+        
+        function showAnimation(player, active = true) {
+            const animEl = document.getElementById(`${player}Animation`);
+            const statusEl = document.getElementById(`${player}AnimStatus`);
+            
+            if (active) {
+                animEl.classList.add('active');
+                statusEl.textContent = 'Executando';
+                debugState.players[player].animations++;
+                
+                // Stop animation after 3 seconds (simulating dice roll duration)
+                setTimeout(() => {
+                    animEl.classList.remove('active');
+                    statusEl.textContent = 'Parada';
+                }, 3000);
+            } else {
+                animEl.classList.remove('active');
+                statusEl.textContent = 'Parada';
+            }
+            
+            updateStats();
+        }
+        
+        function updateDiceResult(player, die1, die2, total, playerName = '') {
+            const resultEl = document.getElementById(`${player}DiceResult`);
+            const prefix = playerName ? `${playerName}: ` : '';
+            resultEl.innerHTML = `
+                <div>${prefix}🎲 ${die1}  🎲 ${die2}</div>
+                <div>Total: ${total}</div>
+            `;
+        }
+        
+        function updateStats() {
+            document.getElementById('rollsSent').textContent = debugState.totalRolls;
+            document.getElementById('rollsReceivedP1').textContent = debugState.players.player1.rollsReceived;
+            document.getElementById('rollsReceivedP2').textContent = debugState.players.player2.rollsReceived;
+            document.getElementById('animationsP1').textContent = debugState.players.player1.animations;
+            document.getElementById('animationsP2').textContent = debugState.players.player2.animations;
+            
+            const totalExpected = debugState.totalRolls * 2; // Both players should receive each roll
+            const totalReceived = debugState.players.player1.rollsReceived + debugState.players.player2.rollsReceived;
+            const syncRate = totalExpected > 0 ? Math.round((totalReceived / totalExpected) * 100) : 0;
+            document.getElementById('syncRate').textContent = `${syncRate}%`;
+        }
+        
+        function clearAllLogs() {
+            debugState.players.player1.logs = [];
+            debugState.players.player2.logs = [];
+            updatePlayerLog('player1');
+            updatePlayerLog('player2');
+        }
+        
+        function initializeDebug() {
+            log('player1', '🚀 Inicializando sistema de debug...');
+            log('player2', '🚀 Inicializando sistema de debug...');
+            
+            debugState.initialized = true;
+            updateGlobalStatus('Sistema Inicializado - Pronto para conectar', 'waiting');
+            
+            // Enable connection button
+            document.querySelector('button[onclick="connectToServer()"]').disabled = false;
+        }
+        
+        function connectToServer() {
+            if (!debugState.initialized) {
+                alert('Primeiro inicialize o sistema!');
+                return;
+            }
+            
+            updateGlobalStatus('Conectando ao servidor...', 'waiting');
+            
+            // Check if server is available
+            if (typeof io === 'undefined') {
+                updateGlobalStatus('❌ Socket.IO não encontrado - Inicie o servidor Node.js', 'disconnected');
+                log('player1', '❌ Socket.IO client não encontrado');
+                log('player2', '❌ Socket.IO client não encontrado');
+                return;
+            }
+            
+            debugState.connected = true;
+            updateGlobalStatus('✅ Conectado ao servidor - Pronto para entrar nas salas', 'connected');
+            
+            // Enable join buttons
+            document.getElementById('player1JoinBtn').disabled = false;
+            document.getElementById('player2JoinBtn').disabled = false;
+        }
+        
+        function joinRoom(player) {
+            if (!debugState.connected) {
+                alert('Primeiro conecte ao servidor!');
+                return;
+            }
+            
+            log(player, '🔌 Conectando à sala Bronze...');
+            updatePlayerStatus(player, 'Conectando...', 'waiting');
+            
+            // Create socket connection for this player
+            const socket = io();
+            debugState.players[player].socket = socket;
+            
+            // Set up event listeners
+            socket.on('connect', () => {
+                log(player, '✅ Conectado ao servidor');
+                socket.emit('join_room', 'bronze');
+            });
+            
+            socket.on('room_config', (cfg) => {
+                log(player, `📋 Configuração da sala recebida: ${JSON.stringify(cfg)}`);
+            });
+            
+            socket.on('players_update', (count) => {
+                log(player, `👥 Jogadores na sala: ${count}`);
+                updatePlayerStatus(player, `Na sala (${count} jogadores)`, 'connected');
+            });
+            
+            socket.on('turn_update', (data) => {
+                log(player, `🔄 Atualização de turno: ${JSON.stringify(data)}`);
+                
+                // Check if it's this player's turn (for player1 only)
+                if (player === 'player1' && data.playerId === socket.id) {
+                    document.getElementById('player1RollBtn').disabled = false;
+                    updatePlayerStatus(player, 'Sua vez de jogar!', 'connected');
+                } else if (player === 'player1') {
+                    document.getElementById('player1RollBtn').disabled = true;
+                    updatePlayerStatus(player, 'Aguardando sua vez...', 'waiting');
+                }
+            });
+            
+            socket.on('your_turn', (data) => {
+                if (player === 'player1') {
+                    log(player, `🎯 ${data.message}`);
+                    document.getElementById('player1RollBtn').disabled = false;
+                    updatePlayerStatus(player, 'SUA VEZ!', 'connected');
+                }
+            });
+            
+            socket.on('player_rolling', (data) => {
+                log(player, `🎲 ${data.playerName} está rolando os dados...`);
+            });
+            
+            // CRITICAL: This is the event that should trigger dice animation for ALL players
+            socket.on('dice_result', (roll) => {
+                log(player, `🎯 RECEBEU RESULTADO DOS DADOS: ${JSON.stringify(roll)}`);
+                debugState.players[player].rollsReceived++;
+                
+                // Update dice display
+                updateDiceResult(player, roll.d1, roll.d2, roll.total, roll.playerName);
+                
+                // TRIGGER ANIMATION - This simulates what should happen in the real game
+                log(player, `🎬 Iniciando animação dos dados...`);
+                showAnimation(player, true);
+                
+                // Simulate the game's onServerRoll method
+                if (window.mockGame && window.mockGame.onServerRoll) {
+                    window.mockGame.onServerRoll(roll);
+                }
+                
+                updateStats();
+            });
+            
+            socket.on('player_rolled', (data) => {
+                log(player, `✅ ${data.playerName} jogou: ${data.result}`);
+            });
+            
+            socket.on('disconnect', () => {
+                log(player, '❌ Desconectado do servidor');
+                updatePlayerStatus(player, 'Desconectado', 'disconnected');
+                debugState.players[player].connected = false;
+            });
+            
+            debugState.players[player].connected = true;
+        }
+        
+        function rollDice(player) {
+            const socket = debugState.players[player].socket;
+            if (!socket) {
+                alert('Primeiro entre na sala!');
+                return;
+            }
+            
+            log(player, '🎲 Solicitando rolagem dos dados...');
+            debugState.totalRolls++;
+            debugState.players[player].rollsSent++;
+            
+            // Disable roll button temporarily
+            document.getElementById('player1RollBtn').disabled = true;
+            updatePlayerStatus(player, 'Rolando dados...', 'waiting');
+            
+            // Send roll request to server
+            socket.emit('request_roll');
+            
+            updateStats();
+        }
+        
+        // Mock game object to simulate the real game's behavior
+        window.mockGame = {
+            onServerRoll: function(roll) {
+                console.log('🎮 Mock Game: onServerRoll called with:', roll);
+                // This would normally trigger the dice animation in the real game
+            }
+        };
+        
+        // Initialize
+        updateGlobalStatus('Sistema Carregado - Clique em Inicializar', 'disconnected');
+        log('player1', '📋 Sistema de debug carregado');
+        log('player2', '📋 Sistema de debug carregado');
+        log('player1', '💡 Este teste simula dois jogadores na mesma sala');
+        log('player2', '💡 Jogador 2 deve ver as animações quando Jogador 1 rola os dados');
+        
+    </script>
+</body>
+</html>
