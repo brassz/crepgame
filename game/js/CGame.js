@@ -193,11 +193,11 @@ function CGame(oData){
 
     // Recebe rolagem sincronizada para animação (novo método otimizado)
     this.onSynchronizedRoll = function(roll){
-        console.log('Synchronized dice animation triggered:', roll);
+        console.log('🎬 Synchronized dice animation triggered for all players:', roll);
         
         // Validar dados recebidos antes de usar
         if (!roll || roll.d1 === undefined || roll.d2 === undefined) {
-            console.error("Invalid roll data received:", roll);
+            console.error("❌ Invalid synchronized roll data received:", roll);
             return;
         }
         
@@ -213,29 +213,39 @@ function CGame(oData){
                 
                 // Mostra mensagem adequada
                 if (roll.playerName) {
+                    var message;
                     if (isMyRoll) {
-                        _oInterface.refreshMsgHelp("Você jogou: " + roll.d1 + " + " + roll.d2 + " = " + roll.total, false);
+                        message = "Você jogou: " + roll.d1 + " + " + roll.d2 + " = " + roll.total;
+                        console.log('🎯 My synchronized roll:', message);
                     } else {
-                        _oInterface.refreshMsgHelp(roll.playerName + " jogou: " + roll.d1 + " + " + roll.d2 + " = " + roll.total, false);
+                        message = roll.playerName + " jogou: " + roll.d1 + " + " + roll.d2 + " = " + roll.total;
+                        console.log('👀 Other player synchronized roll:', message);
                     }
+                    _oInterface.refreshMsgHelp(message, false);
                 }
             });
         } else {
             // Fallback se não conseguir identificar o usuário
             if (roll.playerName) {
-                _oInterface.refreshMsgHelp(roll.playerName + " jogou: " + roll.d1 + " + " + roll.d2 + " = " + roll.total, false);
+                var message = roll.playerName + " jogou: " + roll.d1 + " + " + roll.d2 + " = " + roll.total;
+                console.log('🎲 Synchronized roll (no auth):', message);
+                _oInterface.refreshMsgHelp(message, false);
             }
         }
         
         _iTimeElaps = 0;
         this._startRollingAnim();
+        
+        console.log('✅ Synchronized animation started for all players in room');
     };
 
     // Recebe rolagem do servidor e anima localmente (método original - mantido para compatibilidade)
     this.onServerRoll = function(roll){
+        console.log('🎲 Processing server roll:', roll);
+        
         // Validar dados recebidos antes de usar
         if (!roll || roll.d1 === undefined || roll.d2 === undefined) {
-            console.error("Invalid roll data received:", roll);
+            console.error("❌ Invalid roll data received:", roll);
             return;
         }
         
@@ -250,15 +260,24 @@ function CGame(oData){
                 isMyRoll = (roll.playerId && s && s.id === roll.playerId);
             }
             
+            var message;
             if (isMyRoll) {
-                _oInterface.refreshMsgHelp("Você jogou: " + roll.d1 + " + " + roll.d2 + " = " + roll.total, false);
+                message = "Você jogou: " + roll.d1 + " + " + roll.d2 + " = " + roll.total;
+                console.log('🎯 My roll:', message);
             } else {
-                _oInterface.refreshMsgHelp(roll.playerName + " jogou: " + roll.d1 + " + " + roll.d2 + " = " + roll.total, false);
+                message = roll.playerName + " jogou: " + roll.d1 + " + " + roll.d2 + " = " + roll.total;
+                console.log('👀 Other player roll:', message);
             }
+            
+            _oInterface.refreshMsgHelp(message, false);
+        } else {
+            console.log('🎲 Anonymous roll: ' + roll.d1 + ' + ' + roll.d2 + ' = ' + roll.total);
         }
         
         _iTimeElaps = 0;
         this._startRollingAnim();
+        
+        console.log('✅ Roll animation started for all players');
     };
 
     // Atualizações de turno vindas do servidor
