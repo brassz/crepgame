@@ -265,6 +265,12 @@ window.SupabaseMultiplayer = (function(){
                 }
                 break;
 
+            case 'dice_roll_start':
+                if (window.s_oGame && window.s_oGame.onDiceRollStart) {
+                    window.s_oGame.onDiceRollStart(eventData);
+                }
+                break;
+
             case 'dice_rolled':
                 if (window.s_oGame && window.s_oGame.onDiceRolled) {
                     window.s_oGame.onDiceRolled(eventData);

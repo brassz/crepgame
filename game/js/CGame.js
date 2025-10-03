@@ -183,16 +183,53 @@ function CGame(oData){
         _oDicesAnim.startRolling(_aDiceResult);
     };
 
-    // Recebe rolagem do servidor e anima localmente
+    // Recebe início da rolagem do servidor (todos os jogadores veem a animação)
+    this.onDiceRollStart = function(data){
+        // Todos os jogadores na sala veem a animação começar
+        var isMyRoll = false;
+        if (Realtime && Realtime.getSocket()){
+            var s = Realtime.getSocket();
+            isMyRoll = (data && data.shooter && s && s.id === data.shooter);
+        }
+        
+        // Mostrar mensagem indicando quem está lançando os dados
+        var shooterMsg;
+        if(isMyRoll){
+            shooterMsg = "VOCÊ está lançando os dados!";
+        } else {
+            // Try to get player info from current turn data
+            var playerNum = "outro jogador";
+            if(this._currentTurnData && this._currentTurnData.playerIndex){
+                playerNum = "JOGADOR " + this._currentTurnData.playerIndex;
+            }
+            shooterMsg = playerNum + " está lançando os dados...";
+        }
+        _oInterface.showMessage(shooterMsg);
+        
+        // Preparar para animação (sem gerar resultado ainda)
+        _oInterface.disableBetFiches();
+        _oInterface.disableClearButton();
+        _oInterface.showBlock();
+        
+        // Iniciar animação de rolagem sem resultado definido ainda
+        _oDicesAnim.startRollingWithoutResult();
+    };
+
+    // Recebe resultado da rolagem do servidor e finaliza a animação
     this.onServerRoll = function(roll){
         _aDiceResult = [roll.d1, roll.d2];
         _aDiceResultHistory.push(_aDiceResult);
         _iTimeElaps = 0;
-        this._startRollingAnim();
+        
+        // Finalizar animação com o resultado
+        _oDicesAnim.finishRollingWithResult(_aDiceResult);
     };
 
     // Atualizações de turno vindas do servidor
     this.onTurnUpdate = function(data){
+        // Store turn data for use in other parts of the game
+        this._currentTurnData = data;
+        
         var isMyTurn = false;
         if (Realtime && Realtime.getSocket()){
             var s = Realtime.getSocket();
@@ -200,6 +237,18 @@ function CGame(oData){
         }
         // Só permite rolar se for meu turno
         _oInterface.enableRoll(isMyTurn && _oMySeat.getCurBet() > 0);
+        
+        // Update turn display immediately
+        if(_oInterface && _oInterface.updateTurnTimer){
+            var playerInfo = {
+                isMyTurn: isMyTurn,
+                playerIndex: data.playerIndex,
+                totalPlayers: data.totalPlayers
+            };
+            // Show initial timer with full time if available
+            var remainingTime = data.endsAt ? Math.max(0, Math.ceil((data.endsAt - Date.now())/1000)) : 25;
+            _oInterface.updateTurnTimer(remainingTime, playerInfo);
+        }
     };
     
     this.dicesAnimEnded = function(){

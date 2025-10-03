@@ -121,6 +121,24 @@ function CDicesAnim(iX,iY){
         playSound("dice_rolling", 1, false);
     };
     
+    // Inicia animação sem resultado definido (para outros jogadores observarem)
+    this.startRollingWithoutResult = function(){
+        this.playToFrame(0);
+        _oContainer.visible = true;
+        _bUpdate = true;
+        playSound("dice_rolling", 1, false);
+    };
+    
+    // Finaliza animação com resultado (quando recebe do servidor)
+    this.finishRollingWithResult = function(aDicesResult){
+        _aDiceResult = aDicesResult;
+        // Se ainda estiver na animação de rolagem, deixa continuar
+        // Se já terminou, força o resultado
+        if(!_bUpdate){
+            this._setAnimForDiceResult();
+        }
+    };
+    
     this.setShowNumberInfo = function(){
         _oDiceTopDownView.setDiceResult(_aDiceResult[0],_aDiceResult[1]);
     };
@@ -170,9 +188,14 @@ function CDicesAnim(iX,iY){
         if(_iFrameCont === 1){
             _iFrameCont = 0;
             if (  _iCurDiceIndex === (NUM_DICE_ROLLING_FRAMES-1)) {
-                //PLACE DICE A AND DICE B FOR RESULT
-                _bUpdate = false;
-                this._setAnimForDiceResult();
+                // Se temos resultado, mostra o resultado
+                if(_aDiceResult && _aDiceResult.length === 2){
+                    _bUpdate = false;
+                    this._setAnimForDiceResult();
+                } else {
+                    // Se não temos resultado ainda, volta ao início da animação
+                    this.playToFrame(0);
+                }
             }else{
                 this.nextFrame();
             }
