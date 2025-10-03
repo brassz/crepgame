@@ -83,17 +83,31 @@ io.on('connection', (socket) => {
 
   // Authoritative roll from server
   socket.on('request_roll', () => {
-    if (!currentRoom) return;
+    if (!currentRoom) {
+      console.log('❌ request_roll: No current room for socket', socket.id);
+      return;
+    }
     const state = roomState[currentRoom];
     const currentPlayer = state.order[state.currentIndex];
-    if (socket.id !== currentPlayer) return; // not your turn
+    if (socket.id !== currentPlayer) {
+      console.log('❌ request_roll: Not current player turn. Current:', currentPlayer, 'Requesting:', socket.id);
+      return; // not your turn
+    }
     // check timer
-    if (state.turnEndsAt && Date.now() > state.turnEndsAt) return;
+    if (state.turnEndsAt && Date.now() > state.turnEndsAt) {
+      console.log('❌ request_roll: Turn time expired');
+      return;
+    }
+    
+    const playerIndex = state.order.indexOf(socket.id) + 1;
+    const playerName = `Jogador ${playerIndex}`;
+    
+    console.log(`🎲 ${playerName} (${socket.id}) is rolling dice in room ${currentRoom}`);
     
     // Notify all players that this player is rolling
     io.to(currentRoom).emit('player_rolling', { 
       playerId: socket.id, 
-      playerName: `Jogador ${state.order.indexOf(socket.id) + 1}` 
+      playerName: playerName 
     });
     
     performRoll(currentRoom);
@@ -155,6 +169,10 @@ function performRoll(room){
   
   roomState[room].lastRoll = roll;
   
+  const playersInRoom = getRoomPlayerCount(room);
+  console.log(`🎯 Broadcasting dice result to ${playersInRoom} players in room ${room}:`);
+  console.log(`   ${roll.playerName} rolled: ${d1} + ${d2} = ${roll.total}`);
+  
   // Send roll result to all players with player info
   io.to(room).emit('dice_result', roll);
   
@@ -163,6 +181,8 @@ function performRoll(room){
     playerName: roll.playerName,
     result: `${d1} + ${d2} = ${roll.total}`
   });
+  
+  console.log(`✅ Dice result broadcasted to all players in room ${room}`);
 }
 
 function clearTimer(room){

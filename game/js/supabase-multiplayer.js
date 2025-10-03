@@ -347,9 +347,10 @@ window.SupabaseMultiplayer = (function(){
 
     // Handle synchronized game roll events (for animation)
     function handleGameRoll(payload) {
-        console.log('Synchronized game roll event:', payload);
+        console.log('🎬 Synchronized game roll event received:', payload);
         
         const roll = payload.new;
+        console.log(`🎲 Roll data: ${roll.die1} + ${roll.die2} = ${roll.total} by player ${roll.player_id}`);
         
         // Get player name for the roller
         supabase.from('profiles')

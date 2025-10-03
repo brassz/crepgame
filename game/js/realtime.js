@@ -55,8 +55,11 @@ window.Realtime = (function(){
             }
         });
         socket.on('dice_result', function(roll){
+            console.log('🎲 Received dice_result from server:', roll);
             if(window.s_oGame && window.s_oGame.onServerRoll){
                 window.s_oGame.onServerRoll(roll);
+            } else {
+                console.warn('⚠️ s_oGame.onServerRoll not available');
             }
         });
         socket.on('room_full', function(){
@@ -80,14 +83,20 @@ window.Realtime = (function(){
         });
         
         socket.on('player_rolling', function(data){
+            console.log('🎯 Player is rolling:', data);
             if(window.s_oInterface && window.s_oInterface.showPlayerRolling){
                 window.s_oInterface.showPlayerRolling(data);
+            } else {
+                console.warn('⚠️ s_oInterface.showPlayerRolling not available');
             }
         });
         
         socket.on('player_rolled', function(data){
+            console.log('✅ Player rolled result:', data);
             if(window.s_oInterface && window.s_oInterface.showPlayerRolled){
                 window.s_oInterface.showPlayerRolled(data);
+            } else {
+                console.warn('⚠️ s_oInterface.showPlayerRolled not available');
             }
         });
         
