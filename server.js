@@ -126,7 +126,7 @@ function performRoll(room){
   // Then send the result after a short delay to allow animation to play
   setTimeout(() => {
     io.to(room).emit('dice_result', roll);
-  }, 1500); // 1.5 second delay for animation
+  }, 500); // 0.5 second delay for animation - very responsive
 }
 
 function clearTimer(room){

@@ -185,7 +185,7 @@ function CDicesAnim(iX,iY){
         
         _iFrameCont++;
         
-        if(_iFrameCont === 1){
+        if(_iFrameCont >= 1){
             _iFrameCont = 0;
             if (  _iCurDiceIndex === (NUM_DICE_ROLLING_FRAMES-1)) {
                 // Se temos resultado, mostra o resultado
