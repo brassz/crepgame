@@ -105,7 +105,12 @@ function CDicesAnim(iX,iY){
             _aDicesAnimSprites[i].visible = false;
         }
         
-        s_oGame.dicesAnimEnded();
+        // Verificar se o jogo está disponível antes de chamar dicesAnimEnded
+        if (s_oGame && typeof s_oGame.dicesAnimEnded === 'function') {
+            s_oGame.dicesAnimEnded();
+        } else {
+            console.error("Game object not available or dicesAnimEnded method not found");
+        }
     };
     
     this.startRolling = function(aDicesResult){
@@ -195,8 +200,16 @@ function CDicesAnim(iX,iY){
     
     this._onDiceBAnimEnded = function(evt){
         if(evt.currentTarget.currentAnimation.indexOf("stop_anim") !== -1){
-            _oThis.setShowNumberInfo();
-            setTimeout(function(){_oThis.hide();},TIME_SHOW_DICES_RESULT);
+            // Verificar se temos um resultado válido antes de mostrar
+            if (_aDiceResult && _aDiceResult.length >= 2 && 
+                _aDiceResult[0] !== undefined && _aDiceResult[1] !== undefined) {
+                _oThis.setShowNumberInfo();
+                setTimeout(function(){_oThis.hide();},TIME_SHOW_DICES_RESULT);
+            } else {
+                console.error("Cannot show dice info - invalid dice result:", _aDiceResult);
+                // Hide immediately if we don't have valid results
+                setTimeout(function(){_oThis.hide();}, 100);
+            }
         }
         
     };
