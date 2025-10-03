@@ -149,6 +149,15 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`);
+}).on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`Port ${PORT} is already in use. Trying port ${PORT + 1}...`);
+    server.listen(PORT + 1, () => {
+      console.log(`Server listening on http://localhost:${PORT + 1}`);
+    });
+  } else {
+    console.error('Server error:', err);
+  }
 });
 
 function performRoll(room){
