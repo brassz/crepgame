@@ -119,9 +119,13 @@ window.Realtime = (function(){
         currentRoom = room;
         
         if (useSupabase && window.SupabaseMultiplayer) {
+            console.log('🔄 Attempting to join Supabase room:', room);
+            
             // Use Supabase for room joining
             window.SupabaseMultiplayer.joinRoom(room).then(function(result) {
                 if (result && result.success) {
+                    console.log('✅ Successfully joined Supabase room:', result.room.room_name);
+                    
                     // Update game with room config
                     if (window.s_oGame && window.s_oGame.onRoomConfig) {
                         var roomConfig = {
@@ -131,21 +135,40 @@ window.Realtime = (function(){
                             max_players: result.room.max_players
                         };
                         window.s_oGame.onRoomConfig(roomConfig);
+                        console.log('🎮 Game room config updated:', roomConfig);
                     }
                     
                     // Update interface with player count
                     if (window.s_oInterface && window.s_oInterface.updateRoomInfo) {
                         window.s_oInterface.updateRoomInfo(room, result.room.current_players);
+                        console.log('🎯 Interface updated with player count:', result.room.current_players);
                     }
-                    
-                    console.log('Successfully joined Supabase room:', result.room.room_name);
+                } else {
+                    console.error('❌ Room join failed - no success flag in result:', result);
+                    throw new Error('Room join failed - invalid response');
                 }
             }).catch(function(error) {
-                console.error('Failed to join Supabase room:', error);
-                alert('Erro ao entrar na sala: ' + (error.message || 'Erro desconhecido'));
+                console.error('❌ Failed to join Supabase room:', error);
+                
+                // More specific error messages
+                let errorMessage = 'Erro desconhecido';
+                if (error.message) {
+                    if (error.message.includes('409') || error.message.includes('conflict')) {
+                        errorMessage = 'Você já está em uma sala. Tente sair e entrar novamente.';
+                    } else if (error.message.includes('timeout')) {
+                        errorMessage = 'Tempo limite excedido. Verifique sua conexão.';
+                    } else if (error.message.includes('network')) {
+                        errorMessage = 'Erro de conexão. Verifique sua internet.';
+                    } else {
+                        errorMessage = error.message;
+                    }
+                }
+                
+                alert('Erro ao entrar na sala: ' + errorMessage);
             });
         } else {
             // Fallback to Socket.io
+            console.log('🔄 Using Socket.io fallback for room:', room);
             var s = connect();
             if(!s){ return; }
             s.emit('join_room', room);
@@ -156,51 +179,69 @@ window.Realtime = (function(){
         if (useSupabase && window.SupabaseMultiplayer) {
             // Check if properly connected to a room before rolling
             if (!window.SupabaseMultiplayer.isConnected) {
-                console.error('Not connected to a Supabase room. Cannot roll dice.');
+                console.error('❌ Not connected to a Supabase room. Cannot roll dice.');
+                alert('Você não está conectado a uma sala. Tente entrar em uma sala primeiro.');
                 return;
             }
             
+            console.log('🎲 Requesting dice roll via Supabase...');
+            
             // For Supabase, generate dice roll locally and record it for synchronized animation
-            if (window.s_oGame && window.s_oGame._generateRandomDices) {
+            if (window.s_oGame && typeof window.s_oGame._generateRandomDices === 'function') {
                 var dice = window.s_oGame._generateRandomDices();
                 var die1 = dice[0];
                 var die2 = dice[1];
                 var total = die1 + die2;
                 
-                console.log('Rolling dice with synchronized animation for all players:', die1, die2, 'total:', total);
+                console.log('🎯 Rolling dice with synchronized animation for all players:', die1, die2, 'total:', total);
                 
                 // Record the synchronized roll - this will trigger animation on all players' screens
                 window.SupabaseMultiplayer.recordSynchronizedRoll(die1, die2)
                     .then(function(result) {
-                        console.log('Synchronized dice roll recorded successfully:', result);
+                        console.log('✅ Synchronized dice roll recorded successfully:', result);
                         // All players in the room will see the animation via real-time subscription
                         
                         // Also record the roll in the game history for game logic
                         return window.SupabaseMultiplayer.recordDiceRoll(die1, die2, 'come_out', total);
                     })
                     .then(function(result) {
-                        console.log('Game dice roll recorded successfully:', result);
+                        console.log('✅ Game dice roll recorded successfully:', result);
                     })
                     .catch(function(error) {
-                        console.error('Failed to record dice roll:', error);
+                        console.error('❌ Failed to record dice roll:', error);
+                        
+                        // More specific error handling
+                        if (error.message && error.message.includes('not in a game session')) {
+                            alert('Erro: Você não está em uma sessão de jogo ativa.');
+                        } else if (error.message && error.message.includes('network')) {
+                            alert('Erro de conexão. Verifique sua internet e tente novamente.');
+                        } else {
+                            alert('Erro ao registrar rolagem dos dados: ' + (error.message || 'Erro desconhecido'));
+                        }
+                        
                         // Fallback: trigger local animation if recording fails
-                        if (window.s_oGame && window.s_oGame.onServerRoll) {
-                            console.log('Using fallback local animation');
+                        if (window.s_oGame && typeof window.s_oGame.onServerRoll === 'function') {
+                            console.log('⚠️ Using fallback local animation');
                             window.s_oGame.onServerRoll({
                                 d1: die1,
                                 d2: die2,
                                 total: total,
                                 ts: Date.now(),
-                                playerName: 'Jogador'
+                                playerName: 'Jogador',
+                                isMyRoll: true
                             });
+                        } else {
+                            console.error('❌ No fallback animation method available');
                         }
                     });
             } else {
-                console.error('Game instance or dice generation method not available');
+                console.error('❌ Game instance or dice generation method not available');
+                alert('Erro: Método de geração de dados não disponível.');
             }
             return;
         }
         
+        console.log('🔄 Using Socket.io for dice roll request');
         if(!socket) return;
         socket.emit('request_roll');
     }
