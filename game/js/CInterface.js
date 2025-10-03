@@ -282,11 +282,23 @@ function CInterface(){
             var s = "";
             if(iSeconds > 0){
                 if(playerInfo && playerInfo.isMyTurn){
-                    s = "SEU TURNO: " + iSeconds + "s";
+                    // Show encouraging message instead of pressure
+                    if(iSeconds > 10){
+                        s = "SEU TURNO - Sem pressa!";
+                    } else {
+                        s = "SEU TURNO: " + iSeconds + "s";
+                    }
                 } else if(playerInfo && playerInfo.playerIndex){
                     s = "JOGADOR " + playerInfo.playerIndex + "/" + playerInfo.totalPlayers + ": " + iSeconds + "s";
                 } else {
                     s = "TURNO: " + iSeconds + "s";
+                }
+            } else {
+                // When time expires, don't pressure the player
+                if(playerInfo && playerInfo.isMyTurn){
+                    s = "SEU TURNO - Clique quando quiser";
+                } else {
+                    s = "Aguardando jogador...";
                 }
             }
             _oTurnTimerText.refreshText(s);
@@ -432,12 +444,19 @@ function CInterface(){
                         true, true, true,
                         false );
             
-            // Remove a mensagem após 3 segundos
+            // Remove a mensagem após 2 segundos (reduzido)
             setTimeout(function(){
                 if(oTempMsg && oTempMsg.unload){
                     oTempMsg.unload();
                 }
-            }, 3000);
+            }, 2000);
+        }
+    };
+    
+    // Esconde mensagem atual
+    this.hideMessage = function(){
+        if(_oHelpText){
+            _oHelpText.refreshText(_szLastMsgHelp || TEXT_WAITING_BET);
         }
     };
     

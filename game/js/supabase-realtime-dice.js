@@ -191,7 +191,7 @@ window.SupabaseRealtimeDice = (function() {
             });
         }
 
-        // Send dice result after animation delay
+        // Send dice result after shorter animation delay
         setTimeout(function() {
             if (window.s_oGame && window.s_oGame.onServerRoll) {
                 window.s_oGame.onServerRoll({
@@ -205,7 +205,7 @@ window.SupabaseRealtimeDice = (function() {
                     result: moveData.result
                 });
             }
-        }, 1500); // 1.5 second delay for animation
+        }, 800); // Reduced to 0.8 second delay for faster gameplay
     }
 
     function handleDiceMoveUpdate(payload) {
@@ -258,14 +258,17 @@ window.SupabaseRealtimeDice = (function() {
                 window.s_oInterface.updateTurnTimer(remaining, playerInfo);
             }
 
-            // Auto-roll if time expires and it's my turn
+            // Don't auto-roll when time expires - let player decide
             if (remaining <= 0) {
                 clearInterval(window.turnTimerInterval);
-                if (turnData.current_player_id === currentUserId) {
-                    console.log('Turn expired, auto-rolling...');
-                    requestRoll().catch(function(error) {
-                        console.error('Auto-roll failed:', error);
-                    });
+                // Just update the timer display, don't auto-roll
+                if (window.s_oInterface && window.s_oInterface.updateTurnTimer) {
+                    const playerInfo = {
+                        isMyTurn: turnData.current_player_id === currentUserId,
+                        playerIndex: turnData.player_index,
+                        totalPlayers: turnData.total_players
+                    };
+                    window.s_oInterface.updateTurnTimer(0, playerInfo);
                 }
             }
         }, 1000);

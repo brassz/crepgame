@@ -96,7 +96,15 @@ window.Realtime = (function(){
             return Promise.reject(new Error('Not initialized'));
         }
         
-        return window.SupabaseRealtimeDice.requestRoll();
+        // Add timeout to prevent hanging requests
+        var rollPromise = window.SupabaseRealtimeDice.requestRoll();
+        var timeoutPromise = new Promise(function(resolve, reject) {
+            setTimeout(function() {
+                reject(new Error('Request timeout - network too slow'));
+            }, 5000); // 5 second timeout
+        });
+        
+        return Promise.race([rollPromise, timeoutPromise]);
     }
 
     function placeBet(betType, betAmount) {
