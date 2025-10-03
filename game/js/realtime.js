@@ -33,9 +33,10 @@ window.Realtime = (function(){
         }
 
         if(socket){ return socket; }
-        // if socket.io client not present (opened via file://), bail gracefully
+        // if socket.io client not present, bail gracefully
         if (typeof io === 'undefined'){
-            console.warn('Socket.IO client não encontrado. Inicie o servidor Node e acesse via http://localhost:3000/');
+            console.error('Socket.IO client não encontrado. Verifique se o servidor está rodando e se o cliente Socket.IO foi carregado corretamente.');
+            console.error('Para desenvolvimento local: inicie o servidor Node com "npm start" e acesse via http://localhost:3000/');
             return null;
         }
         // assume same origin server

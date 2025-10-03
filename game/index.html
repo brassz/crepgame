@@ -50,7 +50,27 @@
         <script type="text/javascript" src="js/CScoreText.js"></script>
         <script type="text/javascript" src="js/CCTLText.js"></script>
         <script type="text/javascript" src="js/CRoomConfig.js"></script>
-        <script src="/socket.io/socket.io.js"></script>
+        <script src="/socket.io/socket.io.js" onerror="loadSocketIOFallback()"></script>
+        <script>
+            // Fallback: if Socket.IO server client fails to load, use local copy
+            function loadSocketIOFallback() {
+                console.warn('Failed to load Socket.IO from server, loading fallback...');
+                var script = document.createElement('script');
+                script.src = 'js/socket.io.min.js';
+                script.onerror = function() {
+                    console.error('Failed to load Socket.IO fallback. Socket.IO functionality will not be available.');
+                };
+                document.head.appendChild(script);
+            }
+            
+            // Also check if io is defined after a short delay
+            setTimeout(function() {
+                if (typeof io === 'undefined') {
+                    console.warn('Socket.IO not loaded, attempting fallback...');
+                    loadSocketIOFallback();
+                }
+            }, 100);
+        </script>
         <!-- Supabase Dependencies -->
         <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
         <script type="text/javascript" src="js/auth-config.js"></script>
