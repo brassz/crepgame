@@ -56,6 +56,7 @@ function CGame(oData){
         _oMsgBox = new CMsgBox();
 
         _aDiceResultHistory=new Array();
+        _aDiceResult = [1, 1]; // Initialize with default values to prevent undefined errors
 
         _iTimeElaps=0;
         this._onSitDown();
@@ -180,12 +181,25 @@ function CGame(oData){
     };
     
     this._startRollingAnim = function(){
+        // Verificar se _aDiceResult está definido antes de iniciar a animação
+        if (!_aDiceResult || _aDiceResult.length < 2 || 
+            _aDiceResult[0] === undefined || _aDiceResult[1] === undefined) {
+            console.error("Cannot start dice animation - dice result not properly defined:", _aDiceResult);
+            // Usar valores padrão para evitar crash
+            _aDiceResult = [1, 1];
+        }
         _oDicesAnim.startRolling(_aDiceResult);
     };
 
     // Recebe rolagem sincronizada para animação (novo método otimizado)
     this.onSynchronizedRoll = function(roll){
         console.log('Synchronized dice animation triggered:', roll);
+        
+        // Validar dados recebidos antes de usar
+        if (!roll || roll.d1 === undefined || roll.d2 === undefined) {
+            console.error("Invalid roll data received:", roll);
+            return;
+        }
         
         _aDiceResult = [roll.d1, roll.d2];
         _aDiceResultHistory.push(_aDiceResult);
@@ -219,6 +233,12 @@ function CGame(oData){
 
     // Recebe rolagem do servidor e anima localmente (método original - mantido para compatibilidade)
     this.onServerRoll = function(roll){
+        // Validar dados recebidos antes de usar
+        if (!roll || roll.d1 === undefined || roll.d2 === undefined) {
+            console.error("Invalid roll data received:", roll);
+            return;
+        }
+        
         _aDiceResult = [roll.d1, roll.d2];
         _aDiceResultHistory.push(_aDiceResult);
         
@@ -276,6 +296,20 @@ function CGame(oData){
     
     this.dicesAnimEnded = function(){
         try {
+            // Verificar se _aDiceResult está definido e tem valores válidos
+            if (!_aDiceResult || _aDiceResult.length < 2 || 
+                _aDiceResult[0] === undefined || _aDiceResult[1] === undefined) {
+                console.error("Dice result is not properly defined when animation ended:", _aDiceResult);
+                // Usar o último resultado válido do histórico se disponível
+                if (_aDiceResultHistory && _aDiceResultHistory.length > 0) {
+                    _aDiceResult = _aDiceResultHistory[_aDiceResultHistory.length - 1];
+                    console.log("Using last valid dice result from history:", _aDiceResult);
+                } else {
+                    console.error("No valid dice result available, cannot process animation end");
+                    return;
+                }
+            }
+            
             var iSumDices = _aDiceResult[0] + _aDiceResult[1];
             
             // Inicializar arrays se não estiverem definidos
