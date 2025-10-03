@@ -105,7 +105,7 @@ window.SupabaseRealtimeDice = (function() {
             }
 
             // Then join the turn cycle
-            return window.sb.rpc('join_room_turn_cycle', { p_room_id: roomId });
+            return window.sb.rpc('join_room_simple', { p_room_id: roomId });
         }).then(function(turnResult) {
             if (turnResult.error) {
                 throw turnResult.error;
@@ -149,12 +149,10 @@ window.SupabaseRealtimeDice = (function() {
         const result = null; // This should be calculated based on game state
 
         // Call the Supabase function to handle the dice roll
-        return window.sb.rpc('handle_dice_roll', {
+        return window.sb.rpc('handle_dice_roll_simple', {
             p_room_id: currentRoom,
             p_dice_1: dice1,
-            p_dice_2: dice2,
-            p_phase: phase,
-            p_result: result
+            p_dice_2: dice2
         }).then(function(response) {
             if (response.error) {
                 throw response.error;
