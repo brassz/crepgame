@@ -233,6 +233,8 @@ function CGame(oData){
 
     // Recebe rolagem do servidor e anima localmente (método original - mantido para compatibilidade)
     this.onServerRoll = function(roll){
+        console.log('🎲 onServerRoll called with:', roll);
+        
         // Validar dados recebidos antes de usar
         if (!roll || roll.d1 === undefined || roll.d2 === undefined) {
             console.error("Invalid roll data received:", roll);
@@ -242,23 +244,39 @@ function CGame(oData){
         _aDiceResult = [roll.d1, roll.d2];
         _aDiceResultHistory.push(_aDiceResult);
         
-        // Mostra quem jogou os dados se a informação estiver disponível
-        if (roll.playerName) {
-            var isMyRoll = false;
-            if (Realtime && Realtime.getSocket()){
-                var s = Realtime.getSocket();
-                isMyRoll = (roll.playerId && s && s.id === roll.playerId);
-            }
-            
-            if (isMyRoll) {
-                _oInterface.refreshMsgHelp("Você jogou: " + roll.d1 + " + " + roll.d2 + " = " + roll.total, false);
-            } else {
-                _oInterface.refreshMsgHelp(roll.playerName + " jogou: " + roll.d1 + " + " + roll.d2 + " = " + roll.total, false);
-            }
+        // Determinar se é a rolagem do jogador atual
+        var isMyRoll = false;
+        if (Realtime && Realtime.getSocket()){
+            var s = Realtime.getSocket();
+            isMyRoll = (roll.playerId && s && s.id === roll.playerId);
         }
         
+        // Mostra quem jogou os dados se a informação estiver disponível
+        if (roll.playerName) {
+            if (isMyRoll) {
+                _oInterface.refreshMsgHelp("Você jogou: " + roll.d1 + " + " + roll.d2 + " = " + roll.total, false);
+                console.log('🎯 Minha rolagem:', roll.d1, '+', roll.d2, '=', roll.total);
+            } else {
+                _oInterface.refreshMsgHelp(roll.playerName + " jogou: " + roll.d1 + " + " + roll.d2 + " = " + roll.total, false);
+                console.log('👁️ Observando rolagem de', roll.playerName + ':', roll.d1, '+', roll.d2, '=', roll.total);
+            }
+        } else {
+            _oInterface.refreshMsgHelp("Dados jogados: " + roll.d1 + " + " + roll.d2 + " = " + roll.total, false);
+            console.log('🎲 Rolagem recebida:', roll.d1, '+', roll.d2, '=', roll.total);
+        }
+        
+        // FORÇAR ANIMAÇÃO PARA TODOS OS JOGADORES
+        console.log('🎬 Iniciando animação dos dados para todos os jogadores...');
         _iTimeElaps = 0;
+        
+        // Garantir que a animação seja executada mesmo se o jogo estiver em estado diferente
+        var previousState = _iState;
+        console.log('Estado atual do jogo:', _iState);
+        
         this._startRollingAnim();
+        
+        // Log adicional para debug
+        console.log('✅ Animação dos dados iniciada. Estado anterior:', previousState);
     };
 
     // Atualizações de turno vindas do servidor
