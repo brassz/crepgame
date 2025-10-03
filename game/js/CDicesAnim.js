@@ -109,24 +109,51 @@ function CDicesAnim(iX,iY){
     };
     
     this.startRolling = function(aDicesResult){
-        _aDiceResult = aDicesResult;
+        // Validar se o resultado dos dados foi fornecido corretamente
+        if (!aDicesResult || aDicesResult.length < 2 || 
+            aDicesResult[0] === undefined || aDicesResult[1] === undefined) {
+            console.error("Invalid dice result provided to startRolling:", aDicesResult);
+            // Usar valores padrão para evitar crash
+            _aDiceResult = [1, 1];
+        } else {
+            _aDiceResult = aDicesResult;
+        }
+        
+        // Reset animation state
+        _iFrameCont = 0;
+        _bUpdate = false; // Temporarily disable update
+        
+        // Hide dice sprites from previous animation
+        _oDiceASprite.visible = false;
+        _oDiceBSprite.visible = false;
+        _oDiceTopDownView.hide();
+        
         this.playToFrame(0);
 
         _oContainer.visible = true;
-
-        _bUpdate = true;
-        
-        _oContainer.visible = true;
+        _bUpdate = true; // Enable update after proper initialization
         
         playSound("dice_rolling", 1, false);
     };
     
     this.setShowNumberInfo = function(){
+        // Verificar se _aDiceResult está definido antes de usar
+        if (!_aDiceResult || _aDiceResult.length < 2) {
+            console.error("Cannot show dice info - dice result not properly defined:", _aDiceResult);
+            return;
+        }
         _oDiceTopDownView.setDiceResult(_aDiceResult[0],_aDiceResult[1]);
     };
     
     this.playToFrame = function(iFrame){
         _oCurLaunchDiceSprite.visible = false;
+        
+        // Verificar se o frame está dentro dos limites
+        if (iFrame < 0 || iFrame >= _aDicesAnimSprites.length) {
+            console.error("Invalid frame index:", iFrame, "max:", _aDicesAnimSprites.length - 1);
+            iFrame = Math.max(0, Math.min(iFrame, _aDicesAnimSprites.length - 1));
+        }
+        
         _iCurDiceIndex = iFrame;
         _aDicesAnimSprites[_iCurDiceIndex].visible= true;
         _oCurLaunchDiceSprite = _aDicesAnimSprites[_iCurDiceIndex];
@@ -135,11 +162,29 @@ function CDicesAnim(iX,iY){
     this.nextFrame = function(){
         _oCurLaunchDiceSprite.visible = false;
         _iCurDiceIndex++;
+        
+        // Verificar se o índice está dentro dos limites do array
+        if (_iCurDiceIndex >= _aDicesAnimSprites.length) {
+            console.error("Dice animation index out of bounds:", _iCurDiceIndex, "max:", _aDicesAnimSprites.length - 1);
+            _iCurDiceIndex = _aDicesAnimSprites.length - 1;
+            _bUpdate = false; // Parar a animação para evitar loop infinito
+            this._setAnimForDiceResult();
+            return;
+        }
+        
         _aDicesAnimSprites[_iCurDiceIndex].visible= true;
         _oCurLaunchDiceSprite = _aDicesAnimSprites[_iCurDiceIndex];
     };
     
     this._setAnimForDiceResult = function(){
+        // Verificar se _aDiceResult está definido e tem os valores necessários
+        if (!_aDiceResult || _aDiceResult.length < 2 || 
+            _aDiceResult[0] === undefined || _aDiceResult[1] === undefined) {
+            console.error("Dice result is not properly defined:", _aDiceResult);
+            // Usar valores padrão para evitar crash
+            _aDiceResult = [1, 1];
+        }
+        
         _aDicesAnimSprites[_iCurDiceIndex].visible = false;
         
         _oDiceASprite.visible = true;
@@ -165,11 +210,18 @@ function CDicesAnim(iX,iY){
             return;
         }
         
+        // Verificação de segurança para evitar loops infinitos
+        if (!_aDicesAnimSprites || _aDicesAnimSprites.length === 0) {
+            console.error("Dice animation sprites not properly initialized");
+            _bUpdate = false;
+            return;
+        }
+        
         _iFrameCont++;
         
         if(_iFrameCont === 1){
             _iFrameCont = 0;
-            if (  _iCurDiceIndex === (NUM_DICE_ROLLING_FRAMES-1)) {
+            if (_iCurDiceIndex >= (NUM_DICE_ROLLING_FRAMES-1)) {
                 //PLACE DICE A AND DICE B FOR RESULT
                 _bUpdate = false;
                 this._setAnimForDiceResult();

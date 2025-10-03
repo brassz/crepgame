@@ -55,6 +55,14 @@ function CDicesTopDownView(iX,iY,oParentContainer){
     };
     
     this.setDiceResult = function(iDice1,iDice2){
+        // Validar valores dos dados
+        if (iDice1 === undefined || iDice2 === undefined || 
+            iDice1 < 1 || iDice1 > 6 || iDice2 < 1 || iDice2 > 6) {
+            console.error("Invalid dice values:", iDice1, iDice2);
+            iDice1 = Math.max(1, Math.min(6, iDice1 || 1));
+            iDice2 = Math.max(1, Math.min(6, iDice2 || 1));
+        }
+        
         _oDice1.gotoAndStop("dice_"+iDice1);
         _oDice2.gotoAndStop("dice_"+iDice2);
         
