@@ -69,6 +69,20 @@ window.SupabaseMultiplayer = (function(){
     // Join a room (automatically finds best available room of the type)
     async function joinRoom(roomType, socketId = null) {
         try {
+            // Clean up any existing connections first
+            if (realtimeSubscription) {
+                console.log('Cleaning up existing subscription before joining new room');
+                await supabase.removeChannel(realtimeSubscription);
+                realtimeSubscription = null;
+            }
+
+            // Reset room state
+            currentRoomId = null;
+            currentGameSessionId = null;
+            playerSessionId = null;
+
+            console.log('Attempting to join room of type:', roomType);
+
             const { data, error } = await supabase.rpc('join_room', {
                 p_room_type: roomType,
                 p_socket_id: socketId
@@ -76,11 +90,21 @@ window.SupabaseMultiplayer = (function(){
 
             if (error) {
                 console.error('Error joining room:', error);
+                
+                // Handle specific error cases
+                if (error.code === '23505') {
+                    // Duplicate key error - player already in a room
+                    console.log('Player already in a room, attempting to leave first...');
+                    await leaveRoom();
+                    // Retry joining after leaving
+                    return joinRoom(roomType, socketId);
+                }
+                
                 throw error;
             }
 
-            if (!data.success) {
-                throw new Error(data.error || 'Failed to join room');
+            if (!data || !data.success) {
+                throw new Error(data?.error || 'Failed to join room - no data returned');
             }
 
             // Store room information
@@ -88,14 +112,26 @@ window.SupabaseMultiplayer = (function(){
             currentGameSessionId = data.game_session_id;
             playerSessionId = data.player_session_id;
 
-            // Set up real-time subscription
+            console.log('Successfully joined room:', {
+                roomId: currentRoomId,
+                gameSessionId: currentGameSessionId,
+                playerSessionId: playerSessionId,
+                roomName: data.room.room_name
+            });
+
+            // Set up real-time subscription with retry logic
             await setupRealtimeSubscription();
 
-            console.log('Joined room:', data.room);
             return data;
 
         } catch (error) {
             console.error('Join room error:', error);
+            
+            // Reset state on error
+            currentRoomId = null;
+            currentGameSessionId = null;
+            playerSessionId = null;
+            
             throw error;
         }
     }
@@ -103,29 +139,49 @@ window.SupabaseMultiplayer = (function(){
     // Leave current room
     async function leaveRoom() {
         try {
+            console.log('🚪 Leaving current room...');
+            
             // Clean up subscription first
             if (realtimeSubscription) {
+                console.log('🔌 Removing real-time subscription...');
                 await supabase.removeChannel(realtimeSubscription);
                 realtimeSubscription = null;
             }
 
-            const { data, error } = await supabase.rpc('leave_room');
+            // Only call leave_room RPC if we have a current room
+            if (currentRoomId || currentGameSessionId || playerSessionId) {
+                console.log('📤 Calling leave_room RPC...');
+                const { data, error } = await supabase.rpc('leave_room');
 
-            if (error) {
-                console.error('Error leaving room:', error);
-                throw error;
+                if (error) {
+                    console.error('Error leaving room via RPC:', error);
+                    // Don't throw error here - we still want to clean up local state
+                }
+                
+                console.log('✅ Leave room RPC response:', data);
+            } else {
+                console.log('ℹ️ No active room to leave');
             }
 
-            // Clear room info
+            // Clear room info regardless of RPC success
             currentRoomId = null;
             currentGameSessionId = null;
             playerSessionId = null;
+            
+            console.log('🧹 Local room state cleared');
 
-            return data;
+            return { success: true };
 
         } catch (error) {
             console.error('Leave room error:', error);
-            throw error;
+            
+            // Still clear local state even if there's an error
+            currentRoomId = null;
+            currentGameSessionId = null;
+            playerSessionId = null;
+            
+            // Don't throw - we want to allow cleanup even if RPC fails
+            return { success: false, error: error.message };
         }
     }
 
@@ -231,44 +287,63 @@ window.SupabaseMultiplayer = (function(){
 
         // Clean up existing subscription
         if (realtimeSubscription) {
+            console.log('Removing existing subscription...');
             await supabase.removeChannel(realtimeSubscription);
+            realtimeSubscription = null;
         }
 
-        // Create new subscription for room events
-        realtimeSubscription = supabase.channel(`room_${currentRoomId}`)
-            .on('postgres_changes', {
-                event: 'INSERT',
-                schema: 'public',
-                table: 'game_events',
-                filter: `room_id=eq.${currentRoomId}`
-            }, handleGameEvent)
-            .on('postgres_changes', {
-                event: 'UPDATE',
-                schema: 'public',
-                table: 'game_sessions',
-                filter: `room_id=eq.${currentRoomId}`
-            }, handleGameSessionUpdate)
-            .on('postgres_changes', {
-                event: '*',
-                schema: 'public',
-                table: 'player_sessions',
-                filter: `room_id=eq.${currentRoomId}`
-            }, handlePlayerSessionChange)
-            .on('postgres_changes', {
-                event: 'INSERT',
-                schema: 'public',
-                table: 'dice_rolls',
-                filter: `game_session_id=eq.${currentGameSessionId}`
-            }, handleDiceRoll)
-            .on('postgres_changes', {
-                event: 'INSERT',
-                schema: 'public',
-                table: 'game_rolls',
-                filter: `room_id=eq.${currentRoomId}`
-            }, handleGameRoll)
-            .subscribe();
+        console.log('Setting up real-time subscription for room:', currentRoomId, 'game session:', currentGameSessionId);
 
-        console.log('Real-time subscription set up for room:', currentRoomId);
+        try {
+            // Create new subscription for room events
+            realtimeSubscription = supabase.channel(`room_${currentRoomId}`)
+                .on('postgres_changes', {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'game_events',
+                    filter: `room_id=eq.${currentRoomId}`
+                }, handleGameEvent)
+                .on('postgres_changes', {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'game_sessions',
+                    filter: `room_id=eq.${currentRoomId}`
+                }, handleGameSessionUpdate)
+                .on('postgres_changes', {
+                    event: '*',
+                    schema: 'public',
+                    table: 'player_sessions',
+                    filter: `room_id=eq.${currentRoomId}`
+                }, handlePlayerSessionChange)
+                .on('postgres_changes', {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'dice_rolls',
+                    filter: `game_session_id=eq.${currentGameSessionId}`
+                }, handleDiceRoll)
+                .on('postgres_changes', {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'game_rolls',
+                    filter: `room_id=eq.${currentRoomId}`
+                }, handleGameRoll)
+                .subscribe((status, err) => {
+                    if (status === 'SUBSCRIBED') {
+                        console.log('✅ Successfully subscribed to real-time events for room:', currentRoomId);
+                    } else if (status === 'CHANNEL_ERROR') {
+                        console.error('❌ Channel subscription error:', err);
+                    } else if (status === 'TIMED_OUT') {
+                        console.error('❌ Channel subscription timed out');
+                    } else {
+                        console.log('📡 Subscription status:', status, err);
+                    }
+                });
+
+            console.log('Real-time subscription initiated for room:', currentRoomId);
+        } catch (error) {
+            console.error('Failed to set up real-time subscription:', error);
+            throw error;
+        }
     }
 
     // Handle real-time game events
@@ -349,7 +424,19 @@ window.SupabaseMultiplayer = (function(){
     function handleGameRoll(payload) {
         console.log('🎬 Synchronized game roll event received:', payload);
         
+        if (!payload || !payload.new) {
+            console.error('❌ Invalid game roll payload received:', payload);
+            return;
+        }
+        
         const roll = payload.new;
+        
+        // Validate roll data
+        if (!roll || roll.die1 === undefined || roll.die2 === undefined) {
+            console.error('❌ Invalid roll data in payload:', roll);
+            return;
+        }
+        
         console.log(`🎲 Roll data: ${roll.die1} + ${roll.die2} = ${roll.total} by player ${roll.player_id}`);
         
         // Get player name for the roller
@@ -366,17 +453,41 @@ window.SupabaseMultiplayer = (function(){
                         d1: roll.die1,
                         d2: roll.die2,
                         total: roll.total,
-                        ts: Date.parse(roll.rolled_at),
+                        ts: roll.rolled_at ? Date.parse(roll.rolled_at) : Date.now(),
                         playerName: profile ? profile.username : 'Jogador',
                         playerId: roll.player_id,
                         isMyRoll: roll.player_id === currentUserId
                     };
 
+                    console.log('🎯 Triggering synchronized animation for all players:', rollData);
+
                     // Trigger dice animation for all players in the room
-                    if (window.s_oGame && window.s_oGame.onSynchronizedRoll) {
+                    if (window.s_oGame && typeof window.s_oGame.onSynchronizedRoll === 'function') {
                         window.s_oGame.onSynchronizedRoll(rollData);
-                    } else if (window.s_oGame && window.s_oGame.onServerRoll) {
+                        console.log('✅ Synchronized roll animation triggered successfully');
+                    } else if (window.s_oGame && typeof window.s_oGame.onServerRoll === 'function') {
                         // Fallback to existing method
+                        console.log('⚠️ Using fallback onServerRoll method');
+                        window.s_oGame.onServerRoll(rollData);
+                    } else {
+                        console.error('❌ No valid roll handler found in game object');
+                    }
+                }).catch(function(userError) {
+                    console.error('Error getting current user:', userError);
+                    // Still trigger animation without user comparison
+                    const rollData = {
+                        d1: roll.die1,
+                        d2: roll.die2,
+                        total: roll.total,
+                        ts: roll.rolled_at ? Date.parse(roll.rolled_at) : Date.now(),
+                        playerName: profile ? profile.username : 'Jogador',
+                        playerId: roll.player_id,
+                        isMyRoll: false
+                    };
+
+                    if (window.s_oGame && typeof window.s_oGame.onSynchronizedRoll === 'function') {
+                        window.s_oGame.onSynchronizedRoll(rollData);
+                    } else if (window.s_oGame && typeof window.s_oGame.onServerRoll === 'function') {
                         window.s_oGame.onServerRoll(rollData);
                     }
                 });
@@ -389,17 +500,23 @@ window.SupabaseMultiplayer = (function(){
                         d1: roll.die1,
                         d2: roll.die2,
                         total: roll.total,
-                        ts: Date.parse(roll.rolled_at),
+                        ts: roll.rolled_at ? Date.parse(roll.rolled_at) : Date.now(),
                         playerName: 'Jogador',
                         playerId: roll.player_id,
                         isMyRoll: roll.player_id === currentUserId
                     };
 
-                    if (window.s_oGame && window.s_oGame.onSynchronizedRoll) {
+                    console.log('🎯 Triggering animation with fallback player data:', rollData);
+
+                    if (window.s_oGame && typeof window.s_oGame.onSynchronizedRoll === 'function') {
                         window.s_oGame.onSynchronizedRoll(rollData);
-                    } else if (window.s_oGame && window.s_oGame.onServerRoll) {
+                    } else if (window.s_oGame && typeof window.s_oGame.onServerRoll === 'function') {
                         window.s_oGame.onServerRoll(rollData);
+                    } else {
+                        console.error('❌ No valid roll handler found in game object');
                     }
+                }).catch(function(userError) {
+                    console.error('Error getting user for fallback roll:', userError);
                 });
             });
     }
@@ -591,6 +708,49 @@ window.SupabaseMultiplayer = (function(){
         return stats;
     }
 
+    // Debug function to check connection and database status
+    async function debugConnection() {
+        console.log('🔍 Debug: Checking Supabase connection...');
+        
+        try {
+            // Test basic connection
+            const { data: { user }, error: authError } = await supabase.auth.getUser();
+            console.log('👤 Current user:', user ? user.email : 'Not authenticated');
+            
+            if (authError) {
+                console.error('❌ Auth error:', authError);
+                return { success: false, error: 'Authentication error' };
+            }
+
+            // Test database connection
+            const { data: rooms, error: dbError } = await supabase
+                .from('game_rooms')
+                .select('id, room_name, current_players')
+                .limit(1);
+                
+            if (dbError) {
+                console.error('❌ Database error:', dbError);
+                return { success: false, error: 'Database connection error' };
+            }
+            
+            console.log('✅ Database connection OK, sample rooms:', rooms);
+            
+            // Check current state
+            console.log('🎮 Current state:', {
+                roomId: currentRoomId,
+                gameSessionId: currentGameSessionId,
+                playerSessionId: playerSessionId,
+                hasSubscription: !!realtimeSubscription
+            });
+            
+            return { success: true, user, rooms };
+            
+        } catch (error) {
+            console.error('❌ Debug connection failed:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
     // Public API
     return {
         init,
@@ -608,6 +768,7 @@ window.SupabaseMultiplayer = (function(){
         updatePlayerBalance,
         getRoomStats,
         cleanup,
+        debugConnection,
         
         // Getters
         get currentRoomId() { return currentRoomId; },
