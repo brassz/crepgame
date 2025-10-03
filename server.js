@@ -59,9 +59,12 @@ io.on('connection', (socket) => {
     // start turn cycle if not running
     if (state.currentIndex === -1 && state.order.length > 0){
       startNextTurn(room);
-    } else {
+    } else if (state.order.length > 0) {
       // sync current turn to the newcomer
       emitTurnUpdate(room);
+    } else {
+      // Não há jogadores suficientes
+      socket.emit('waiting_for_players');
     }
 
     // send last roll to newcomer (optional)
@@ -95,6 +98,8 @@ io.on('connection', (socket) => {
       if (state.order.length === 0){
         clearTimer(currentRoom);
         state.currentIndex = -1;
+        // Notificar que não há mais jogadores
+        io.to(currentRoom).emit('no_players_left');
       } else {
         // if current index out of bounds or current player missing, advance
         const cur = state.order[state.currentIndex];
@@ -112,9 +117,32 @@ server.listen(PORT, () => {
 function performRoll(room){
   const d1 = Math.floor(Math.random() * 6) + 1;
   const d2 = Math.floor(Math.random() * 6) + 1;
-  const roll = { d1, d2, ts: Date.now() };
+  const state = roomState[room];
+  const currentPlayer = state.order[state.currentIndex];
+  const playerIndex = state.currentIndex + 1; // 1-based for display
+  
+  const roll = { 
+    d1, 
+    d2, 
+    ts: Date.now(),
+    playerId: currentPlayer,
+    playerIndex: playerIndex,
+    totalPlayers: state.order.length
+  };
+  
   roomState[room].lastRoll = roll;
+  
+  // Emitir resultado para todos os jogadores na sala
   io.to(room).emit('dice_result', roll);
+  
+  // Emitir notificação especial para espectadores
+  io.to(room).emit('player_rolled', {
+    playerId: currentPlayer,
+    playerIndex: playerIndex,
+    totalPlayers: state.order.length,
+    result: d1 + d2,
+    dice: [d1, d2]
+  });
 }
 
 function clearTimer(room){
@@ -128,7 +156,15 @@ function clearTimer(room){
 function emitTurnUpdate(room){
   const state = roomState[room];
   const playerId = state.order[state.currentIndex] || null;
-  io.to(room).emit('turn_update', { playerId, endsAt: state.turnEndsAt });
+  const playerIndex = state.currentIndex + 1; // 1-based for display
+  const totalPlayers = state.order.length;
+  io.to(room).emit('turn_update', { 
+    playerId, 
+    endsAt: state.turnEndsAt,
+    playerIndex,
+    totalPlayers,
+    isSpectating: true // Indica que outros jogadores estão assistindo
+  });
 }
 
 function startNextTurn(room){
