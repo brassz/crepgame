@@ -83,18 +83,15 @@ window.SupabaseRealtimeDice = (function() {
         realtimeChannel.on('presence', { event: 'join' }, handlePresenceJoin);
         realtimeChannel.on('presence', { event: 'leave' }, handlePresenceLeave);
 
-        // Subscribe to the channel
-        return realtimeChannel.subscribe().then(function(status) {
-            if (status === 'SUBSCRIBED') {
-                isSubscribed = true;
-                console.log('Successfully subscribed to room:', roomId);
-                
-                // Join the room session and turn cycle
-                return joinRoomSession(roomId);
-            } else {
-                throw new Error('Failed to subscribe to realtime channel');
-            }
-        });
+        // Subscribe to the channel (synchronous in Supabase v2)
+        realtimeChannel.subscribe();
+        
+        // Set subscription status
+        isSubscribed = true;
+        console.log('Subscribed to realtime channel for room:', roomId);
+        
+        // Join the room session and turn cycle
+        return joinRoomSession(roomId);
     }
 
     function joinRoomSession(roomId) {
