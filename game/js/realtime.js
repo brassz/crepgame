@@ -1,8 +1,9 @@
 window.Realtime = (function(){
     var currentRoom = null;
     var isInitialized = false;
+    var currentUser = null;
 
-    // Initialize Supabase Realtime
+    // Initialize Hybrid Realtime System (Supabase + Socket.IO)
     function init() {
         if (!window.sb || !window.sb.auth) {
             console.error('Supabase client not available');
@@ -15,23 +16,38 @@ window.Realtime = (function(){
                 throw new Error('User not authenticated');
             }
 
+            currentUser = user;
+
+            // Initialize Hybrid Realtime Manager
+            if (window.HybridRealtimeManager && window.HybridRealtimeManager.init) {
+                return window.HybridRealtimeManager.init();
+            }
+            
+            // Fallback to individual initialization
+            var promises = [];
+            
             // Initialize Supabase Multiplayer
             if (window.SupabaseMultiplayer && window.SupabaseMultiplayer.init) {
-                return window.SupabaseMultiplayer.init();
+                promises.push(window.SupabaseMultiplayer.init());
             }
-            return Promise.resolve();
-        }).then(function() {
+            
             // Initialize Supabase Realtime Dice
             if (window.SupabaseRealtimeDice && window.SupabaseRealtimeDice.init) {
-                return window.SupabaseRealtimeDice.init();
+                promises.push(window.SupabaseRealtimeDice.init());
             }
-            return Promise.resolve();
+            
+            // Initialize Socket.IO Client
+            if (window.SocketIOClient && window.SocketIOClient.init) {
+                promises.push(window.SocketIOClient.init());
+            }
+            
+            return Promise.all(promises);
         }).then(function() {
             isInitialized = true;
-            console.log('Supabase Realtime initialized successfully');
+            console.log('✅ Hybrid Realtime System initialized successfully');
             return true;
         }).catch(function(error) {
-            console.error('Failed to initialize Supabase Realtime:', error);
+            console.error('❌ Failed to initialize Hybrid Realtime System:', error);
             throw error;
         });
     }
@@ -52,8 +68,30 @@ window.Realtime = (function(){
             return Promise.reject(new Error('Not initialized'));
         }
 
+        if (!currentUser) {
+            console.error('User not authenticated');
+            return Promise.reject(new Error('User not authenticated'));
+        }
+
         currentRoom = room;
+
+        // Use Hybrid Realtime Manager if available
+        if (window.HybridRealtimeManager && window.HybridRealtimeManager.joinRoom) {
+            // Get user profile for username
+            return window.SupabaseMultiplayer.getUserProfile().then(function(profile) {
+                var username = profile ? profile.username : currentUser.email || 'Player';
+                return window.HybridRealtimeManager.joinRoom(room, currentUser.id, username);
+            }).then(function(result) {
+                console.log('✅ Successfully joined room with hybrid system:', room);
+                return result;
+            }).catch(function(error) {
+                console.error('❌ Failed to join room with hybrid system:', error);
+                handleJoinError(error);
+                throw error;
+            });
+        }
         
+        // Fallback to Supabase only
         if (!window.SupabaseRealtimeDice) {
             console.error('SupabaseRealtimeDice not available');
             return Promise.reject(new Error('SupabaseRealtimeDice not available'));
@@ -68,26 +106,29 @@ window.Realtime = (function(){
             }
         }).catch(function(error) {
             console.error('Failed to join room:', error);
-            
-            // Provide more specific error messages
-            var errorMessage = 'Erro desconhecido';
-            if (error.message) {
-                if (error.message.includes('session conflict') || error.message.includes('duplicate')) {
-                    errorMessage = 'Conflito de sessão detectado. Tente novamente em alguns segundos.';
-                } else if (error.message.includes('No available rooms')) {
-                    errorMessage = 'Não há salas disponíveis deste tipo no momento.';
-                } else if (error.message.includes('not authenticated')) {
-                    errorMessage = 'Você precisa fazer login para entrar em uma sala.';
-                } else if (error.message.includes('Not your turn')) {
-                    errorMessage = 'Não é sua vez de jogar.';
-                } else {
-                    errorMessage = error.message;
-                }
-            }
-            
-            alert('Erro ao entrar na sala: ' + errorMessage);
+            handleJoinError(error);
             throw error;
         });
+    }
+
+    function handleJoinError(error) {
+        // Provide more specific error messages
+        var errorMessage = 'Erro desconhecido';
+        if (error.message) {
+            if (error.message.includes('session conflict') || error.message.includes('duplicate')) {
+                errorMessage = 'Conflito de sessão detectado. Tente novamente em alguns segundos.';
+            } else if (error.message.includes('No available rooms')) {
+                errorMessage = 'Não há salas disponíveis deste tipo no momento.';
+            } else if (error.message.includes('not authenticated')) {
+                errorMessage = 'Você precisa fazer login para entrar em uma sala.';
+            } else if (error.message.includes('Not your turn')) {
+                errorMessage = 'Não é sua vez de jogar.';
+            } else {
+                errorMessage = error.message;
+            }
+        }
+        
+        alert('Erro ao entrar na sala: ' + errorMessage);
     }
 
     function requestRoll(){
@@ -132,10 +173,26 @@ window.Realtime = (function(){
     }
 
     function leave() {
-        if (window.SupabaseRealtimeDice) {
-            return window.SupabaseRealtimeDice.leaveRoom();
+        // Use Hybrid Realtime Manager if available
+        if (window.HybridRealtimeManager && window.HybridRealtimeManager.leaveRoom) {
+            return window.HybridRealtimeManager.leaveRoom();
         }
-        return Promise.resolve();
+        
+        // Fallback to individual systems
+        var promises = [];
+        
+        if (window.SupabaseRealtimeDice && window.SupabaseRealtimeDice.leaveRoom) {
+            promises.push(window.SupabaseRealtimeDice.leaveRoom());
+        }
+        
+        if (window.SocketIOClient && window.SocketIOClient.leaveLobby) {
+            promises.push(Promise.resolve(window.SocketIOClient.leaveLobby()));
+        }
+        
+        return Promise.all(promises).then(function() {
+            currentRoom = null;
+            return true;
+        });
     }
 
     function getCurrentRoom() {
