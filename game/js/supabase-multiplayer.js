@@ -274,11 +274,23 @@ window.SupabaseMultiplayer = (function(){
                 if (window.s_oInterface && window.s_oInterface.onPlayerLeft) {
                     window.s_oInterface.onPlayerLeft(eventData);
                 }
+                // Remove apostas do jogador que saiu
+                if (window.s_oInterface && window.s_oInterface.removePlayerBets && eventData) {
+                    var playerName = eventData.player_name || "JOGADOR " + (eventData.player_index || "?");
+                    window.s_oInterface.removePlayerBets(playerName);
+                }
                 break;
 
             case 'bet_placed':
                 if (window.s_oGame && window.s_oGame.onBetPlaced) {
                     window.s_oGame.onBetPlaced(eventData);
+                }
+                // Atualiza a exibição de apostas da mesa
+                if (window.s_oInterface && window.s_oInterface.addTableBet && eventData) {
+                    var playerName = eventData.player_name || "JOGADOR " + (eventData.player_index || "?");
+                    var betAmount = eventData.bet_amount || 0;
+                    var betType = eventData.bet_type || "main_bet";
+                    window.s_oInterface.addTableBet(playerName, betAmount, betType);
                 }
                 break;
 

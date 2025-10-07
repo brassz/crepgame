@@ -22,6 +22,8 @@ function CInterface(){
     var _oButRoomPrata;
     var _oButRoomOuro;
     var _oTurnTimerText;
+    var _oBetDisplayText;
+    var _aTableBets = []; // Array para armazenar apostas da mesa
     var _fRequestFullScreen = null;
     var _fCancelFullScreen = null;
     
@@ -143,6 +145,20 @@ function CInterface(){
                     0, 0,
                     "",
                     true, true, false,
+                    false );
+
+        // Área de exibição das apostas da mesa
+        var oBetDisplayBg = createBitmap(s_oSpriteLibrary.getSprite('display_bg'));
+        oBetDisplayBg.x = 750;
+        oBetDisplayBg.y = 50;
+        s_oStage.addChild(oBetDisplayBg);
+        
+        _oBetDisplayText = new CTLText(s_oStage, 
+                    oBetDisplayBg.x+114, oBetDisplayBg.y + 13, 130, 80, 
+                    14, "center", "#fff", FONT1, 1,
+                    0, 0,
+                    "APOSTAS DA MESA\n\nNenhuma aposta ativa",
+                    true, true, true,
                     false );
       
         _oClearAllBet = new CGfxButton(764,636,s_oSpriteLibrary.getSprite('but_clear_all'),s_oStage);
@@ -362,6 +378,68 @@ function CInterface(){
         if (_oMsgTitle){
             _oMsgTitle.refreshText(TEXT_MIN_BET+": "+iMin+"\n"+TEXT_MAX_BET+": "+(iMax ? iMax : "Sem limite"));
         }
+    };
+
+    // Adiciona uma aposta à exibição da mesa
+    this.addTableBet = function(playerName, betAmount, betType){
+        var oBet = {
+            player: playerName,
+            amount: betAmount,
+            type: betType || "main_bet",
+            timestamp: Date.now()
+        };
+        
+        _aTableBets.push(oBet);
+        this.updateBetDisplay();
+    };
+
+    // Remove apostas de um jogador específico
+    this.removePlayerBets = function(playerName){
+        _aTableBets = _aTableBets.filter(function(bet){
+            return bet.player !== playerName;
+        });
+        this.updateBetDisplay();
+    };
+
+    // Limpa todas as apostas da mesa
+    this.clearTableBets = function(){
+        _aTableBets = [];
+        this.updateBetDisplay();
+    };
+
+    // Atualiza a exibição das apostas
+    this.updateBetDisplay = function(){
+        if (!_oBetDisplayText) return;
+        
+        var sDisplayText = "APOSTAS DA MESA\n\n";
+        
+        if (_aTableBets.length === 0) {
+            sDisplayText += "Nenhuma aposta ativa";
+        } else {
+            var iTotalBets = 0;
+            var aPlayerBets = {};
+            
+            // Agrupa apostas por jogador
+            for (var i = 0; i < _aTableBets.length; i++) {
+                var bet = _aTableBets[i];
+                if (!aPlayerBets[bet.player]) {
+                    aPlayerBets[bet.player] = 0;
+                }
+                aPlayerBets[bet.player] += bet.amount;
+                iTotalBets += bet.amount;
+            }
+            
+            // Exibe apostas por jogador
+            var iPlayerCount = 0;
+            for (var player in aPlayerBets) {
+                iPlayerCount++;
+                sDisplayText += player + ": " + aPlayerBets[player].toFixed(0) + TEXT_CURRENCY + "\n";
+            }
+            
+            sDisplayText += "\nTOTAL: " + iTotalBets.toFixed(0) + TEXT_CURRENCY;
+        }
+        
+        _oBetDisplayText.refreshText(sDisplayText);
     };
     
     this._onBetRelease = function(oParams){
