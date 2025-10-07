@@ -256,15 +256,34 @@ function CGame(oData){
 
     // Recebe início da rolagem do servidor (todos os jogadores veem a animação)
     this.onDiceRollStart = function(data){
+        console.log('onDiceRollStart called with data:', data);
+        
         // Todos os jogadores na sala veem a animação começar
         var isMyRoll = false;
+        var currentUserId = null;
+        
+        // Get current user synchronously if possible
         if (window.sb && window.sb.auth) {
-            window.sb.auth.getUser().then(function(response) {
-                var user = response.data && response.data.user;
-                if (user && data && data.shooter) {
-                    isMyRoll = (user.id === data.shooter);
+            try {
+                // Try to get cached user first
+                var cachedUser = window.sb.auth.getUser();
+                if (cachedUser && cachedUser.then) {
+                    // It's a promise, handle async
+                    cachedUser.then(function(response) {
+                        var user = response.data && response.data.user;
+                        if (user && data && data.shooter) {
+                            var wasMyRoll = (user.id === data.shooter);
+                            console.log('Async user check - isMyRoll:', wasMyRoll, 'user:', user.id, 'shooter:', data.shooter);
+                        }
+                    });
+                } else if (cachedUser && cachedUser.data && cachedUser.data.user) {
+                    // Synchronous result
+                    currentUserId = cachedUser.data.user.id;
+                    isMyRoll = (currentUserId === data.shooter);
                 }
-            });
+            } catch (error) {
+                console.warn('Error getting current user:', error);
+            }
         }
         
         // Mostrar mensagem indicando quem está lançando os dados
@@ -279,6 +298,8 @@ function CGame(oData){
             }
             shooterMsg = playerNum + " está lançando os dados...";
         }
+        
+        console.log('Showing dice roll message:', shooterMsg);
         _oInterface.showMessage(shooterMsg);
         
         // Preparar para animação (sem gerar resultado ainda)
@@ -287,6 +308,7 @@ function CGame(oData){
         _oInterface.showBlock();
         
         // Iniciar animação de rolagem sem resultado definido ainda
+        console.log('Starting dice animation for all players');
         _oDicesAnim.startRollingWithoutResult();
     };
 
@@ -674,9 +696,25 @@ function CGame(oData){
         _oInterface.setCurBet(0);
         
         // Sala padrão: BRONZE
+        console.log('🏠 Setting up default room (bronze)...');
         this.changeRoom("bronze");
-        if (window.Realtime && Realtime.connect()){
-            Realtime.join("bronze");
+        
+        // Initialize and connect to realtime system
+        console.log('🔗 Checking realtime system availability...');
+        if (window.Realtime) {
+            console.log('✅ Realtime system available');
+            if (Realtime.connect()) {
+                console.log('✅ Realtime connected, joining bronze room...');
+                Realtime.join("bronze").then(function(result) {
+                    console.log('✅ Successfully joined bronze room:', result);
+                }).catch(function(error) {
+                    console.error('❌ Failed to join bronze room:', error);
+                });
+            } else {
+                console.warn('⚠️ Realtime connection failed');
+            }
+        } else {
+            console.warn('⚠️ Realtime system not available');
         }
     };
     
@@ -703,8 +741,16 @@ function CGame(oData){
         console.log("Sala alterada para:", oRoomConfig.name, "Aposta mínima:", oRoomConfig.min_bet, "Aposta máxima:", oRoomConfig.max_bet || "Sem limite");
 
         // Informar servidor para entrar na sala
+        console.log('🔄 Changing to room:', sRoomType);
         if (window.Realtime && Realtime.connect()){
-            Realtime.join(sRoomType);
+            console.log('🏠 Joining room via Realtime:', sRoomType);
+            Realtime.join(sRoomType).then(function(result) {
+                console.log('✅ Successfully changed to room:', sRoomType, result);
+            }).catch(function(error) {
+                console.error('❌ Failed to change to room:', sRoomType, error);
+            });
+        } else {
+            console.warn('⚠️ Realtime not available for room change');
         }
     };
 
