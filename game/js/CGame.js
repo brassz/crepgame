@@ -23,7 +23,6 @@ function CGame(oData){
     var _oMsgBox;
     var _oGameOverPanel;
     var _oAreYouSurePanel;
-    var _oPlayersPanel;
     var _sCurrentRoom = null;
     
     
@@ -58,12 +57,6 @@ function CGame(oData){
         _oGameOverPanel = new CGameOver();
 
         _oMsgBox = new CMsgBox();
-        
-        // Inicializar painel de jogadores
-        _oPlayersPanel = new CPlayersPanel();
-        
-        // Adicionar jogadores de exemplo para demonstração
-        this._addExamplePlayers();
 
         _aDiceResultHistory=new Array();
 
@@ -79,10 +72,6 @@ function CGame(oData){
         _oMsgBox.unload();
         _oGameOverPanel.unload();
         _oDicesAnim.unload();
-        
-        if(_oPlayersPanel){
-            _oPlayersPanel.unload();
-        }
 
         s_oStage.removeAllChildren();
     };
@@ -279,27 +268,6 @@ function CGame(oData){
         
         // Finalizar animação com o resultado
         _oDicesAnim.finishRollingWithResult(_aDiceResult);
-    };
-
-    // Função para receber apostas de outros jogadores
-    this.onPlayerBetUpdate = function(data){
-        if(data && data.playerName && data.betAmount !== undefined){
-            this._updatePlayerBet(data.playerName, data.betAmount, false);
-        }
-    };
-    
-    // Função para quando um jogador entra na sala
-    this.onPlayerJoined = function(data){
-        if(data && data.playerName){
-            this.addPlayerToPanel(data.playerName, 0);
-        }
-    };
-    
-    // Função para quando um jogador sai da sala
-    this.onPlayerLeft = function(data){
-        if(data && data.playerName){
-            this.removePlayerFromPanel(data.playerName);
-        }
     };
 
     // Atualizações de turno vindas do servidor
@@ -762,38 +730,7 @@ function CGame(oData){
         _oInterface.enableClearButton();
         _oInterface.refreshMsgHelp("APOSTE AQUI - Clique para apostar e lançar os dados",true);
         
-        // Atualizar painel de jogadores com a nova aposta
-        this._updatePlayerBet("Você", _oMySeat.getCurBet(), true);
-        
         playSound("chip", 1, false);
-    };
-    
-    // Função para atualizar aposta de um jogador no painel
-    this._updatePlayerBet = function(sPlayerName, iBetAmount, bIsCurrentPlayer){
-        if(_oPlayersPanel){
-            _oPlayersPanel.addPlayerBet(sPlayerName, iBetAmount, bIsCurrentPlayer);
-        }
-    };
-    
-    // Função para adicionar jogador ao painel
-    this.addPlayerToPanel = function(sPlayerName, iBetAmount){
-        if(_oPlayersPanel){
-            _oPlayersPanel.addPlayerBet(sPlayerName, iBetAmount || 0, false);
-        }
-    };
-    
-    // Função para remover jogador do painel
-    this.removePlayerFromPanel = function(sPlayerName){
-        if(_oPlayersPanel){
-            _oPlayersPanel.removePlayer(sPlayerName);
-        }
-    };
-    
-    // Função para limpar todas as apostas do painel
-    this.clearAllPlayerBets = function(){
-        if(_oPlayersPanel){
-            _oPlayersPanel.clearAllBets();
-        }
     };
 
     this._onShowEnlight = function(oParams){
@@ -834,31 +771,7 @@ function CGame(oData){
         _oInterface.enableRoll(false);
         _oInterface.disableClearButton();
         
-        // Atualizar painel de jogadores
-        this._updatePlayerBet("Você", _oMySeat.getCurBet(), true);
         
-        
-    };
-    
-    // Função para adicionar jogadores de exemplo
-    this._addExamplePlayers = function(){
-        // Adicionar alguns jogadores fictícios para demonstração
-        this._updatePlayerBet("Jogador 1", 100, false);
-        this._updatePlayerBet("Jogador 2", 250, false);
-        this._updatePlayerBet("Maria Silva", 150, false);
-        this._updatePlayerBet("João Santos", 75, false);
-        this._updatePlayerBet("Você", 0, true);
-        
-        // Simular mudanças nas apostas dos outros jogadores periodicamente
-        var self = this;
-        setInterval(function(){
-            if(_oPlayersPanel && Math.random() < 0.3){ // 30% chance a cada intervalo
-                var aPlayerNames = ["Jogador 1", "Jogador 2", "Maria Silva", "João Santos"];
-                var sRandomPlayer = aPlayerNames[Math.floor(Math.random() * aPlayerNames.length)];
-                var iRandomBet = Math.floor(Math.random() * 300) + 50; // Entre 50 e 350
-                self._updatePlayerBet(sRandomPlayer, iRandomBet, false);
-            }
-        }, 5000); // A cada 5 segundos
     };
    
     this.onExit = function(bForceExit){
