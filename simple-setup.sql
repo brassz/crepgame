@@ -80,9 +80,14 @@ BEGIN
     -- Check if it's the player's turn (simplified check)
     SELECT * INTO v_current_turn 
     FROM public.current_turn 
-    WHERE room_id = p_room_id AND current_player_id = v_player_id;
+    WHERE room_id = p_room_id;
     
     IF NOT FOUND THEN
+        RAISE EXCEPTION 'Invalid room - no active game session';
+    END IF;
+    
+    -- Check if it's actually the player's turn
+    IF v_current_turn.current_player_id != v_player_id THEN
         RAISE EXCEPTION 'Not your turn or invalid room';
     END IF;
 
@@ -123,17 +128,32 @@ AS $$
 DECLARE
     v_player_id UUID;
     v_current_turn RECORD;
+    v_session_exists BOOLEAN;
 BEGIN
     v_player_id := auth.uid();
     IF v_player_id IS NULL THEN
         RAISE EXCEPTION 'User not authenticated';
     END IF;
 
+    -- Ensure room session exists for this player
+    SELECT EXISTS(
+        SELECT 1 FROM public.room_sessions 
+        WHERE room_id = p_room_id AND user_id = v_player_id AND is_active = true
+    ) INTO v_session_exists;
+    
+    IF NOT v_session_exists THEN
+        -- Create room session if it doesn't exist
+        INSERT INTO public.room_sessions (room_id, user_id, is_active, joined_at)
+        VALUES (p_room_id, v_player_id, true, NOW())
+        ON CONFLICT (room_id, user_id) 
+        DO UPDATE SET is_active = true, joined_at = NOW();
+    END IF;
+
     -- Check if turn cycle exists for this room
     SELECT * INTO v_current_turn FROM public.current_turn WHERE room_id = p_room_id;
 
     IF NOT FOUND THEN
-        -- Create new turn cycle
+        -- Create new turn cycle with this player as first
         INSERT INTO public.current_turn (
             room_id, 
             current_player_id, 
@@ -150,9 +170,8 @@ BEGIN
             NOW() + INTERVAL '25 seconds'
         );
         
-        v_current_turn.current_player_id := v_player_id;
-        v_current_turn.player_index := 1;
-        v_current_turn.total_players := 1;
+        -- Get the inserted record
+        SELECT * INTO v_current_turn FROM public.current_turn WHERE room_id = p_room_id;
     END IF;
 
     RETURN jsonb_build_object(
@@ -160,6 +179,7 @@ BEGIN
         'current_player_id', v_current_turn.current_player_id,
         'player_index', v_current_turn.player_index,
         'total_players', v_current_turn.total_players,
+        'turn_ends_at', v_current_turn.turn_ends_at,
         'is_my_turn', v_current_turn.current_player_id = v_player_id
     );
 END;

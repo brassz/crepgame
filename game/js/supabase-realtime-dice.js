@@ -105,10 +105,16 @@ window.SupabaseRealtimeDice = (function() {
             return window.sb.rpc('join_room_simple', { p_room_id: roomId });
         }).then(function(turnResult) {
             if (turnResult.error) {
-                throw turnResult.error;
+                console.error('Turn cycle join error:', turnResult.error);
+                throw new Error(turnResult.error.message || 'Failed to join turn cycle');
             }
 
             const turnData = turnResult.data;
+            
+            // Validate turn data
+            if (!turnData) {
+                throw new Error('No turn data received from server');
+            }
             
             // Update game with room config
             if (window.s_oGame && window.s_oGame.onRoomConfig) {
@@ -132,6 +138,9 @@ window.SupabaseRealtimeDice = (function() {
     }
 
     function requestRoll() {
+        // Debug logging
+        console.log('Request roll - Current room:', currentRoom, 'User ID:', currentUserId, 'Subscribed:', isSubscribed);
+        
         if (!currentRoom || !currentUserId) {
             console.error('Not in a room or not authenticated');
             return Promise.reject(new Error('Not in a room'));
@@ -159,6 +168,10 @@ window.SupabaseRealtimeDice = (function() {
                     errorMsg = 'Database function not found. Please check database setup.';
                 } else if (response.error.code === '42501') {
                     errorMsg = 'Permission denied. Please check authentication.';
+                } else if (response.error.message && response.error.message.includes('Not your turn')) {
+                    errorMsg = 'Not your turn or invalid room';
+                } else if (response.error.message && response.error.message.includes('not authenticated')) {
+                    errorMsg = 'User not authenticated';
                 }
                 throw new Error(errorMsg);
             }
@@ -342,6 +355,16 @@ window.SupabaseRealtimeDice = (function() {
         return isSubscribed && realtimeChannel && currentRoom;
     }
 
+    function getDebugInfo() {
+        return {
+            currentRoom: currentRoom,
+            currentUserId: currentUserId,
+            isSubscribed: isSubscribed,
+            hasChannel: !!realtimeChannel,
+            isConnected: isConnected()
+        };
+    }
+
     return {
         init: init,
         joinRoom: joinRoom,
@@ -349,6 +372,7 @@ window.SupabaseRealtimeDice = (function() {
         completeAnimation: completeAnimation,
         leaveRoom: leaveRoom,
         getCurrentRoom: getCurrentRoom,
-        isConnected: isConnected
+        isConnected: isConnected,
+        getDebugInfo: getDebugInfo
     };
 })();
