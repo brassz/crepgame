@@ -55,12 +55,16 @@ window.SupabaseRealtimeDice = (function() {
         });
 
         // Subscribe to game moves (dice rolls)
+        console.log('🔗 Setting up subscription for game_moves in room:', roomId);
         realtimeChannel.on('postgres_changes', {
             event: 'INSERT',
             schema: 'public',
             table: 'game_moves',
             filter: `room_id=eq.${roomId}`
-        }, handleNewDiceMove);
+        }, function(payload) {
+            console.log('🔔 Received postgres_changes event for game_moves:', payload);
+            handleNewDiceMove(payload);
+        });
 
         // Subscribe to game moves updates (animation completion)
         realtimeChannel.on('postgres_changes', {
@@ -84,11 +88,26 @@ window.SupabaseRealtimeDice = (function() {
         realtimeChannel.on('presence', { event: 'leave' }, handlePresenceLeave);
 
         // Subscribe to the channel (synchronous in Supabase v2)
-        realtimeChannel.subscribe();
+        console.log('🔗 Attempting to subscribe to realtime channel...');
+        realtimeChannel.subscribe(function(status) {
+            console.log('🔗 Subscription status:', status);
+            if (status === 'SUBSCRIBED') {
+                isSubscribed = true;
+                console.log('✅ Successfully subscribed to realtime channel for room:', roomId);
+            } else if (status === 'CHANNEL_ERROR') {
+                console.error('❌ Channel subscription error for room:', roomId);
+                isSubscribed = false;
+            } else if (status === 'TIMED_OUT') {
+                console.error('❌ Channel subscription timed out for room:', roomId);
+                isSubscribed = false;
+            } else {
+                console.log('🔗 Channel status:', status);
+            }
+        });
         
-        // Set subscription status
+        // Set subscription status (fallback)
         isSubscribed = true;
-        console.log('Subscribed to realtime channel for room:', roomId);
+        console.log('🔗 Subscribed to realtime channel for room:', roomId);
         
         // Join the room session and turn cycle
         return joinRoomSession(roomId);
@@ -193,20 +212,37 @@ window.SupabaseRealtimeDice = (function() {
 
     function handleNewDiceMove(payload) {
         const moveData = payload.new;
-        console.log('New dice move received:', moveData);
+        console.log('🎲 New dice move received:', moveData);
+        console.log('🎲 Current user ID:', currentUserId);
+        console.log('🎲 Move player ID:', moveData.player_id);
+        console.log('🎲 Is my move:', moveData.player_id === currentUserId);
 
-        // Start dice animation
-        if (window.s_oGame && window.s_oGame.onDiceRollStart) {
+        // Check if game object exists
+        if (!window.s_oGame) {
+            console.error('❌ s_oGame not available for dice animation');
+            return;
+        }
+
+        // Start dice animation for ALL players in the room
+        if (window.s_oGame.onDiceRollStart) {
+            console.log('🎲 Calling onDiceRollStart for all players');
             window.s_oGame.onDiceRollStart({
                 shooter: moveData.player_id,
                 ts: new Date(moveData.created_at).getTime(),
                 moveId: moveData.id
             });
+        } else {
+            console.error('❌ onDiceRollStart method not available');
         }
 
         // Send dice result after shorter animation delay
         setTimeout(function() {
             if (window.s_oGame && window.s_oGame.onServerRoll) {
+                console.log('🎲 Sending dice result to all players:', {
+                    d1: moveData.dice_1,
+                    d2: moveData.dice_2,
+                    total: moveData.total
+                });
                 window.s_oGame.onServerRoll({
                     d1: moveData.dice_1,
                     d2: moveData.dice_2,
@@ -217,6 +253,8 @@ window.SupabaseRealtimeDice = (function() {
                     phase: moveData.phase,
                     result: moveData.result
                 });
+            } else {
+                console.error('❌ onServerRoll method not available');
             }
         }, 800); // Reduced to 0.8 second delay for faster gameplay
     }

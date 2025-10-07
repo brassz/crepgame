@@ -123,19 +123,26 @@ function CDicesAnim(iX,iY){
     
     // Inicia animação sem resultado definido (para outros jogadores observarem)
     this.startRollingWithoutResult = function(){
+        console.log('🎲 CDicesAnim: Starting rolling animation without result');
         this.playToFrame(0);
         _oContainer.visible = true;
         _bUpdate = true;
+        console.log('🎲 CDicesAnim: Animation container visible:', _oContainer.visible);
+        console.log('🎲 CDicesAnim: Update flag set to:', _bUpdate);
         playSound("dice_rolling", 1, false);
     };
     
     // Finaliza animação com resultado (quando recebe do servidor)
     this.finishRollingWithResult = function(aDicesResult){
+        console.log('🎲 CDicesAnim: Finishing rolling with result:', aDicesResult);
         _aDiceResult = aDicesResult;
         // Se ainda estiver na animação de rolagem, deixa continuar
         // Se já terminou, força o resultado
         if(!_bUpdate){
+            console.log('🎲 CDicesAnim: Animation not updating, setting result immediately');
             this._setAnimForDiceResult();
+        } else {
+            console.log('🎲 CDicesAnim: Animation still updating, result will be set when animation completes');
         }
     };
     
@@ -192,10 +199,12 @@ function CDicesAnim(iX,iY){
             if (  _iCurDiceIndex === (NUM_DICE_ROLLING_FRAMES-1)) {
                 // Se temos resultado, mostra o resultado
                 if(_aDiceResult && _aDiceResult.length === 2){
+                    console.log('🎲 CDicesAnim: Animation complete, showing result:', _aDiceResult);
                     _bUpdate = false;
                     this._setAnimForDiceResult();
                 } else {
                     // Se não temos resultado ainda, volta ao início da animação
+                    console.log('🎲 CDicesAnim: No result yet, looping animation');
                     this.playToFrame(0);
                 }
             }else{
