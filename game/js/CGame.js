@@ -133,10 +133,40 @@ function CGame(oData){
                 // Show user-friendly message for common errors
                 var errorMessage = "Erro de conexão. Jogando localmente...";
                 if (error && error.message) {
-                    if (error.message.includes('not authenticated')) {
-                        errorMessage = "Sessão expirada. Jogando localmente...";
-                    } else if (error.message.includes('Not in a room')) {
-                        errorMessage = "Não conectado à sala. Jogando localmente...";
+                    if (error.message.includes('not authenticated') || error.message.includes('User not authenticated')) {
+                        errorMessage = "Sessão expirada. Reconectando...";
+                        // Try to reconnect
+                        if (window.Realtime && window.Realtime.init) {
+                            window.Realtime.init().then(function() {
+                                return window.Realtime.join(s_oGame.getCurrentRoom() || "bronze");
+                            }).catch(function(reconnectError) {
+                                console.error('Reconnection failed:', reconnectError);
+                            });
+                        }
+                    } else if (error.message.includes('Not in a room') || error.message.includes('Invalid room')) {
+                        errorMessage = "Não conectado à sala. Tentando reconectar...";
+                        // Try to rejoin room
+                        if (window.Realtime && window.Realtime.join) {
+                            window.Realtime.join(s_oGame.getCurrentRoom() || "bronze").catch(function(rejoinError) {
+                                console.error('Room rejoin failed:', rejoinError);
+                            });
+                        }
+                    } else if (error.message.includes('Not your turn')) {
+                        errorMessage = "Não é sua vez de jogar!";
+                        // Don't fallback to local roll for turn errors
+                        if (_oInterface && _oInterface.showMessage) {
+                            _oInterface.showMessage(errorMessage);
+                            setTimeout(function() {
+                                if (_oInterface && _oInterface.hideMessage) {
+                                    _oInterface.hideMessage();
+                                }
+                            }, 2000);
+                        }
+                        // Reset rolling flag and re-enable interface
+                        s_oGame._isRolling = false;
+                        _oInterface.enableBetFiches();
+                        _oInterface.enableClearButton();
+                        return; // Don't fallback to local roll
                     }
                 }
                 
@@ -150,7 +180,7 @@ function CGame(oData){
                     }, 1500); // Reduced timeout
                 }
                 
-                // Fallback to local roll if server request fails
+                // Fallback to local roll if server request fails (except for turn errors)
                 _iContRolling++;
                 _aDiceResult = new Array();
                 s_oGame._generateWinLoss();
