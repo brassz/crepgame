@@ -70,14 +70,16 @@
 
 ## 🎯 **Arquivos Consolidados Recomendados**
 
-### **complete-database-setup-fixed.sql** ✅ **NOVO - RECOMENDADO**
-- **Propósito**: Arquivo único com todos os scripts corretos + tabela room_sessions
-- **Conteúdo**: Consolidação dos arquivos 01-05 + tabela room_sessions ausente
+### **complete-database-setup-clean.sql** ✅ **NOVO - MELHOR OPÇÃO**
+- **Propósito**: Versão limpa sem conflitos de funções
+- **Conteúdo**: Setup completo com nomes únicos de funções
 - **Vantagens**:
-  - ✅ Resolve o erro "relation public.room_sessions does not exist"
-  - ✅ Inclui todas as funcionalidades completas
-  - ✅ Sistema de sessões de sala robusto
-  - ✅ Execução única no Supabase SQL Editor
+  - ✅ **Resolve conflitos de funções** (`function name is not unique`)
+  - ✅ **Remove funções duplicadas** antes de criar novas
+  - ✅ **Nomes únicos** com prefixo `craps_`
+  - ✅ **Sistema completo** com room_sessions
+  - ✅ **Políticas RLS** limpas e reorganizadas
+  - ✅ **Execução única** no Supabase SQL Editor
 
 ### **complete-database-setup-simple.sql** ✅ **ALTERNATIVA SIMPLES**
 - **Propósito**: Versão simplificada sem dependência de room_sessions
@@ -88,29 +90,23 @@
   - ✅ Funções mais básicas mas funcionais
   - ✅ Ideal para testes rápidos
 
-### ⚠️ **complete-database-setup.sql** - OBSOLETO
-- **Status**: ❌ Contém erro de dependência
-- **Problema**: Referencia room_sessions que não existe
-- **Recomendação**: Use as versões corrigidas acima
+### ⚠️ **Arquivos com Problemas** - NÃO USE
+- **complete-database-setup.sql** ❌ Contém erro de dependência
+- **complete-database-setup-fixed.sql** ❌ Conflitos de função
+- **Arquivos 01-05 individuais** ❌ Dependências e conflitos
 
 ## 📝 **Ordem de Execução Recomendada**
 
-### ✅ **Opção 1 - RECOMENDADA**: 
-Execute apenas: `complete-database-setup-fixed.sql`
+### ✅ **Opção 1 - MELHOR ESCOLHA**: 
+Execute apenas: `complete-database-setup-clean.sql`
 
 ### ✅ **Opção 2 - SIMPLES**: 
 Execute apenas: `complete-database-setup-simple.sql`
 
-### ⚠️ **Opção 3 - Manual** (se executar arquivos separadamente):
-1. `01-create-tables.sql`
-2. Criar tabela `room_sessions` manualmente
-3. `02-enable-rls.sql`
-4. `03-create-functions.sql`
-5. `04-create-triggers-and-permissions.sql`
-6. `05-enable-realtime.sql`
-
-### ❌ **NÃO USE**: 
-- `complete-database-setup.sql` (contém erro de dependência)
+### ❌ **NÃO USE** (contêm erros): 
+- `complete-database-setup.sql` ❌ Erro de dependência
+- `complete-database-setup-fixed.sql` ❌ Conflitos de função
+- Arquivos individuais 01-05 ❌ Dependências e conflitos
 
 ## 🔧 **Componentes Principais**
 
@@ -118,10 +114,12 @@ Execute apenas: `complete-database-setup-simple.sql`
 - `public.game_moves`: Jogadas de dados
 - `public.current_turn`: Estado dos turnos
 
-### Funções Criadas:
-- `handle_dice_roll()`: Processar jogadas
-- `join_room_turn_cycle()`: Gerenciar turnos
-- `complete_dice_animation()`: Finalizar animações
+### Funções Criadas (versão clean):
+- `craps_join_room_session()`: Entrar em sala
+- `craps_handle_dice_roll()`: Processar jogadas
+- `craps_join_turn_cycle()`: Gerenciar turnos
+- `craps_complete_animation()`: Finalizar animações
+- `craps_leave_room()`: Sair da sala
 
 ### Recursos Habilitados:
 - Row Level Security (RLS)
@@ -131,22 +129,28 @@ Execute apenas: `complete-database-setup-simple.sql`
 
 ## ✅ **Conclusão**
 
-**PROBLEMA IDENTIFICADO E RESOLVIDO**: O erro `relation "public.room_sessions" does not exist` foi corrigido!
+**PROBLEMAS IDENTIFICADOS E RESOLVIDOS**:
+- ✅ Erro `relation "public.room_sessions" does not exist` 
+- ✅ Erro `function name "public.join_room" is not unique`
 
-### 🎯 **Soluções Disponíveis**:
+### 🎯 **Solução Final**:
 
-1. **`complete-database-setup-fixed.sql`** ✅ **RECOMENDADO**
-   - Inclui a tabela `room_sessions` ausente
-   - Sistema completo e robusto
-   - Resolve todos os erros de dependência
+**`complete-database-setup-clean.sql`** 🏆 **VERSÃO DEFINITIVA**
+- ✅ **Remove conflitos** de funções duplicadas
+- ✅ **Inclui tabela** `room_sessions` ausente  
+- ✅ **Nomes únicos** com prefixo `craps_`
+- ✅ **Sistema completo** e robusto
+- ✅ **Políticas RLS** limpas
+- ✅ **Execução única** sem erros
 
-2. **`complete-database-setup-simple.sql`** ✅ **ALTERNATIVA**
-   - Não depende de `room_sessions`
-   - Versão simplificada mas funcional
-   - Ideal para testes rápidos
+### 📋 **Funções Disponíveis**:
+```sql
+-- Use estas funções na sua aplicação:
+SELECT public.craps_join_room_session('room_123');
+SELECT public.craps_handle_dice_roll('room_123', 3, 4);
+SELECT public.craps_join_turn_cycle('room_123');
+SELECT public.craps_complete_animation(move_id);
+SELECT public.craps_leave_room('room_123');
+```
 
-### ❌ **Arquivos com Problemas**:
-- `complete-database-setup.sql` - Contém erro de dependência
-- Arquivos individuais 01-05 - Referenciam tabela inexistente
-
-**Use um dos arquivos corrigidos para configurar seu banco de dados sem erros!**
+**Execute `complete-database-setup-clean.sql` no Supabase SQL Editor para configurar tudo sem erros!** 🎲
