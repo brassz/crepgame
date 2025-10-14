@@ -118,11 +118,11 @@ function CGame(oData){
         _oInterface.disableClearButton();
 
         // Se conectado ao servidor, pedi-lo para rolar (autoritativo)
-        if (window.Realtime && Realtime.isConnected()){
+        if (window.SupabaseRealtimeDice && window.SupabaseRealtimeDice.isConnected()){
             // Show immediate feedback to user
             _oInterface.showMessage("Lançando dados...");
             
-            Realtime.requestRoll().catch(function(error) {
+            window.SupabaseRealtimeDice.requestRoll().catch(function(error) {
                 console.error('Failed to request roll:', error);
                 
                 // Hide loading message
@@ -136,9 +136,9 @@ function CGame(oData){
                     if (error.message.includes('not authenticated') || error.message.includes('User not authenticated')) {
                         errorMessage = "Sessão expirada. Reconectando...";
                         // Try to reconnect
-                        if (window.Realtime && window.Realtime.init) {
-                            window.Realtime.init().then(function() {
-                                return window.Realtime.join(s_oGame.getCurrentRoom() || "bronze");
+                        if (window.SupabaseRealtimeDice && window.SupabaseRealtimeDice.init) {
+                            window.SupabaseRealtimeDice.init().then(function() {
+                                return window.SupabaseRealtimeDice.joinRoom(s_oGame.getCurrentRoom() || "bronze");
                             }).catch(function(reconnectError) {
                                 console.error('Reconnection failed:', reconnectError);
                             });
@@ -146,8 +146,8 @@ function CGame(oData){
                     } else if (error.message.includes('Not in a room') || error.message.includes('Invalid room')) {
                         errorMessage = "Não conectado à sala. Tentando reconectar...";
                         // Try to rejoin room
-                        if (window.Realtime && window.Realtime.join) {
-                            window.Realtime.join(s_oGame.getCurrentRoom() || "bronze").catch(function(rejoinError) {
+                        if (window.SupabaseRealtimeDice && window.SupabaseRealtimeDice.joinRoom) {
+                            window.SupabaseRealtimeDice.joinRoom(s_oGame.getCurrentRoom() || "bronze").catch(function(rejoinError) {
                                 console.error('Room rejoin failed:', rejoinError);
                             });
                         }
@@ -168,8 +168,8 @@ function CGame(oData){
                         _oInterface.enableClearButton();
                         return; // Don't fallback to local roll
                     } else if (error.message.includes('Turn has expired')) {
-                        errorMessage = "Turno expirado! A jogada foi processada automaticamente.";
-                        // Show message but don't prevent the roll - the server handles grace period
+                        errorMessage = "Turno expirado! Aguarde o próximo turno.";
+                        // Show message and wait for next turn
                         if (_oInterface && _oInterface.showMessage) {
                             _oInterface.showMessage(errorMessage);
                             setTimeout(function() {
@@ -182,6 +182,7 @@ function CGame(oData){
                         s_oGame._isRolling = false;
                         _oInterface.enableBetFiches();
                         _oInterface.enableClearButton();
+                        _oInterface.enableRoll(false); // Disable roll until next turn
                         return; // Don't fallback to local roll
                     }
                 }
@@ -717,20 +718,18 @@ function CGame(oData){
         
         // Initialize and connect to realtime system
         console.log('🔗 Checking realtime system availability...');
-        if (window.Realtime) {
-            console.log('✅ Realtime system available');
-            if (Realtime.connect()) {
-                console.log('✅ Realtime connected, joining bronze room...');
-                Realtime.join("bronze").then(function(result) {
-                    console.log('✅ Successfully joined bronze room:', result);
-                }).catch(function(error) {
-                    console.error('❌ Failed to join bronze room:', error);
-                });
-            } else {
-                console.warn('⚠️ Realtime connection failed');
-            }
+        if (window.SupabaseRealtimeDice) {
+            console.log('✅ SupabaseRealtimeDice system available');
+            window.SupabaseRealtimeDice.init().then(function() {
+                console.log('✅ SupabaseRealtimeDice initialized, joining bronze room...');
+                return window.SupabaseRealtimeDice.joinRoom("bronze");
+            }).then(function(result) {
+                console.log('✅ Successfully joined bronze room:', result);
+            }).catch(function(error) {
+                console.error('❌ Failed to initialize or join bronze room:', error);
+            });
         } else {
-            console.warn('⚠️ Realtime system not available');
+            console.warn('⚠️ SupabaseRealtimeDice system not available');
         }
     };
     
@@ -758,15 +757,15 @@ function CGame(oData){
 
         // Informar servidor para entrar na sala
         console.log('🔄 Changing to room:', sRoomType);
-        if (window.Realtime && Realtime.connect()){
-            console.log('🏠 Joining room via Realtime:', sRoomType);
-            Realtime.join(sRoomType).then(function(result) {
+        if (window.SupabaseRealtimeDice && window.SupabaseRealtimeDice.isConnected()){
+            console.log('🏠 Joining room via SupabaseRealtimeDice:', sRoomType);
+            window.SupabaseRealtimeDice.joinRoom(sRoomType).then(function(result) {
                 console.log('✅ Successfully changed to room:', sRoomType, result);
             }).catch(function(error) {
                 console.error('❌ Failed to change to room:', sRoomType, error);
             });
         } else {
-            console.warn('⚠️ Realtime not available for room change');
+            console.warn('⚠️ SupabaseRealtimeDice not available for room change');
         }
     };
 

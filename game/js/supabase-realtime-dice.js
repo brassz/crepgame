@@ -89,16 +89,42 @@ window.SupabaseRealtimeDice = (function() {
 
         // Subscribe to the channel (synchronous in Supabase v2)
         console.log('🔗 Attempting to subscribe to realtime channel...');
-        realtimeChannel.subscribe(function(status) {
+        realtimeChannel.subscribe(function(status, err) {
             console.log('🔗 Subscription status:', status);
             if (status === 'SUBSCRIBED') {
                 isSubscribed = true;
                 console.log('✅ Successfully subscribed to realtime channel for room:', roomId);
             } else if (status === 'CHANNEL_ERROR') {
                 console.error('❌ Channel subscription error for room:', roomId);
+                if (err) {
+                    console.error('❌ Error details:', err);
+                }
                 isSubscribed = false;
+                // Try to recover by rejoining after a delay
+                setTimeout(function() {
+                    console.log('🔄 Attempting to recover channel subscription...');
+                    if (realtimeChannel && !isSubscribed) {
+                        realtimeChannel.unsubscribe();
+                        setTimeout(function() {
+                            realtimeChannel.subscribe();
+                        }, 1000);
+                    }
+                }, 2000);
             } else if (status === 'TIMED_OUT') {
                 console.error('❌ Channel subscription timed out for room:', roomId);
+                isSubscribed = false;
+                // Try to recover by rejoining after a delay
+                setTimeout(function() {
+                    console.log('🔄 Attempting to recover from timeout...');
+                    if (realtimeChannel && !isSubscribed) {
+                        realtimeChannel.unsubscribe();
+                        setTimeout(function() {
+                            realtimeChannel.subscribe();
+                        }, 1000);
+                    }
+                }, 3000);
+            } else if (status === 'CLOSED') {
+                console.warn('⚠️ Channel closed for room:', roomId);
                 isSubscribed = false;
             } else {
                 console.log('🔗 Channel status:', status);
@@ -191,6 +217,8 @@ window.SupabaseRealtimeDice = (function() {
                     errorMsg = 'Not your turn or invalid room';
                 } else if (response.error.message && response.error.message.includes('not authenticated')) {
                     errorMsg = 'User not authenticated';
+                } else if (response.error.message && response.error.message.includes('Turn has expired')) {
+                    errorMsg = 'Turn has expired';
                 }
                 throw new Error(errorMsg);
             }
@@ -309,10 +337,11 @@ window.SupabaseRealtimeDice = (function() {
                 window.s_oInterface.updateTurnTimer(remaining, playerInfo);
             }
 
-            // Don't auto-roll when time expires - let player decide
+            // Handle turn expiration
             if (remaining <= 0) {
                 clearInterval(window.turnTimerInterval);
-                // Just update the timer display, don't auto-roll
+                
+                // Update the timer display
                 if (window.s_oInterface && window.s_oInterface.updateTurnTimer) {
                     const playerInfo = {
                         isMyTurn: turnData.current_player_id === currentUserId,
@@ -320,6 +349,23 @@ window.SupabaseRealtimeDice = (function() {
                         totalPlayers: turnData.total_players
                     };
                     window.s_oInterface.updateTurnTimer(0, playerInfo);
+                }
+                
+                // Show expiration message if it's the current player's turn
+                if (turnData.current_player_id === currentUserId) {
+                    if (window.s_oInterface && window.s_oInterface.showMessage) {
+                        window.s_oInterface.showMessage("Tempo esgotado! Aguarde o próximo turno...");
+                        setTimeout(function() {
+                            if (window.s_oInterface && window.s_oInterface.hideMessage) {
+                                window.s_oInterface.hideMessage();
+                            }
+                        }, 3000);
+                    }
+                    
+                    // Disable roll button for expired turn
+                    if (window.s_oInterface && window.s_oInterface.enableRoll) {
+                        window.s_oInterface.enableRoll(false);
+                    }
                 }
             }
         }, 1000);
