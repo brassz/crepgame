@@ -167,6 +167,22 @@ function CGame(oData){
                         _oInterface.enableBetFiches();
                         _oInterface.enableClearButton();
                         return; // Don't fallback to local roll
+                    } else if (error.message.includes('Turn has expired')) {
+                        errorMessage = "Turno expirado! A jogada foi processada automaticamente.";
+                        // Show message but don't prevent the roll - the server handles grace period
+                        if (_oInterface && _oInterface.showMessage) {
+                            _oInterface.showMessage(errorMessage);
+                            setTimeout(function() {
+                                if (_oInterface && _oInterface.hideMessage) {
+                                    _oInterface.hideMessage();
+                                }
+                            }, 3000);
+                        }
+                        // Reset rolling flag and re-enable interface
+                        s_oGame._isRolling = false;
+                        _oInterface.enableBetFiches();
+                        _oInterface.enableClearButton();
+                        return; // Don't fallback to local roll
                     }
                 }
                 
@@ -369,7 +385,7 @@ function CGame(oData){
                 totalPlayers: data.totalPlayers
             };
             // Show initial timer with full time if available
-            var remainingTime = data.endsAt ? Math.max(0, Math.ceil((data.endsAt - Date.now())/1000)) : 25;
+            var remainingTime = data.endsAt ? Math.max(0, Math.ceil((data.endsAt - Date.now())/1000)) : 45;
             _oInterface.updateTurnTimer(remainingTime, playerInfo);
         }
     };
