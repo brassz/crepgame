@@ -63,7 +63,17 @@ window.SupabaseRealtimeDice = (function() {
             filter: `room_id=eq.${roomId}`
         }, function(payload) {
             console.log('🔔 Received postgres_changes event for game_moves:', payload);
-            handleNewDiceMove(payload);
+            console.log('🔔 Event details - Type:', payload.eventType, 'Schema:', payload.schema, 'Table:', payload.table);
+            console.log('🔔 New data:', payload.new);
+            console.log('🔔 Current room:', currentRoom, 'Event room:', payload.new?.room_id);
+            
+            // Verify this is for our room
+            if (payload.new && payload.new.room_id === currentRoom) {
+                console.log('✅ Event is for our room, processing...');
+                handleNewDiceMove(payload);
+            } else {
+                console.log('⚠️ Event is not for our room, ignoring');
+            }
         });
 
         // Subscribe to game moves updates (animation completion)
@@ -89,11 +99,21 @@ window.SupabaseRealtimeDice = (function() {
 
         // Subscribe to the channel (synchronous in Supabase v2)
         console.log('🔗 Attempting to subscribe to realtime channel...');
+        console.log('🔗 Channel configuration:', {
+            channelName: `dice-room-${roomId}`,
+            userId: currentUserId,
+            roomId: roomId
+        });
+        
         realtimeChannel.subscribe(function(status, err) {
-            console.log('🔗 Subscription status:', status);
+            console.log('🔗 Subscription status changed to:', status);
+            console.log('🔗 Timestamp:', new Date().toISOString());
+            
             if (status === 'SUBSCRIBED') {
                 isSubscribed = true;
                 console.log('✅ Successfully subscribed to realtime channel for room:', roomId);
+                console.log('✅ Channel state:', realtimeChannel.state);
+                console.log('✅ User should now receive dice roll events from other players');
             } else if (status === 'CHANNEL_ERROR') {
                 console.error('❌ Channel subscription error for room:', roomId);
                 if (err) {
@@ -184,10 +204,14 @@ window.SupabaseRealtimeDice = (function() {
 
     function requestRoll() {
         // Debug logging
-        console.log('Request roll - Current room:', currentRoom, 'User ID:', currentUserId, 'Subscribed:', isSubscribed);
+        console.log('🎲 ===== REQUESTING DICE ROLL =====');
+        console.log('🎲 Current room:', currentRoom);
+        console.log('🎲 User ID:', currentUserId);
+        console.log('🎲 Subscribed to realtime:', isSubscribed);
+        console.log('🎲 Channel state:', realtimeChannel?.state);
         
         if (!currentRoom || !currentUserId) {
-            console.error('Not in a room or not authenticated');
+            console.error('❌ Not in a room or not authenticated');
             return Promise.reject(new Error('Not in a room'));
         }
 
@@ -195,18 +219,24 @@ window.SupabaseRealtimeDice = (function() {
         const dice1 = Math.floor(Math.random() * 6) + 1;
         const dice2 = Math.floor(Math.random() * 6) + 1;
         
+        console.log('🎲 Generated dice values:', dice1, dice2);
+        
         // Determine phase and result (simplified for now)
         const phase = 'come_out'; // This should be determined by game logic
         const result = null; // This should be calculated based on game state
 
+        console.log('🎲 Calling handle_dice_roll_simple...');
+        
         // Call the Supabase function to handle the dice roll
         return window.sb.rpc('handle_dice_roll_simple', {
             p_room_id: currentRoom,
             p_dice_1: dice1,
             p_dice_2: dice2
         }).then(function(response) {
+            console.log('🎲 RPC response received:', response);
+            
             if (response.error) {
-                console.error('Supabase RPC error:', response.error);
+                console.error('❌ Supabase RPC error:', response.error);
                 // Provide more specific error information
                 var errorMsg = response.error.message || 'Unknown database error';
                 if (response.error.code === '42883') {
@@ -224,26 +254,32 @@ window.SupabaseRealtimeDice = (function() {
             }
 
             const rollData = response.data;
-            console.log('Dice roll successful:', rollData);
+            console.log('✅ Dice roll successful:', rollData);
+            console.log('✅ This should trigger a realtime event that ALL players in the room will receive');
 
             // The database trigger will notify other players via realtime
             return rollData;
         }).catch(function(error) {
-            console.error('Request roll failed:', error);
+            console.error('❌ Request roll failed:', error);
             // Re-throw with more context
             if (error.message && error.message.includes('fetch')) {
                 throw new Error('Network error: Unable to connect to server');
             }
             throw error;
+        }).finally(function() {
+            console.log('🎲 ===== END DICE ROLL REQUEST =====');
         });
     }
 
     function handleNewDiceMove(payload) {
         const moveData = payload.new;
-        console.log('🎲 New dice move received:', moveData);
+        console.log('🎲 ===== PROCESSING DICE MOVE =====');
+        console.log('🎲 Move data received:', moveData);
         console.log('🎲 Current user ID:', currentUserId);
         console.log('🎲 Move player ID:', moveData.player_id);
         console.log('🎲 Is my move:', moveData.player_id === currentUserId);
+        console.log('🎲 Room ID:', moveData.room_id);
+        console.log('🎲 Dice values:', moveData.dice_1, moveData.dice_2);
 
         // Check if game object exists
         if (!window.s_oGame) {
@@ -251,40 +287,60 @@ window.SupabaseRealtimeDice = (function() {
             return;
         }
 
+        console.log('✅ s_oGame is available');
+
         // Start dice animation for ALL players in the room
         if (window.s_oGame.onDiceRollStart) {
-            console.log('🎲 Calling onDiceRollStart for all players');
-            window.s_oGame.onDiceRollStart({
-                shooter: moveData.player_id,
-                ts: new Date(moveData.created_at).getTime(),
-                moveId: moveData.id
-            });
+            console.log('🎲 Calling onDiceRollStart for ALL players in the room');
+            console.log('🎲 Shooter:', moveData.player_id);
+            console.log('🎲 Timestamp:', new Date(moveData.created_at).getTime());
+            console.log('🎲 Move ID:', moveData.id);
+            
+            try {
+                window.s_oGame.onDiceRollStart({
+                    shooter: moveData.player_id,
+                    ts: new Date(moveData.created_at).getTime(),
+                    moveId: moveData.id
+                });
+                console.log('✅ onDiceRollStart called successfully');
+            } catch (error) {
+                console.error('❌ Error calling onDiceRollStart:', error);
+            }
         } else {
-            console.error('❌ onDiceRollStart method not available');
+            console.error('❌ onDiceRollStart method not available on s_oGame');
+            console.log('Available methods on s_oGame:', Object.keys(window.s_oGame || {}));
         }
 
         // Send dice result after shorter animation delay
         setTimeout(function() {
+            console.log('🎲 Sending dice result after delay...');
             if (window.s_oGame && window.s_oGame.onServerRoll) {
-                console.log('🎲 Sending dice result to all players:', {
+                const rollData = {
                     d1: moveData.dice_1,
                     d2: moveData.dice_2,
-                    total: moveData.total
-                });
-                window.s_oGame.onServerRoll({
-                    d1: moveData.dice_1,
-                    d2: moveData.dice_2,
-                    total: moveData.total,
+                    total: moveData.dice_1 + moveData.dice_2,
                     ts: new Date(moveData.created_at).getTime(),
                     shooter: moveData.player_id,
                     moveId: moveData.id,
                     phase: moveData.phase,
                     result: moveData.result
-                });
+                };
+                
+                console.log('🎲 Calling onServerRoll with data:', rollData);
+                
+                try {
+                    window.s_oGame.onServerRoll(rollData);
+                    console.log('✅ onServerRoll called successfully');
+                } catch (error) {
+                    console.error('❌ Error calling onServerRoll:', error);
+                }
             } else {
-                console.error('❌ onServerRoll method not available');
+                console.error('❌ onServerRoll method not available on s_oGame');
+                console.log('Available methods on s_oGame:', Object.keys(window.s_oGame || {}));
             }
         }, 800); // Reduced to 0.8 second delay for faster gameplay
+        
+        console.log('🎲 ===== END PROCESSING DICE MOVE =====');
     }
 
     function handleDiceMoveUpdate(payload) {
@@ -445,8 +501,76 @@ window.SupabaseRealtimeDice = (function() {
             currentUserId: currentUserId,
             isSubscribed: isSubscribed,
             hasChannel: !!realtimeChannel,
+            channelState: realtimeChannel?.state,
             isConnected: isConnected()
         };
+    }
+
+    function testRealtimeConnection() {
+        console.log('🔧 ===== TESTING REALTIME CONNECTION =====');
+        console.log('🔧 Debug info:', getDebugInfo());
+        
+        if (!window.sb) {
+            console.error('❌ Supabase client not available');
+            return Promise.reject(new Error('Supabase client not available'));
+        }
+        
+        if (!currentRoom) {
+            console.error('❌ Not in a room');
+            return Promise.reject(new Error('Not in a room'));
+        }
+        
+        console.log('🔧 Testing database connectivity...');
+        
+        // Test basic database connectivity
+        return window.sb.from('game_moves')
+            .select('id, room_id, player_id, dice_1, dice_2, created_at')
+            .eq('room_id', currentRoom)
+            .order('created_at', { ascending: false })
+            .limit(5)
+            .then(function(response) {
+                if (response.error) {
+                    console.error('❌ Database query failed:', response.error);
+                    throw response.error;
+                }
+                
+                console.log('✅ Database connectivity OK');
+                console.log('🔧 Recent moves in room:', response.data);
+                
+                // Test realtime subscription
+                console.log('🔧 Testing realtime subscription...');
+                console.log('🔧 Channel state:', realtimeChannel?.state);
+                console.log('🔧 Is subscribed:', isSubscribed);
+                
+                if (!realtimeChannel) {
+                    throw new Error('No realtime channel');
+                }
+                
+                if (!isSubscribed) {
+                    throw new Error('Not subscribed to realtime channel');
+                }
+                
+                console.log('✅ Realtime connection appears to be working');
+                console.log('🔧 If dice rolls are not appearing for all players, check:');
+                console.log('🔧 1. Both players are in the same room');
+                console.log('🔧 2. Database RLS policies allow cross-player visibility');
+                console.log('🔧 3. Realtime is enabled for game_moves table');
+                
+                return {
+                    success: true,
+                    room: currentRoom,
+                    recentMoves: response.data,
+                    channelState: realtimeChannel.state,
+                    isSubscribed: isSubscribed
+                };
+            })
+            .catch(function(error) {
+                console.error('❌ Realtime connection test failed:', error);
+                throw error;
+            })
+            .finally(function() {
+                console.log('🔧 ===== END REALTIME CONNECTION TEST =====');
+            });
     }
 
     return {
@@ -457,6 +581,7 @@ window.SupabaseRealtimeDice = (function() {
         leaveRoom: leaveRoom,
         getCurrentRoom: getCurrentRoom,
         isConnected: isConnected,
-        getDebugInfo: getDebugInfo
+        getDebugInfo: getDebugInfo,
+        testRealtimeConnection: testRealtimeConnection
     };
 })();
