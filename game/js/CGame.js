@@ -561,6 +561,8 @@ function CGame(oData){
                 _oMySeat.clearAllBets();
                 _aBetHistory = {};
                 _oInterface.setCurBet(_oMySeat.getCurBet());
+                // Limpa apostas da mesa após resultado
+                _oInterface.clearTableBets();
             } else if(iSumDices === 2 || iSumDices === 3 || iSumDices === 12){
                 // 2-3-12: PERDE TUDO
                 var iTotalActiveBets = _oMySeat.getCurBet();
@@ -573,6 +575,8 @@ function CGame(oData){
                 _oMySeat.clearAllBets();
                 _aBetHistory = {};
                 _oInterface.setCurBet(_oMySeat.getCurBet());
+                // Limpa apostas da mesa após resultado
+                _oInterface.clearTableBets();
             } else if(iSumDices === 4 || iSumDices === 5 || iSumDices === 6 || iSumDices === 8 || iSumDices === 9 || iSumDices === 10){
                 // NÚMEROS DE PONTO: PERGUNTA SE QUER CONTINUAR
                 console.log("Número de ponto detectado:", iSumDices);
@@ -593,6 +597,8 @@ function CGame(oData){
                 _oMySeat.clearAllBets();
                 _aBetHistory = {};
                 _oInterface.setCurBet(_oMySeat.getCurBet());
+                // Limpa apostas da mesa após resultado
+                _oInterface.clearTableBets();
                 // Volta para o estado de espera
                 _iNumberPoint = -1;
                 this._setState(STATE_GAME_WAITING_FOR_BET);
@@ -616,6 +622,8 @@ function CGame(oData){
                 _oMySeat.clearAllBets();
                 _aBetHistory = {};
                 _oInterface.setCurBet(_oMySeat.getCurBet());
+                // Limpa apostas da mesa após resultado
+                _oInterface.clearTableBets();
                 // Volta para o estado de espera
                 _iNumberPoint = -1;
                 this._setState(STATE_GAME_WAITING_FOR_BET);
@@ -731,6 +739,14 @@ function CGame(oData){
         } else {
             console.warn('⚠️ SupabaseRealtimeDice system not available');
         }
+        
+        // Exemplo de apostas para demonstração (remover em produção)
+        setTimeout(function(){
+            if(_oInterface && _oInterface.addTableBet){
+                _oInterface.addTableBet("JOGADOR 1", 100, "main_bet");
+                _oInterface.addTableBet("JOGADOR 2", 200, "main_bet");
+            }
+        }, 2000);
     };
     
     this.changeRoom = function(sRoomType){
@@ -821,6 +837,9 @@ function CGame(oData){
         _oInterface.enableClearButton();
         _oInterface.refreshMsgHelp("APOSTE AQUI - Clique para apostar e lançar os dados",true);
         
+        // Atualiza a exibição das apostas da mesa
+        _oInterface.addTableBet("VOCÊ", iFicheValue, szBut);
+        
         playSound("chip", 1, false);
     };
 
@@ -861,6 +880,9 @@ function CGame(oData){
         _oInterface.setCurBet(_oMySeat.getCurBet());
         _oInterface.enableRoll(false);
         _oInterface.disableClearButton();
+        
+        // Limpa as apostas da mesa
+        _oInterface.removePlayerBets("VOCÊ");
         
         
     };
