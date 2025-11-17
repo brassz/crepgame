@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Demo Multiplayer - Craps Socket.IO</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            padding: 20px;
+            margin: 0;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: #FFD700;
+            text-align: center;
+        }
+        
+        .instructions {
+            background: #16213e;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border: 2px solid #FFD700;
+        }
+        
+        .instructions h2 {
+            color: #FFD700;
+            margin-top: 0;
+        }
+        
+        .instructions ol {
+            line-height: 2;
+        }
+        
+        .buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin: 30px 0;
+        }
+        
+        .btn {
+            background: #FFD700;
+            color: #000;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn:hover {
+            background: #FFA500;
+        }
+        
+        .status {
+            text-align: center;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        
+        .status.online {
+            background: #2d5016;
+            color: #7fff00;
+        }
+        
+        .status.offline {
+            background: #501616;
+            color: #ff4444;
+        }
+        
+        .feature {
+            background: #0f3460;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #FFD700;
+        }
+        
+        .feature strong {
+            color: #FFD700;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎲 Demo Multiplayer - Craps Socket.IO Puro</h1>
+        
+        <div class="status" id="status">
+            Verificando servidor...
+        </div>
+        
+        <div class="instructions">
+            <h2>📋 Como Testar o Sistema Multiplayer</h2>
+            <ol>
+                <li><strong>Abra o jogo em DUAS ABAS</strong> do navegador (ou dois navegadores diferentes)</li>
+                <li>Na <strong>primeira aba</strong>, jogue normalmente (será "Jogador A")</li>
+                <li>Na <strong>segunda aba</strong>, observe a sincronização (será "Jogador B")</li>
+                <li><strong>Faça uma aposta</strong> na primeira aba</li>
+                <li><strong>Clique em ROLL</strong> na primeira aba</li>
+                <li>🎉 <strong>VEJA A MÁGICA!</strong> A segunda aba mostra o mesmo resultado instantaneamente!</li>
+            </ol>
+        </div>
+        
+        <div class="buttons">
+            <a href="/index.html" class="btn" target="_blank">
+                🎮 Abrir Jogo (Aba 1)
+            </a>
+            <a href="/index.html" class="btn" target="_blank">
+                🎮 Abrir Jogo (Aba 2)
+            </a>
+        </div>
+        
+        <div class="instructions">
+            <h2>✨ Recursos Implementados</h2>
+            
+            <div class="feature">
+                <strong>🎲 Sincronização em Tempo Real</strong><br>
+                Quando um jogador rola os dados, TODOS os jogadores na mesma sala veem o resultado instantaneamente. Sem delay, sem loop infinito!
+            </div>
+            
+            <div class="feature">
+                <strong>💰 Sistema de Apostas</strong><br>
+                Apostas são validadas no servidor. Seu saldo é atualizado em tempo real quando você ganha ou perde.
+            </div>
+            
+            <div class="feature">
+                <strong>🎯 Lógica Completa do Craps</strong><br>
+                Come out roll, point establishment, natural wins, craps, seven out - tudo implementado corretamente!
+            </div>
+            
+            <div class="feature">
+                <strong>👥 Múltiplos Jogadores</strong><br>
+                Vários jogadores podem estar na mesma sala. O sistema gerencia turnos automaticamente.
+            </div>
+            
+            <div class="feature">
+                <strong>💬 Chat Integrado</strong><br>
+                Sistema de chat funcional para comunicação entre jogadores (se habilitado na UI).
+            </div>
+            
+            <div class="feature">
+                <strong>🔄 Reconexão Automática</strong><br>
+                Se perder a conexão, o sistema tenta reconectar automaticamente.
+            </div>
+        </div>
+        
+        <div class="instructions">
+            <h2>🐛 O Que Foi Corrigido</h2>
+            <p><strong>Problema Original:</strong></p>
+            <p style="background: #501616; padding: 10px; border-radius: 5px;">
+                ❌ "🎲 CDicesAnim: No result yet, looping animation"<br>
+                A animação dos dados ficava em loop infinito porque o jogador 2 não recebia o resultado do jogador 1.
+            </p>
+            
+            <p><strong>Solução:</strong></p>
+            <p style="background: #2d5016; padding: 10px; border-radius: 5px;">
+                ✅ Sistema Socket.IO puro implementado!<br>
+                ✅ Todos os jogadores recebem eventos de jogada em tempo real<br>
+                ✅ Animação mostra resultado correto para TODOS<br>
+                ✅ SEM LOOP INFINITO!
+            </p>
+        </div>
+        
+        <div class="instructions">
+            <h2>🔧 Informações Técnicas</h2>
+            <p><strong>Arquitetura:</strong></p>
+            <pre style="background: #000; padding: 10px; border-radius: 5px; overflow-x: auto;">
+Jogador A → Socket.IO Server (Node.js) ← Jogador B
+                    ↓
+            Estado do jogo em memória
+            (salas isoladas, turnos, apostas)
+            </pre>
+            
+            <p><strong>Eventos Socket.IO:</strong></p>
+            <ul>
+                <li><code>roll_dice</code> - Jogador solicita rolagem</li>
+                <li><code>dice_rolled</code> - Servidor broadcast resultado para TODOS</li>
+                <li><code>place_bet</code> - Jogador faz aposta</li>
+                <li><code>bet_confirmed</code> - Servidor confirma aposta</li>
+                <li><code>game_result</code> - Servidor envia resultado (win/lose)</li>
+                <li><code>point_established</code> - Ponto foi estabelecido</li>
+                <li><code>shooter_changed</code> - Mudança de atirador</li>
+            </ul>
+        </div>
+        
+        <div style="text-align: center; margin: 40px 0; padding: 20px; background: #FFD700; color: #000; border-radius: 10px;">
+            <h2 style="margin: 0; color: #000;">🎉 Sistema 100% Funcional!</h2>
+            <p style="margin: 10px 0 0 0; font-size: 18px;">
+                Clique nos botões acima para abrir o jogo e testar!
+            </p>
+        </div>
+    </div>
+    
+    <script>
+        // Check server status
+        fetch('/health')
+            .then(response => response.json())
+            .then(data => {
+                const status = document.getElementById('status');
+                if (data.status === 'ok') {
+                    status.className = 'status online';
+                    status.innerHTML = `
+                        🟢 Servidor Online<br>
+                        <small>${data.message}</small><br>
+                        <small>Socket.IO: ${data.socketio ? '✅' : '❌'} | Atualizado: ${new Date(data.timestamp).toLocaleTimeString()}</small>
+                    `;
+                } else {
+                    throw new Error('Server not OK');
+                }
+            })
+            .catch(error => {
+                const status = document.getElementById('status');
+                status.className = 'status offline';
+                status.innerHTML = '🔴 Servidor Offline - Por favor, inicie o servidor com "npm start"';
+            });
+    </script>
+</body>
+</html>
