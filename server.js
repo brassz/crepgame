@@ -34,9 +34,9 @@ app.use('/', express.static(path.join(__dirname, 'game')));
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
-    message: 'Craps game server running with Supabase Realtime + Socket.IO',
+    message: 'Craps game server running with Pure Socket.IO',
     socketio: true,
-    supabase: true,
+    supabase: false,
     timestamp: new Date().toISOString()
   });
 });
@@ -46,13 +46,31 @@ const connectedUsers = new Map();
 const roomUsers = new Map();
 const roomChats = new Map();
 
+// Game state management
+const gameRooms = new Map();
+
+// Game state structure for each room
+function createGameState(roomId) {
+  return {
+    roomId,
+    players: new Map(),
+    gameState: 'WAITING', // WAITING, BETTING, ROLLING, ENDED
+    currentShooter: null,
+    point: null,
+    lastRoll: null,
+    bets: new Map(),
+    history: [],
+    createdAt: new Date()
+  };
+}
+
 io.on('connection', (socket) => {
   console.log(`Socket connected: ${socket.id}`);
   
   // Handle user authentication and identification
   socket.on('authenticate', (userData) => {
     try {
-      const { userId, username, roomId } = userData;
+      const { userId, username, roomId, credit } = userData;
       
       // Store user info
       connectedUsers.set(socket.id, {
@@ -69,6 +87,30 @@ io.on('connection', (socket) => {
       if (roomId) {
         socket.join(`room_${roomId}`);
         
+        // Initialize game state for room if needed
+        if (!gameRooms.has(roomId)) {
+          gameRooms.set(roomId, createGameState(roomId));
+        }
+        
+        const gameState = gameRooms.get(roomId);
+        
+        // Add player to game
+        gameState.players.set(userId, {
+          userId,
+          username,
+          socketId: socket.id,
+          credit: credit || 1000,
+          currentBet: 0,
+          isShooter: false,
+          joinedAt: new Date()
+        });
+        
+        // Set first player as shooter if no shooter exists
+        if (!gameState.currentShooter && gameState.players.size === 1) {
+          gameState.currentShooter = userId;
+          gameState.players.get(userId).isShooter = true;
+        }
+        
         // Update room users
         if (!roomUsers.has(roomId)) {
           roomUsers.set(roomId, new Set());
@@ -80,6 +122,16 @@ io.on('connection', (socket) => {
           userId,
           username,
           timestamp: new Date().toISOString()
+        });
+        
+        // Send current game state to the new user
+        socket.emit('game_state', {
+          gameState: gameState.gameState,
+          players: Array.from(gameState.players.values()),
+          currentShooter: gameState.currentShooter,
+          point: gameState.point,
+          lastRoll: gameState.lastRoll,
+          history: gameState.history.slice(-10)
         });
         
         // Send current room users to the new user
@@ -96,6 +148,11 @@ io.on('connection', (socket) => {
         // Send recent chat messages
         const recentMessages = roomChats.get(roomId) || [];
         socket.emit('chat_history', recentMessages.slice(-20)); // Last 20 messages
+        
+        // Notify others about updated player list
+        io.to(`room_${roomId}`).emit('players_updated', {
+          players: Array.from(gameState.players.values())
+        });
       }
       
       socket.emit('authenticated', { success: true });
@@ -105,6 +162,341 @@ io.on('connection', (socket) => {
       socket.emit('authenticated', { success: false, error: error.message });
     }
   });
+  
+  // Handle dice roll
+  socket.on('roll_dice', (data) => {
+    try {
+      const user = connectedUsers.get(socket.id);
+      if (!user) {
+        socket.emit('error', { message: 'User not authenticated' });
+        return;
+      }
+      
+      const roomId = user.roomId;
+      const gameState = gameRooms.get(roomId);
+      
+      if (!gameState) {
+        socket.emit('error', { message: 'Game room not found' });
+        return;
+      }
+      
+      const player = gameState.players.get(user.userId);
+      if (!player) {
+        socket.emit('error', { message: 'Player not found in game' });
+        return;
+      }
+      
+      // Check if player is the shooter
+      if (gameState.currentShooter !== user.userId) {
+        socket.emit('error', { message: 'You are not the shooter' });
+        return;
+      }
+      
+      // Check if player has bet
+      if (player.currentBet <= 0) {
+        socket.emit('error', { message: 'You must place a bet first' });
+        return;
+      }
+      
+      // Roll the dice
+      const dice1 = Math.floor(Math.random() * 6) + 1;
+      const dice2 = Math.floor(Math.random() * 6) + 1;
+      const total = dice1 + dice2;
+      
+      const rollData = {
+        dice1,
+        dice2,
+        total,
+        shooter: user.userId,
+        shooterName: user.username,
+        timestamp: new Date().toISOString(),
+        point: gameState.point
+      };
+      
+      // Update last roll
+      gameState.lastRoll = rollData;
+      gameState.history.push(rollData);
+      
+      // Keep only last 50 rolls in history
+      if (gameState.history.length > 50) {
+        gameState.history.shift();
+      }
+      
+      // Broadcast roll to all players in room
+      io.to(`room_${roomId}`).emit('dice_rolled', rollData);
+      
+      console.log(`Dice rolled in room ${roomId}: ${dice1} + ${dice2} = ${total}`);
+      
+      // Determine game logic
+      if (!gameState.point) {
+        // Come out roll
+        if (total === 7 || total === 11) {
+          // Natural win
+          io.to(`room_${roomId}`).emit('game_result', {
+            type: 'natural_win',
+            total,
+            message: `Natural ${total}! Shooter wins!`
+          });
+          // Reset for next round
+          gameState.point = null;
+        } else if (total === 2 || total === 3 || total === 12) {
+          // Craps
+          io.to(`room_${roomId}`).emit('game_result', {
+            type: 'craps',
+            total,
+            message: `Craps! Shooter loses!`
+          });
+          // Pass dice to next player
+          passShooter(roomId);
+        } else {
+          // Establish point
+          gameState.point = total;
+          io.to(`room_${roomId}`).emit('point_established', {
+            point: total,
+            message: `Point is ${total}`
+          });
+        }
+      } else {
+        // Point has been established
+        if (total === gameState.point) {
+          // Made the point
+          io.to(`room_${roomId}`).emit('game_result', {
+            type: 'point_made',
+            total,
+            point: gameState.point,
+            message: `Point ${gameState.point} made! Shooter wins!`
+          });
+          gameState.point = null;
+        } else if (total === 7) {
+          // Seven out
+          io.to(`room_${roomId}`).emit('game_result', {
+            type: 'seven_out',
+            total,
+            message: `Seven out! Shooter loses!`
+          });
+          gameState.point = null;
+          passShooter(roomId);
+        }
+      }
+      
+      // Update game state
+      gameState.gameState = gameState.point ? 'POINT' : 'COMEOUT';
+      
+      // Broadcast updated game state
+      io.to(`room_${roomId}`).emit('game_state_updated', {
+        gameState: gameState.gameState,
+        point: gameState.point,
+        currentShooter: gameState.currentShooter
+      });
+      
+    } catch (error) {
+      console.error('Roll dice error:', error);
+      socket.emit('error', { message: 'Failed to roll dice' });
+    }
+  });
+  
+  // Handle placing bets
+  socket.on('place_bet', (betData) => {
+    try {
+      const user = connectedUsers.get(socket.id);
+      if (!user) {
+        socket.emit('error', { message: 'User not authenticated' });
+        return;
+      }
+      
+      const roomId = user.roomId;
+      const gameState = gameRooms.get(roomId);
+      
+      if (!gameState) {
+        socket.emit('error', { message: 'Game room not found' });
+        return;
+      }
+      
+      const player = gameState.players.get(user.userId);
+      if (!player) {
+        socket.emit('error', { message: 'Player not found in game' });
+        return;
+      }
+      
+      const { betType, amount } = betData;
+      
+      // Validate bet amount
+      if (amount <= 0 || amount > player.credit) {
+        socket.emit('error', { message: 'Invalid bet amount' });
+        return;
+      }
+      
+      // Create bet key
+      const betKey = `${user.userId}_${betType}`;
+      
+      // Get existing bet or create new
+      let currentBetAmount = 0;
+      if (gameState.bets.has(betKey)) {
+        currentBetAmount = gameState.bets.get(betKey).amount;
+      }
+      
+      // Update bet
+      const newBetAmount = currentBetAmount + amount;
+      
+      gameState.bets.set(betKey, {
+        userId: user.userId,
+        username: user.username,
+        betType,
+        amount: newBetAmount,
+        timestamp: new Date().toISOString()
+      });
+      
+      // Update player credit and current bet
+      player.credit -= amount;
+      player.currentBet += amount;
+      
+      // Broadcast bet to room
+      io.to(`room_${roomId}`).emit('bet_placed', {
+        userId: user.userId,
+        username: user.username,
+        betType,
+        amount: newBetAmount,
+        remainingCredit: player.credit
+      });
+      
+      // Send confirmation to player
+      socket.emit('bet_confirmed', {
+        betType,
+        amount: newBetAmount,
+        remainingCredit: player.credit,
+        totalBet: player.currentBet
+      });
+      
+      console.log(`Bet placed in room ${roomId}: ${user.username} bet ${amount} on ${betType}`);
+      
+    } catch (error) {
+      console.error('Place bet error:', error);
+      socket.emit('error', { message: 'Failed to place bet' });
+    }
+  });
+  
+  // Handle clearing bets
+  socket.on('clear_bets', () => {
+    try {
+      const user = connectedUsers.get(socket.id);
+      if (!user) {
+        socket.emit('error', { message: 'User not authenticated' });
+        return;
+      }
+      
+      const roomId = user.roomId;
+      const gameState = gameRooms.get(roomId);
+      
+      if (!gameState) {
+        socket.emit('error', { message: 'Game room not found' });
+        return;
+      }
+      
+      const player = gameState.players.get(user.userId);
+      if (!player) {
+        socket.emit('error', { message: 'Player not found in game' });
+        return;
+      }
+      
+      // Return credit from all bets
+      let refundAmount = 0;
+      const betsToRemove = [];
+      
+      for (const [betKey, bet] of gameState.bets.entries()) {
+        if (bet.userId === user.userId) {
+          refundAmount += bet.amount;
+          betsToRemove.push(betKey);
+        }
+      }
+      
+      // Remove bets
+      betsToRemove.forEach(betKey => gameState.bets.delete(betKey));
+      
+      // Refund credit
+      player.credit += refundAmount;
+      player.currentBet = 0;
+      
+      // Notify player
+      socket.emit('bets_cleared', {
+        refundAmount,
+        remainingCredit: player.credit
+      });
+      
+      // Notify room
+      io.to(`room_${roomId}`).emit('player_cleared_bets', {
+        userId: user.userId,
+        username: user.username
+      });
+      
+      console.log(`Bets cleared in room ${roomId}: ${user.username} refunded ${refundAmount}`);
+      
+    } catch (error) {
+      console.error('Clear bets error:', error);
+      socket.emit('error', { message: 'Failed to clear bets' });
+    }
+  });
+  
+  // Handle getting game state
+  socket.on('get_game_state', () => {
+    try {
+      const user = connectedUsers.get(socket.id);
+      if (!user) {
+        socket.emit('error', { message: 'User not authenticated' });
+        return;
+      }
+      
+      const roomId = user.roomId;
+      const gameState = gameRooms.get(roomId);
+      
+      if (!gameState) {
+        socket.emit('error', { message: 'Game room not found' });
+        return;
+      }
+      
+      socket.emit('game_state', {
+        gameState: gameState.gameState,
+        players: Array.from(gameState.players.values()),
+        currentShooter: gameState.currentShooter,
+        point: gameState.point,
+        lastRoll: gameState.lastRoll,
+        bets: Array.from(gameState.bets.values()),
+        history: gameState.history.slice(-10)
+      });
+      
+    } catch (error) {
+      console.error('Get game state error:', error);
+      socket.emit('error', { message: 'Failed to get game state' });
+    }
+  });
+  
+  // Helper function to pass shooter to next player
+  function passShooter(roomId) {
+    const gameState = gameRooms.get(roomId);
+    if (!gameState) return;
+    
+    const playerIds = Array.from(gameState.players.keys());
+    if (playerIds.length === 0) return;
+    
+    const currentIndex = playerIds.indexOf(gameState.currentShooter);
+    const nextIndex = (currentIndex + 1) % playerIds.length;
+    const nextShooterId = playerIds[nextIndex];
+    
+    // Update shooter
+    if (gameState.currentShooter) {
+      const oldShooter = gameState.players.get(gameState.currentShooter);
+      if (oldShooter) oldShooter.isShooter = false;
+    }
+    
+    gameState.currentShooter = nextShooterId;
+    const newShooter = gameState.players.get(nextShooterId);
+    if (newShooter) newShooter.isShooter = true;
+    
+    // Notify room
+    io.to(`room_${roomId}`).emit('shooter_changed', {
+      newShooter: nextShooterId,
+      shooterName: newShooter ? newShooter.username : 'Unknown'
+    });
+  }
   
   // Handle chat messages
   socket.on('chat_message', (messageData) => {
@@ -222,21 +614,59 @@ io.on('connection', (socket) => {
     
     const user = connectedUsers.get(socket.id);
     if (user) {
-      // Remove from room users
-      if (user.roomId && roomUsers.has(user.roomId)) {
-        roomUsers.get(user.roomId).delete(socket.id);
+      // Remove from game state
+      if (user.roomId) {
+        const gameState = gameRooms.get(user.roomId);
+        if (gameState) {
+          // Remove player from game
+          gameState.players.delete(user.userId);
+          
+          // If player was shooter, pass to next player
+          if (gameState.currentShooter === user.userId) {
+            if (gameState.players.size > 0) {
+              passShooter(user.roomId);
+            } else {
+              gameState.currentShooter = null;
+            }
+          }
+          
+          // Remove player's bets
+          const betsToRemove = [];
+          for (const [betKey, bet] of gameState.bets.entries()) {
+            if (bet.userId === user.userId) {
+              betsToRemove.push(betKey);
+            }
+          }
+          betsToRemove.forEach(betKey => gameState.bets.delete(betKey));
+          
+          // Clean up empty game room
+          if (gameState.players.size === 0) {
+            gameRooms.delete(user.roomId);
+            console.log(`Game room ${user.roomId} cleaned up (empty)`);
+          } else {
+            // Notify others about updated player list
+            io.to(`room_${user.roomId}`).emit('players_updated', {
+              players: Array.from(gameState.players.values())
+            });
+          }
+        }
         
-        // Clean up empty room
-        if (roomUsers.get(user.roomId).size === 0) {
-          roomUsers.delete(user.roomId);
-          roomChats.delete(user.roomId); // Clean up old chat history
-        } else {
-          // Notify room about user leaving
-          socket.to(`room_${user.roomId}`).emit('user_left', {
-            userId: user.userId,
-            username: user.username,
-            timestamp: new Date().toISOString()
-          });
+        // Remove from room users
+        if (roomUsers.has(user.roomId)) {
+          roomUsers.get(user.roomId).delete(socket.id);
+          
+          // Clean up empty room
+          if (roomUsers.get(user.roomId).size === 0) {
+            roomUsers.delete(user.roomId);
+            roomChats.delete(user.roomId); // Clean up old chat history
+          } else {
+            // Notify room about user leaving
+            socket.to(`room_${user.roomId}`).emit('user_left', {
+              userId: user.userId,
+              username: user.username,
+              timestamp: new Date().toISOString()
+            });
+          }
         }
       }
       
@@ -302,8 +732,8 @@ setInterval(() => {
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`);
-  console.log('✅ Supabase Realtime: Game state & persistence');
-  console.log('✅ Socket.IO: Chat, notifications & lobby');
-  console.log('🎮 Hybrid multiplayer system ready!');
+  console.log('✅ Socket.IO Pure: Complete game management');
+  console.log('🎮 Real-time multiplayer Craps game ready!');
+  console.log('📊 Features: Dice rolling, betting, chat, lobby');
 });
 
