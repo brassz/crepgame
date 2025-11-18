@@ -117,102 +117,25 @@ function CGame(oData){
         _oInterface.disableBetFiches();
         _oInterface.disableClearButton();
 
-        // Se conectado ao servidor, pedi-lo para rolar (autoritativo)
-        if (window.SupabaseRealtimeDice && window.SupabaseRealtimeDice.isConnected()){
-            // Show immediate feedback to user
-            _oInterface.showMessage("Lançando dados...");
-            
-            window.SupabaseRealtimeDice.requestRoll().catch(function(error) {
-                console.error('Failed to request roll:', error);
-                
-                // Hide loading message
-                if (_oInterface && _oInterface.hideMessage) {
-                    _oInterface.hideMessage();
-                }
-                
-                // Show user-friendly message for common errors
-                var errorMessage = "Erro de conexão. Jogando localmente...";
-                if (error && error.message) {
-                    if (error.message.includes('not authenticated') || error.message.includes('User not authenticated')) {
-                        errorMessage = "Sessão expirada. Reconectando...";
-                        // Try to reconnect
-                        if (window.SupabaseRealtimeDice && window.SupabaseRealtimeDice.init) {
-                            window.SupabaseRealtimeDice.init().then(function() {
-                                return window.SupabaseRealtimeDice.joinRoom(s_oGame.getCurrentRoom() || "bronze");
-                            }).catch(function(reconnectError) {
-                                console.error('Reconnection failed:', reconnectError);
-                            });
-                        }
-                    } else if (error.message.includes('Not in a room') || error.message.includes('Invalid room')) {
-                        errorMessage = "Não conectado à sala. Tentando reconectar...";
-                        // Try to rejoin room
-                        if (window.SupabaseRealtimeDice && window.SupabaseRealtimeDice.joinRoom) {
-                            window.SupabaseRealtimeDice.joinRoom(s_oGame.getCurrentRoom() || "bronze").catch(function(rejoinError) {
-                                console.error('Room rejoin failed:', rejoinError);
-                            });
-                        }
-                    } else if (error.message.includes('Not your turn')) {
-                        errorMessage = "Não é sua vez de jogar!";
-                        // Don't fallback to local roll for turn errors
-                        if (_oInterface && _oInterface.showMessage) {
-                            _oInterface.showMessage(errorMessage);
-                            setTimeout(function() {
-                                if (_oInterface && _oInterface.hideMessage) {
-                                    _oInterface.hideMessage();
-                                }
-                            }, 2000);
-                        }
-                        // Reset rolling flag and re-enable interface
-                        s_oGame._isRolling = false;
-                        _oInterface.enableBetFiches();
-                        _oInterface.enableClearButton();
-                        return; // Don't fallback to local roll
-                    } else if (error.message.includes('Turn has expired')) {
-                        errorMessage = "Turno expirado! Aguarde o próximo turno.";
-                        // Show message and wait for next turn
-                        if (_oInterface && _oInterface.showMessage) {
-                            _oInterface.showMessage(errorMessage);
-                            setTimeout(function() {
-                                if (_oInterface && _oInterface.hideMessage) {
-                                    _oInterface.hideMessage();
-                                }
-                            }, 3000);
-                        }
-                        // Reset rolling flag and re-enable interface
-                        s_oGame._isRolling = false;
-                        _oInterface.enableBetFiches();
-                        _oInterface.enableClearButton();
-                        _oInterface.enableRoll(false); // Disable roll until next turn
-                        return; // Don't fallback to local roll
-                    }
-                }
-                
-                // Show brief message to user
-                if (_oInterface && _oInterface.showMessage) {
-                    _oInterface.showMessage(errorMessage);
-                    setTimeout(function() {
-                        if (_oInterface && _oInterface.hideMessage) {
-                            _oInterface.hideMessage();
-                        }
-                    }, 1500); // Reduced timeout
-                }
-                
-                // Fallback to local roll if server request fails (except for turn errors)
-                _iContRolling++;
-                _aDiceResult = new Array();
-                s_oGame._generateWinLoss();
-                _aDiceResultHistory.push(_aDiceResult);
-                _iTimeElaps = 0;
-                _oDicesAnim.startRolling(_aDiceResult);
-            });
+        // Socket.IO Pure System - All dice rolling is handled by game-socketio-integration.js
+        // That file overrides _onRollBut to intercept roll requests and send them to Socket.IO server
+        // The server responds with dice_rolled event which is caught by the integration
+        // This function just sets up the UI for rolling
+        
+        if (window.GameClientSocketIO && window.GameClientSocketIO.isConnected && window.GameClientSocketIO.isAuthenticated){
+            console.log('🎲 Socket.IO connected - dice roll will be handled by server');
+            _oInterface.showMessage("Aguardando resultado...");
+            // The actual roll request is sent by game-socketio-integration.js override
+            // Server will broadcast dice_rolled event to all players
             return;
         }
 
+        // Fallback to local roll if Socket.IO not connected (offline mode)
+        console.log('⚠️ Socket.IO not connected - using local roll');
         _iContRolling++;
         _aDiceResult = new Array();
         this._generateWinLoss();
         _aDiceResultHistory.push(_aDiceResult);
-
         _iTimeElaps = 0;
     };
     
@@ -716,21 +639,8 @@ function CGame(oData){
         console.log('🏠 Setting up default room (bronze)...');
         this.changeRoom("bronze");
         
-        // Initialize and connect to realtime system
-        console.log('🔗 Checking realtime system availability...');
-        if (window.SupabaseRealtimeDice) {
-            console.log('✅ SupabaseRealtimeDice system available');
-            window.SupabaseRealtimeDice.init().then(function() {
-                console.log('✅ SupabaseRealtimeDice initialized, joining bronze room...');
-                return window.SupabaseRealtimeDice.joinRoom("bronze");
-            }).then(function(result) {
-                console.log('✅ Successfully joined bronze room:', result);
-            }).catch(function(error) {
-                console.error('❌ Failed to initialize or join bronze room:', error);
-            });
-        } else {
-            console.warn('⚠️ SupabaseRealtimeDice system not available');
-        }
+        // Socket.IO Pure System - Connection and authentication handled by game-socketio-integration.js
+        console.log('✅ Socket.IO system will auto-connect via game-socketio-integration.js');
     };
     
     this.changeRoom = function(sRoomType){
@@ -757,16 +667,10 @@ function CGame(oData){
 
         // Informar servidor para entrar na sala
         console.log('🔄 Changing to room:', sRoomType);
-        if (window.SupabaseRealtimeDice && window.SupabaseRealtimeDice.isConnected()){
-            console.log('🏠 Joining room via SupabaseRealtimeDice:', sRoomType);
-            window.SupabaseRealtimeDice.joinRoom(sRoomType).then(function(result) {
-                console.log('✅ Successfully changed to room:', sRoomType, result);
-            }).catch(function(error) {
-                console.error('❌ Failed to change to room:', sRoomType, error);
-            });
-        } else {
-            console.warn('⚠️ SupabaseRealtimeDice not available for room change');
-        }
+        // Socket.IO Pure System - Room changes handled automatically
+        // The current room is managed by the server based on player's connection
+        console.log('🏠 Room set to:', sRoomType);
+        console.log('ℹ️ Socket.IO manages room connections automatically');
     };
 
     this.onRoomConfig = function(cfg){
