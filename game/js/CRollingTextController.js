@@ -101,12 +101,8 @@ function CRollingTextController(oTarget, oTargetStroke, iStartAmount,iAmountToIn
                 _aCbCompleted[ON_CONTROLLER_END].call(_aCbOwner[ON_CONTROLLER_END], this);
             }
 
-            if (_iNextAmount > 0) {
-                this.setUpdateInfo(_iNextAmount);
-            } else {
-                if (_aCbCompleted[ON_CONTROLLER_REMOVE] !== null && _aCbCompleted[ON_CONTROLLER_REMOVE] !== undefined) {
-                    _aCbCompleted[ON_CONTROLLER_REMOVE].call(_aCbOwner[ON_CONTROLLER_REMOVE], this);
-                }
+            if (_aCbCompleted[ON_CONTROLLER_REMOVE] !== null && _aCbCompleted[ON_CONTROLLER_REMOVE] !== undefined) {
+                _aCbCompleted[ON_CONTROLLER_REMOVE].call(_aCbOwner[ON_CONTROLLER_REMOVE], this);
             }
 
             return;
