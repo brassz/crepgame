@@ -34,11 +34,11 @@ window.SocketIOClient = (function() {
 
         return new Promise((resolve, reject) => {
             try {
-                // Initialize Socket.IO connection
+                // Initialize Socket.IO connection - FORCE WEBSOCKET FOR ZERO DELAY
                 socket = io({
-                    transports: ['websocket', 'polling'],
-                    upgrade: true,
-                    rememberUpgrade: true,
+                    transports: ['websocket'],
+                    upgrade: false,
+                    rememberUpgrade: false,
                     timeout: 20000,
                     forceNew: false,
                     reconnection: true,

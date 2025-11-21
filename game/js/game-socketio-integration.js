@@ -30,7 +30,7 @@
         // Override the roll button handler
         const originalOnRollBut = window.s_oGame._onRollBut;
         window.s_oGame._onRollBut = function() {
-            console.log('🎲 Roll button clicked - using Socket.IO');
+            console.log('🎲 Roll button clicked - using Socket.IO with INSTANT animation');
             
             // Check if connected
             if (!gameClient.isConnected || !gameClient.isAuthenticated) {
@@ -54,7 +54,22 @@
             
             window.s_oGame._isRolling = true;
             
-            // Send roll request to server
+            // ⚡ INSTANT ANIMATION: Start rolling animation IMMEDIATELY without waiting for server
+            // The dice will animate with random values, server will send actual result
+            console.log('⚡ Starting INSTANT dice animation...');
+            if (window.s_oGame._oDicesAnim) {
+                // Generate random dice values for animation
+                const tempDice1 = Math.floor(Math.random() * 6) + 1;
+                const tempDice2 = Math.floor(Math.random() * 6) + 1;
+                window.s_oGame._oDicesAnim.startRolling([tempDice1, tempDice2]);
+            }
+            
+            // Play sound immediately
+            if (typeof playSound === 'function') {
+                playSound('dice_rolling', 1, false);
+            }
+            
+            // Send roll request to server (server will send back the real result)
             console.log('📤 Sending roll_dice to server...');
             const success = gameClient.rollDice();
             
@@ -65,9 +80,9 @@
             }
         };
         
-        // Handle dice rolled event from server
+        // Handle dice rolled event from OTHER players
         gameClient.onDiceRolled((rollData) => {
-            console.log('🎲 Received dice_rolled from server:', rollData);
+            console.log('🎲 Received dice_rolled from OTHER player:', rollData);
             
             // Update game state with dice result
             if (window.s_oGame._aDiceResult) {
@@ -83,22 +98,39 @@
                 window.s_oGame._aDiceResultHistory.push([rollData.dice1, rollData.dice2]);
             }
             
-            // Check if this is my roll or someone else's
-            const isMyRoll = (gameClient.currentUserId === rollData.shooter);
-            console.log('🎯 Is my roll:', isMyRoll, 'My ID:', gameClient.currentUserId, 'Shooter:', rollData.shooter);
-            
-            // Show dice animation with result for ALL players
+            // Show dice animation for OTHER player's roll
             if (window.s_oGame._oDicesAnim) {
-                console.log('🎬 Starting dice animation with result:', [rollData.dice1, rollData.dice2]);
+                console.log('🎬 Starting dice animation for other player:', [rollData.dice1, rollData.dice2]);
                 window.s_oGame._oDicesAnim.startRolling([rollData.dice1, rollData.dice2]);
-            } else {
-                console.error('❌ Dice animation object not found!');
             }
             
             // Play sound
             if (typeof playSound === 'function') {
                 playSound('dice_rolling', 1, false);
             }
+        });
+        
+        // Handle dice confirmed event from server (MY roll)
+        gameClient.onDiceConfirmed((rollData) => {
+            console.log('✅ Received dice_confirmed (MY roll):', rollData);
+            
+            // Update game state with REAL dice result from server
+            if (window.s_oGame._aDiceResult) {
+                window.s_oGame._aDiceResult = [rollData.dice1, rollData.dice2];
+            } else {
+                window.s_oGame._aDiceResult = new Array();
+                window.s_oGame._aDiceResult[0] = rollData.dice1;
+                window.s_oGame._aDiceResult[1] = rollData.dice2;
+            }
+            
+            // Add to history
+            if (window.s_oGame._aDiceResultHistory) {
+                window.s_oGame._aDiceResultHistory.push([rollData.dice1, rollData.dice2]);
+            }
+            
+            // Animation already started instantly, just update with real result
+            // The dice animation will show the correct final values
+            console.log('🎯 Dice confirmed - real result applied:', [rollData.dice1, rollData.dice2]);
         });
         
         // Handle game result

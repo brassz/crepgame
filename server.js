@@ -15,7 +15,7 @@ app.use(cors({
   credentials: true
 }));
 
-// Socket.IO setup with CORS
+// Socket.IO setup with CORS - FORCE WEBSOCKET ONLY FOR ZERO DELAY
 const io = new Server(server, {
   cors: {
     origin: process.env.NODE_ENV === 'production' 
@@ -24,7 +24,8 @@ const io = new Server(server, {
     methods: ['GET', 'POST'],
     credentials: true
   },
-  transports: ['websocket', 'polling']
+  transports: ['websocket'],
+  allowUpgrades: false
 });
 
 // Static files (serve the game)
@@ -222,8 +223,16 @@ io.on('connection', (socket) => {
         gameState.history.shift();
       }
       
-      // Broadcast roll to all players in room
-      io.to(`room_${roomId}`).emit('dice_rolled', rollData);
+      // Broadcast ONLY dice values to OTHER players (shooter already animated locally)
+      // Send minimal data for maximum speed
+      socket.to(`room_${roomId}`).emit('dice_rolled', {
+        dice1,
+        dice2,
+        shooter: user.userId
+      });
+      
+      // Send confirmation to shooter with full data for game logic
+      socket.emit('dice_confirmed', rollData);
       
       console.log(`Dice rolled in room ${roomId}: ${dice1} + ${dice2} = ${total}`);
       
