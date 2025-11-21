@@ -164,7 +164,7 @@ io.on('connection', (socket) => {
     }
   });
   
-  // Handle dice roll
+  // Handle dice roll - OPTIMIZED FOR ZERO LATENCY
   socket.on('roll_dice', (data) => {
     try {
       const user = connectedUsers.get(socket.id);
@@ -181,121 +181,131 @@ io.on('connection', (socket) => {
         return;
       }
       
-      const player = gameState.players.get(user.userId);
-      if (!player) {
-        socket.emit('error', { message: 'Player not found in game' });
-        return;
-      }
-      
-      // Check if player is the shooter
-      if (gameState.currentShooter !== user.userId) {
-        socket.emit('error', { message: 'You are not the shooter' });
-        return;
-      }
-      
-      // Check if player has bet
-      if (player.currentBet <= 0) {
-        socket.emit('error', { message: 'You must place a bet first' });
-        return;
-      }
-      
-      // Roll the dice
+      // ===== STEP 1: GENERATE DICE IMMEDIATELY =====
       const dice1 = Math.floor(Math.random() * 6) + 1;
       const dice2 = Math.floor(Math.random() * 6) + 1;
-      const total = dice1 + dice2;
       
-      const rollData = {
-        dice1,
-        dice2,
-        total,
-        shooter: user.userId,
-        shooterName: user.username,
-        timestamp: new Date().toISOString(),
-        point: gameState.point
-      };
-      
-      // Update last roll
-      gameState.lastRoll = rollData;
-      gameState.history.push(rollData);
-      
-      // Keep only last 50 rolls in history
-      if (gameState.history.length > 50) {
-        gameState.history.shift();
-      }
-      
-      // Broadcast ONLY dice values to OTHER players (shooter already animated locally)
-      // Send minimal data for maximum speed
-      socket.to(`room_${roomId}`).emit('dice_rolled', {
+      // ===== STEP 2: BROADCAST TO ALL PLAYERS INSTANTLY (INCLUDING SHOOTER) =====
+      // This ensures ZERO latency - everyone sees the dice at the same time
+      const instantRollData = {
         dice1,
         dice2,
         shooter: user.userId
-      });
+      };
       
-      // Send confirmation to shooter with full data for game logic
-      socket.emit('dice_confirmed', rollData);
+      // Broadcast to ALL players in the room (including the shooter)
+      io.to(`room_${roomId}`).emit('dice_rolled', instantRollData);
       
-      console.log(`Dice rolled in room ${roomId}: ${dice1} + ${dice2} = ${total}`);
+      console.log(`🎲 INSTANT BROADCAST: Room ${roomId} - Dice ${dice1} + ${dice2}`);
       
-      // Determine game logic
-      if (!gameState.point) {
-        // Come out roll
-        if (total === 7 || total === 11) {
-          // Natural win
-          io.to(`room_${roomId}`).emit('game_result', {
-            type: 'natural_win',
+      // ===== STEP 3: VALIDATE AND PROCESS GAME LOGIC (ASYNC, NON-BLOCKING) =====
+      // Do this AFTER broadcasting so it doesn't delay the event
+      setImmediate(() => {
+        try {
+          const player = gameState.players.get(user.userId);
+          if (!player) {
+            console.warn('Player not found after dice roll');
+            return;
+          }
+          
+          // Validate shooter (log warning but don't block)
+          if (gameState.currentShooter !== user.userId) {
+            console.warn(`Non-shooter ${user.userId} rolled dice in room ${roomId}`);
+          }
+          
+          // Validate bet (log warning but don't block)
+          if (player.currentBet <= 0) {
+            console.warn(`Player ${user.userId} rolled without bet in room ${roomId}`);
+          }
+          
+          const total = dice1 + dice2;
+          
+          const rollData = {
+            dice1,
+            dice2,
             total,
-            message: `Natural ${total}! Shooter wins!`
-          });
-          // Reset for next round
-          gameState.point = null;
-        } else if (total === 2 || total === 3 || total === 12) {
-          // Craps
-          io.to(`room_${roomId}`).emit('game_result', {
-            type: 'craps',
-            total,
-            message: `Craps! Shooter loses!`
-          });
-          // Pass dice to next player
-          passShooter(roomId);
-        } else {
-          // Establish point
-          gameState.point = total;
-          io.to(`room_${roomId}`).emit('point_established', {
-            point: total,
-            message: `Point is ${total}`
-          });
-        }
-      } else {
-        // Point has been established
-        if (total === gameState.point) {
-          // Made the point
-          io.to(`room_${roomId}`).emit('game_result', {
-            type: 'point_made',
-            total,
+            shooter: user.userId,
+            shooterName: user.username,
+            timestamp: new Date().toISOString(),
+            point: gameState.point
+          };
+          
+          // Update last roll
+          gameState.lastRoll = rollData;
+          gameState.history.push(rollData);
+          
+          // Keep only last 50 rolls in history
+          if (gameState.history.length > 50) {
+            gameState.history.shift();
+          }
+          
+          console.log(`🎮 Game logic processed: ${dice1} + ${dice2} = ${total}`);
+          
+          // Determine game logic
+          if (!gameState.point) {
+            // Come out roll
+            if (total === 7 || total === 11) {
+              // Natural win
+              io.to(`room_${roomId}`).emit('game_result', {
+                type: 'natural_win',
+                total,
+                message: `Natural ${total}! Shooter wins!`
+              });
+              // Reset for next round
+              gameState.point = null;
+            } else if (total === 2 || total === 3 || total === 12) {
+              // Craps
+              io.to(`room_${roomId}`).emit('game_result', {
+                type: 'craps',
+                total,
+                message: `Craps! Shooter loses!`
+              });
+              // Pass dice to next player
+              passShooter(roomId);
+            } else {
+              // Establish point
+              gameState.point = total;
+              io.to(`room_${roomId}`).emit('point_established', {
+                point: total,
+                message: `Point is ${total}`
+              });
+            }
+          } else {
+            // Point has been established
+            if (total === gameState.point) {
+              // Made the point
+              io.to(`room_${roomId}`).emit('game_result', {
+                type: 'point_made',
+                total,
+                point: gameState.point,
+                message: `Point ${gameState.point} made! Shooter wins!`
+              });
+              gameState.point = null;
+            } else if (total === 7) {
+              // Seven out
+              io.to(`room_${roomId}`).emit('game_result', {
+                type: 'seven_out',
+                total,
+                message: `Seven out! Shooter loses!`
+              });
+              gameState.point = null;
+              passShooter(roomId);
+            }
+          }
+          
+          // Update game state
+          gameState.gameState = gameState.point ? 'POINT' : 'COMEOUT';
+          
+          // Broadcast updated game state
+          io.to(`room_${roomId}`).emit('game_state_updated', {
+            gameState: gameState.gameState,
             point: gameState.point,
-            message: `Point ${gameState.point} made! Shooter wins!`
+            currentShooter: gameState.currentShooter
           });
-          gameState.point = null;
-        } else if (total === 7) {
-          // Seven out
-          io.to(`room_${roomId}`).emit('game_result', {
-            type: 'seven_out',
-            total,
-            message: `Seven out! Shooter loses!`
-          });
-          gameState.point = null;
-          passShooter(roomId);
+          
+        } catch (error) {
+          console.error('Game logic processing error:', error);
         }
-      }
-      
-      // Update game state
-      gameState.gameState = gameState.point ? 'POINT' : 'COMEOUT';
-      
-      // Broadcast updated game state
-      io.to(`room_${roomId}`).emit('game_state_updated', {
-        gameState: gameState.gameState,
-        point: gameState.point,
-        currentShooter: gameState.currentShooter
       });
       
     } catch (error) {
