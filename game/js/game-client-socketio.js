@@ -29,7 +29,6 @@ window.GameClientSocketIO = (function() {
         onAuthenticated: null,
         onGameState: null,
         onDiceRolled: null,
-        onDiceConfirmed: null,
         onBetPlaced: null,
         onBetConfirmed: null,
         onBetsCleared: null,
@@ -150,22 +149,13 @@ window.GameClientSocketIO = (function() {
             }
         });
         
-        // Dice events
+        // Dice events - INSTANT BROADCAST TO ALL PLAYERS
         socket.on('dice_rolled', (rollData) => {
-            console.log('🎲 Dice rolled (from other player):', rollData);
+            console.log('⚡ Dice rolled (INSTANT):', rollData);
             gameState.lastRoll = rollData;
             
             if (callbacks.onDiceRolled) {
                 callbacks.onDiceRolled(rollData);
-            }
-        });
-        
-        socket.on('dice_confirmed', (rollData) => {
-            console.log('🎲 Dice confirmed (my roll):', rollData);
-            gameState.lastRoll = rollData;
-            
-            if (callbacks.onDiceConfirmed) {
-                callbacks.onDiceConfirmed(rollData);
             }
         });
         
@@ -406,7 +396,6 @@ window.GameClientSocketIO = (function() {
     function onAuthenticated(callback) { callbacks.onAuthenticated = callback; }
     function onGameState(callback) { callbacks.onGameState = callback; }
     function onDiceRolled(callback) { callbacks.onDiceRolled = callback; }
-    function onDiceConfirmed(callback) { callbacks.onDiceConfirmed = callback; }
     function onBetPlaced(callback) { callbacks.onBetPlaced = callback; }
     function onBetConfirmed(callback) { callbacks.onBetConfirmed = callback; }
     function onBetsCleared(callback) { callbacks.onBetsCleared = callback; }
@@ -436,7 +425,6 @@ window.GameClientSocketIO = (function() {
         onAuthenticated,
         onGameState,
         onDiceRolled,
-        onDiceConfirmed,
         onBetPlaced,
         onBetConfirmed,
         onBetsCleared,
