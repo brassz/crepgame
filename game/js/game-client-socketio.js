@@ -306,15 +306,17 @@ window.GameClientSocketIO = (function() {
     
     /**
      * Roll the dice
+     * @param {number} dice1 - First dice value (1-6) - generated locally for instant animation
+     * @param {number} dice2 - Second dice value (1-6) - generated locally for instant animation
      */
-    function rollDice() {
+    function rollDice(dice1, dice2) {
         if (!socket || !isConnected || !isAuthenticated) {
             console.error('Cannot roll: not connected or authenticated');
             return false;
         }
         
-        console.log('🎲 Rolling dice...');
-        socket.emit('roll_dice', {});
+        console.log('🎲 Sending dice to server:', dice1, dice2);
+        socket.emit('roll_dice', { dice1, dice2 });
         return true;
     }
     
