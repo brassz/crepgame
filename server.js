@@ -181,22 +181,24 @@ io.on('connection', (socket) => {
         return;
       }
       
-      // ===== STEP 1: GENERATE DICE IMMEDIATELY =====
-      const dice1 = Math.floor(Math.random() * 6) + 1;
-      const dice2 = Math.floor(Math.random() * 6) + 1;
+      // ===== STEP 1: GET DICE VALUES FROM CLIENT (generated locally for instant animation) =====
+      const dice1 = data.dice1 || Math.floor(Math.random() * 6) + 1;
+      const dice2 = data.dice2 || Math.floor(Math.random() * 6) + 1;
       
-      // ===== STEP 2: BROADCAST TO ALL PLAYERS INSTANTLY (INCLUDING SHOOTER) =====
-      // This ensures ZERO latency - everyone sees the dice at the same time
+      console.log(`🎲 Received dice from shooter: ${dice1} + ${dice2}`);
+      
+      // ===== STEP 2: BROADCAST TO OTHER PLAYERS ONLY (NOT back to shooter) =====
+      // Shooter already started animation locally, so only notify observers
       const instantRollData = {
         dice1,
         dice2,
         shooter: user.userId
       };
       
-      // Broadcast to ALL players in the room (including the shooter)
-      io.to(`room_${roomId}`).emit('dice_rolled', instantRollData);
+      // Broadcast to OTHER players in the room (NOT including the shooter)
+      socket.to(`room_${roomId}`).emit('dice_rolled', instantRollData);
       
-      console.log(`🎲 INSTANT BROADCAST: Room ${roomId} - Dice ${dice1} + ${dice2}`);
+      console.log(`📡 Broadcast to OTHER players in room ${roomId} - Dice ${dice1} + ${dice2}`);
       
       // ===== STEP 3: VALIDATE AND PROCESS GAME LOGIC (ASYNC, NON-BLOCKING) =====
       // Do this AFTER broadcasting so it doesn't delay the event

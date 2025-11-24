@@ -30,7 +30,7 @@
         // Override the roll button handler
         const originalOnRollBut = window.s_oGame._onRollBut;
         window.s_oGame._onRollBut = function() {
-            console.log('🎲 Roll button clicked - using Socket.IO with INSTANT animation');
+            console.log('🎲 Roll button clicked - INSTANT LOCAL ANIMATION');
             
             // Check if connected
             if (!gameClient.isConnected || !gameClient.isAuthenticated) {
@@ -54,23 +54,67 @@
             
             window.s_oGame._isRolling = true;
             
-            // Send roll request to server FIRST (server broadcasts instantly to everyone)
-            console.log('📤 Sending roll_dice to server...');
-            const success = gameClient.rollDice();
+            // ===== GENERATE DICE LOCALLY AND START ANIMATION IMMEDIATELY =====
+            // This ensures ZERO LATENCY for the player who clicked
+            const dice1 = Math.floor(Math.random() * 6) + 1;
+            const dice2 = Math.floor(Math.random() * 6) + 1;
             
-            if (!success) {
-                console.error('❌ Failed to send roll request');
-                window.s_oGame._isRolling = false;
-                alert('Erro ao enviar jogada!');
+            console.log('⚡ INSTANT: Generated dice locally:', dice1, dice2);
+            
+            // Update game state with dice result IMMEDIATELY
+            if (window.s_oGame._aDiceResult) {
+                window.s_oGame._aDiceResult = [dice1, dice2];
+            } else {
+                window.s_oGame._aDiceResult = new Array();
+                window.s_oGame._aDiceResult[0] = dice1;
+                window.s_oGame._aDiceResult[1] = dice2;
             }
             
-            // NOTE: Animation will start when we receive dice_rolled event from server
-            // This ensures ALL players see the animation at the same time
+            // Add to history
+            if (window.s_oGame._aDiceResultHistory) {
+                window.s_oGame._aDiceResultHistory.push([dice1, dice2]);
+            }
+            
+            // Start dice animation INSTANTLY (NO WAITING FOR SERVER)
+            if (window.s_oGame._oDicesAnim) {
+                console.log('🎬 INSTANT: Starting dice animation NOW:', [dice1, dice2]);
+                window.s_oGame._oDicesAnim.startRolling([dice1, dice2]);
+            }
+            
+            // Play sound
+            if (typeof playSound === 'function') {
+                playSound('dice_rolling', 1, false);
+            }
+            
+            // Send dice values to server (server will broadcast to OTHER players only)
+            console.log('📤 Sending dice to server for other players...');
+            const success = gameClient.rollDice(dice1, dice2);
+            
+            if (!success) {
+                console.error('❌ Failed to send roll to server');
+                // Animation already started locally, so don't block it
+            }
+            
+            // Reset rolling flag after animation completes
+            setTimeout(() => {
+                window.s_oGame._isRolling = false;
+            }, 3000);
         };
         
-        // Handle dice rolled event from server (FOR ALL PLAYERS)
+        // Handle dice rolled event from server (FOR OTHER PLAYERS ONLY)
+        // The shooter already started their animation locally, so this is only for observers
         gameClient.onDiceRolled((rollData) => {
-            console.log('⚡ Received dice_rolled (INSTANT):', rollData);
+            console.log('⚡ Received dice_rolled from server (for observers):', rollData);
+            
+            // Check if this is MY roll (if so, skip since we already animated)
+            const isMyRoll = (rollData.shooter === gameClient.currentUserId);
+            
+            if (isMyRoll) {
+                console.log('ℹ️ This is my own roll - already animated locally, skipping');
+                return; // Skip - we already started animation when we clicked
+            }
+            
+            console.log('👀 This is another player\'s roll - starting animation');
             
             // Update game state with dice result
             if (window.s_oGame._aDiceResult) {
@@ -86,9 +130,9 @@
                 window.s_oGame._aDiceResultHistory.push([rollData.dice1, rollData.dice2]);
             }
             
-            // Start dice animation INSTANTLY for ALL players
+            // Start dice animation INSTANTLY for observer
             if (window.s_oGame._oDicesAnim) {
-                console.log('🎬 Starting dice animation:', [rollData.dice1, rollData.dice2]);
+                console.log('🎬 Starting dice animation for observer:', [rollData.dice1, rollData.dice2]);
                 window.s_oGame._oDicesAnim.startRolling([rollData.dice1, rollData.dice2]);
             }
             
@@ -101,7 +145,7 @@
             if (window.s_oGame._isRolling) {
                 setTimeout(() => {
                     window.s_oGame._isRolling = false;
-                }, 3000); // Allow time for animation to complete
+                }, 3000);
             }
         });
         
