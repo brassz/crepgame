@@ -94,6 +94,11 @@ function CDicesAnim(iX,iY){
     };
     
     this.hide = function(){
+        console.log('🎲 CDicesAnim.hide called - cleaning up animation state');
+        
+        // Force stop update loop
+        _bUpdate = false;
+        
         _oDiceTopDownView.hide();
         _oContainer.visible = false;
         _iCurBallIndex = 0;
@@ -105,10 +110,20 @@ function CDicesAnim(iX,iY){
             _aDicesAnimSprites[i].visible = false;
         }
         
+        // Reset dice index
+        _iCurDiceIndex = 0;
+        _iFrameCont = 0;
+        
+        // Clear dice result for next roll
+        _aDiceResult = null;
+        
+        console.log('✅ CDicesAnim.hide completed - animation state cleaned');
+        
         s_oGame.dicesAnimEnded();
     };
     
     this.startRolling = function(aDicesResult){
+        console.log('🎲 CDicesAnim.startRolling called with result:', aDicesResult);
         _aDiceResult = aDicesResult;
         this.playToFrame(0);
 
@@ -119,6 +134,19 @@ function CDicesAnim(iX,iY){
         _oContainer.visible = true;
         
         playSound("dice_rolling", 1, false);
+        
+        // Safety timeout: force hide after 6 seconds if animation doesn't complete
+        setTimeout(function() {
+            if (_oContainer.visible && _bUpdate) {
+                console.warn('⚠️ SAFETY TIMEOUT: Forcing dice animation to complete');
+                _bUpdate = false;
+                if (_aDiceResult && _aDiceResult.length === 2) {
+                    _oThis._setAnimForDiceResult();
+                } else {
+                    _oThis.hide();
+                }
+            }
+        }, 6000);
     };
     
     // Inicia animação sem resultado definido (para outros jogadores observarem)
