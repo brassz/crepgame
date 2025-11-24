@@ -203,9 +203,9 @@ function CDicesAnim(iX,iY){
                     _bUpdate = false;
                     this._setAnimForDiceResult();
                 } else {
-                    // Se não temos resultado ainda, volta ao início da animação
-                    console.log('🎲 CDicesAnim: No result yet, looping animation');
-                    this.playToFrame(0);
+                    // Se não temos resultado ainda, para a animação no último frame
+                    console.log('🎲 CDicesAnim: No result yet, stopping at last frame');
+                    _bUpdate = false;
                 }
             }else{
                 this.nextFrame();
