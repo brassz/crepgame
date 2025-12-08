@@ -827,6 +827,50 @@ function CGame(oData){
         
     };
     
+    // Public accessors for Socket.IO integration
+    // These expose private variables so multiplayer features can access them
+    Object.defineProperty(this, '_oDicesAnim', {
+        get: function() { return _oDicesAnim; }
+    });
+    
+    Object.defineProperty(this, '_oInterface', {
+        get: function() { return _oInterface; }
+    });
+    
+    Object.defineProperty(this, '_oMySeat', {
+        get: function() { return _oMySeat; }
+    });
+    
+    Object.defineProperty(this, '_oPuck', {
+        get: function() { return _oPuck; }
+    });
+    
+    Object.defineProperty(this, '_isRolling', {
+        get: function() { return _bUpdate && _oDicesAnim && _oDicesAnim.isVisible(); },
+        set: function(value) { 
+            // Control the rolling state by showing/hiding animation if needed
+            // Note: This is a simplified setter - the actual state is managed internally
+        }
+    });
+    
+    Object.defineProperty(this, '_aDiceResult', {
+        get: function() { return _aDiceResult; },
+        set: function(value) { _aDiceResult = value; }
+    });
+    
+    Object.defineProperty(this, '_aDiceResultHistory', {
+        get: function() { return _aDiceResultHistory; }
+    });
+    
+    Object.defineProperty(this, '_iState', {
+        get: function() { return _iState; }
+    });
+    
+    Object.defineProperty(this, '_iNumberPoint', {
+        get: function() { return _iNumberPoint; },
+        set: function(value) { _iNumberPoint = value; }
+    });
+    
     s_oGame = this;
     
     TOTAL_MONEY = oData.money;
