@@ -385,7 +385,26 @@
         gameClient.onPlayersUpdated((players) => {
             console.log('👥 Players in room:', players.length, players);
             
-            // Could update player list UI here
+            // Update player count in UI
+            if (window.s_oInterface && window.s_oInterface.updateRoomInfo) {
+                const currentRoom = gameClient.currentRoomId || 'table1';
+                const roomType = 'bronze'; // Default room type, adjust if you have room selection
+                window.s_oInterface.updateRoomInfo(roomType, players.length);
+                console.log('✅ Updated player count in UI:', players.length);
+            }
+        });
+        
+        // Handle game state (initial state when joining)
+        gameClient.onGameState((state) => {
+            console.log('📊 Game state received:', state);
+            
+            // Update player count from initial state
+            if (state.players && window.s_oInterface && window.s_oInterface.updateRoomInfo) {
+                const playerCount = Array.isArray(state.players) ? state.players.length : 0;
+                const roomType = 'bronze'; // Default room type
+                window.s_oInterface.updateRoomInfo(roomType, playerCount);
+                console.log('✅ Updated player count from game state:', playerCount);
+            }
         });
         
         // Handle connection status
