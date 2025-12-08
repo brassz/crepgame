@@ -1,26 +1,26 @@
 /**
  * Dice History Panel - Shows recent dice rolls
- * Vertical window displaying last rolls with dice faces and totals
+ * Horizontal bar displaying last 5 rolls with dice faces and totals
  */
 function CDiceHistory() {
     var _oContainer;
     var _oBackground;
     var _oTitle;
     var _aHistoryItems = [];
-    var _iMaxHistoryItems = 10;
+    var _iMaxHistoryItems = 5; // Mostra apenas as últimas 5 jogadas
     var _oThis;
 
     this._init = function() {
-        // Container positioned on the right side of the screen
+        // Container posicionado na parte inferior central da tela
         _oContainer = new createjs.Container();
-        _oContainer.x = CANVAS_WIDTH - 160; // 160px from right edge
-        _oContainer.y = 10; // 10px from top
+        _oContainer.x = CANVAS_WIDTH / 2 - 400; // Centralizado
+        _oContainer.y = CANVAS_HEIGHT - 100; // 100px do fundo
         s_oStage.addChild(_oContainer);
 
-        // Background panel
+        // Background panel horizontal
         var oGraphics = new createjs.Graphics()
             .beginFill("rgba(0, 0, 0, 0.8)")
-            .drawRoundRect(0, 0, 150, 500, 10);
+            .drawRoundRect(0, 0, 800, 90, 10);
         _oBackground = new createjs.Shape(oGraphics);
         _oContainer.addChild(_oBackground);
 
@@ -28,19 +28,19 @@ function CDiceHistory() {
         var oBorderGraphics = new createjs.Graphics()
             .setStrokeStyle(2)
             .beginStroke("#FFD700")
-            .drawRoundRect(0, 0, 150, 500, 10);
+            .drawRoundRect(0, 0, 800, 90, 10);
         var oBorder = new createjs.Shape(oBorderGraphics);
         _oContainer.addChild(oBorder);
 
         // Title
-        _oTitle = new createjs.Text("ÚLTIMAS JOGADAS", "bold 14px Arial", "#FFD700");
-        _oTitle.x = 75;
+        _oTitle = new createjs.Text("ÚLTIMAS 5 JOGADAS", "bold 14px Arial", "#FFD700");
+        _oTitle.x = 400;
         _oTitle.y = 15;
         _oTitle.textAlign = "center";
         _oTitle.textBaseline = "middle";
         _oContainer.addChild(_oTitle);
 
-        console.log('✅ Dice History Panel initialized');
+        console.log('✅ Dice History Panel initialized (horizontal layout)');
     };
 
     /**
@@ -59,49 +59,52 @@ function CDiceHistory() {
             return;
         }
 
-        // Remove oldest item if at max capacity
+        // Remove oldest item if at max capacity (remove from the left/first position)
         if (_aHistoryItems.length >= _iMaxHistoryItems) {
             var oldestItem = _aHistoryItems.shift();
             _oContainer.removeChild(oldestItem.container);
+            
+            // Shift all remaining items to the left
+            for (var i = 0; i < _aHistoryItems.length; i++) {
+                createjs.Tween.get(_aHistoryItems[i].container)
+                    .to({x: 15 + (i * 155)}, 300, createjs.Ease.cubicOut);
+            }
         }
 
-        // Shift existing items down
-        for (var i = 0; i < _aHistoryItems.length; i++) {
-            _aHistoryItems[i].container.y += 45;
-        }
-
-        // Create new history item at the top
+        // Create new history item (will be added on the right)
         var oItemContainer = new createjs.Container();
-        oItemContainer.x = 10;
-        oItemContainer.y = 45; // Below title
+        var xPosition = 15 + (_aHistoryItems.length * 155);
+        oItemContainer.x = xPosition;
+        oItemContainer.y = 35; // Abaixo do título
 
         // Background for this item
         var oItemBg = new createjs.Graphics()
             .beginFill("rgba(255, 215, 0, 0.1)")
-            .drawRoundRect(0, 0, 130, 40, 5);
+            .drawRoundRect(0, 0, 145, 50, 5);
         var oBgShape = new createjs.Shape(oItemBg);
         oItemContainer.addChild(oBgShape);
 
-        // Dice text (simple representation)
+        // Dice text (simple representation) - larger for horizontal layout
         var sDiceText = this._getDiceEmoji(dice1) + " " + this._getDiceEmoji(dice2);
-        var oDiceText = new createjs.Text(sDiceText, "20px Arial", "#FFFFFF");
+        var oDiceText = new createjs.Text(sDiceText, "24px Arial", "#FFFFFF");
         oDiceText.x = 10;
         oDiceText.y = 8;
         oItemContainer.addChild(oDiceText);
 
-        // Total
+        // Total - displayed below the dice
         var iTotal = dice1 + dice2;
-        var oTotalText = new createjs.Text("= " + iTotal, "bold 18px Arial", "#FFD700");
-        oTotalText.x = 80;
-        oTotalText.y = 10;
+        var oTotalText = new createjs.Text("= " + iTotal, "bold 16px Arial", "#FFD700");
+        oTotalText.x = 10;
+        oTotalText.y = 30;
         oItemContainer.addChild(oTotalText);
 
-        // Shooter name (if provided, show small text below)
+        // Shooter name (if provided, show on the right side)
         if (shooterName) {
-            var oShooterText = new createjs.Text(shooterName, "10px Arial", "#AAAAAA");
-            oShooterText.x = 10;
-            oShooterText.y = 28;
-            oShooterText.maxWidth = 110;
+            var oShooterText = new createjs.Text(shooterName, "9px Arial", "#AAAAAA");
+            oShooterText.x = 85;
+            oShooterText.y = 20;
+            oShooterText.maxWidth = 55;
+            oShooterText.textAlign = "right";
             oItemContainer.addChild(oShooterText);
         }
 
