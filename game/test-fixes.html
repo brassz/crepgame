@@ -14,8 +14,16 @@
             SpriteSheet: function() { return {}; }
         };
         window.createBitmap = function() { return { x: 0, y: 0, visible: false }; };
-        window.createSprite = function() { return { stop: function() {}, visible: false, x: 0, y: 0, addEventListener: function() {} }; };
+        window.createSprite = function() { return { stop: function() {}, visible: false, x: 0, y: 0, addEventListener: function() {}, gotoAndPlay: function() {} }; };
         window.playSound = function() {};
+        
+        // Mock CDicesTopDownView
+        window.CDicesTopDownView = function() {
+            return {
+                hide: function() {},
+                setDiceResult: function() {}
+            };
+        };
         
         // Mock constants
         window.CANVAS_WIDTH = 1280;
@@ -34,6 +42,32 @@
                     // Check if startRolling method exists (the correct one)
                     if (typeof diceAnim.startRolling === 'function') {
                         console.log("✓ CDicesAnim.startRolling method exists");
+                        
+                        // Test validation with valid dice
+                        console.log("Testing validation with valid dice [3, 4]...");
+                        diceAnim.startRolling([3, 4]);
+                        console.log("✓ Valid dice accepted");
+                        
+                        // Test validation with undefined dice
+                        console.log("Testing validation with undefined dice...");
+                        diceAnim.startRolling([undefined, undefined]);
+                        console.log("✓ Undefined dice rejected (function returned without error)");
+                        
+                        // Test validation with out of range dice
+                        console.log("Testing validation with out of range dice [0, 7]...");
+                        diceAnim.startRolling([0, 7]);
+                        console.log("✓ Out of range dice rejected");
+                        
+                        // Test validation with null dice
+                        console.log("Testing validation with null dice...");
+                        diceAnim.startRolling([null, 3]);
+                        console.log("✓ Null dice rejected");
+                        
+                        // Test validation with string dice
+                        console.log("Testing validation with string dice...");
+                        diceAnim.startRolling(["1", "2"]);
+                        console.log("✓ String dice rejected");
+                        
                     } else {
                         console.error("✗ CDicesAnim.startRolling method missing");
                     }

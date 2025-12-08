@@ -84,6 +84,15 @@
             
             console.log('⚡ INSTANT: Generated dice locally:', dice1, dice2);
             
+            // Validate generated dice (sanity check)
+            if (typeof dice1 !== 'number' || typeof dice2 !== 'number' ||
+                dice1 < 1 || dice1 > 6 || dice2 < 1 || dice2 > 6) {
+                console.error('❌ Invalid dice generated:', dice1, dice2);
+                clearTimeout(safetyTimeout);
+                resetRollingFlag();
+                return;
+            }
+            
             // Update game state with dice result IMMEDIATELY
             if (window.s_oGame._aDiceResult) {
                 window.s_oGame._aDiceResult = [dice1, dice2];
@@ -184,6 +193,14 @@
                 
                 // Safety timeout - will ALWAYS fire to reset flag
                 setTimeout(resetRollingFlag, 5000);
+                
+                // Validate dice data
+                if (typeof rollData.dice1 !== 'number' || typeof rollData.dice2 !== 'number' ||
+                    rollData.dice1 < 1 || rollData.dice1 > 6 || rollData.dice2 < 1 || rollData.dice2 > 6) {
+                    console.error('❌ Invalid dice data received from server:', rollData);
+                    resetRollingFlag();
+                    return;
+                }
                 
                 // Update game state with dice result
                 if (window.s_oGame._aDiceResult) {
