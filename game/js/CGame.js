@@ -118,7 +118,7 @@ function CGame(oData){
         _oInterface.disableClearButton();
 
         // Socket.IO Pure System - All dice rolling is handled by game-socketio-integration.js
-        // That file overrides _onRollBut to intercept roll requests and send them to Socket.IO server
+        // That file overrides onRoll to intercept roll requests and send them to Socket.IO server
         // The server responds with dice_rolled event which is caught by the integration
         // This function just sets up the UI for rolling
         
