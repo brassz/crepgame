@@ -23,6 +23,7 @@ function CGame(oData){
     var _oMsgBox;
     var _oGameOverPanel;
     var _oAreYouSurePanel;
+    var _oDiceHistory;
     var _sCurrentRoom = null;
     
     
@@ -57,6 +58,9 @@ function CGame(oData){
         _oGameOverPanel = new CGameOver();
 
         _oMsgBox = new CMsgBox();
+        
+        // Initialize dice history panel
+        _oDiceHistory = new CDiceHistory();
 
         _aDiceResultHistory=new Array();
 
@@ -72,6 +76,9 @@ function CGame(oData){
         _oMsgBox.unload();
         _oGameOverPanel.unload();
         _oDicesAnim.unload();
+        if (_oDiceHistory) {
+            _oDiceHistory.unload();
+        }
 
         s_oStage.removeAllChildren();
     };
@@ -839,6 +846,19 @@ function CGame(oData){
     
     Object.defineProperty(this, '_oMySeat', {
         get: function() { return _oMySeat; }
+    });
+    
+    /**
+     * Add a dice roll to the history panel
+     */
+    this.addRollToHistory = function(dice1, dice2, shooterName) {
+        if (_oDiceHistory) {
+            _oDiceHistory.addRoll(dice1, dice2, shooterName);
+        }
+    };
+    
+    Object.defineProperty(this, '_oDiceHistory', {
+        get: function() { return _oDiceHistory; }
     });
     
     Object.defineProperty(this, '_oPuck', {

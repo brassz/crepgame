@@ -192,13 +192,17 @@ io.on('connection', (socket) => {
       const instantRollData = {
         dice1,
         dice2,
-        shooter: user.userId
+        shooter: user.userId,
+        shooterName: user.username
       };
       
-      // Broadcast to OTHER players in the room (NOT including the shooter)
-      socket.to(`room_${roomId}`).emit('dice_rolled', instantRollData);
+      // FIRST: Broadcast dice_roll_start to OTHER players so they start animation IMMEDIATELY
+      socket.to(`room_${roomId}`).emit('dice_roll_start', instantRollData);
+      console.log(`⚡ Broadcast dice_roll_start to OTHER players in room ${roomId}`);
       
-      console.log(`📡 Broadcast to OTHER players in room ${roomId} - Dice ${dice1} + ${dice2}`);
+      // THEN: Broadcast dice_rolled with the result (for finishing animation)
+      socket.to(`room_${roomId}`).emit('dice_rolled', instantRollData);
+      console.log(`📡 Broadcast dice_rolled to OTHER players in room ${roomId} - Dice ${dice1} + ${dice2}`);
       
       // ===== STEP 3: VALIDATE AND PROCESS GAME LOGIC (ASYNC, NON-BLOCKING) =====
       // Do this AFTER broadcasting so it doesn't delay the event

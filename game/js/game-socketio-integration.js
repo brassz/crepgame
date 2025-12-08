@@ -128,6 +128,12 @@
                 window.s_oGame._aDiceResultHistory.push([dice1, dice2]);
             }
             
+            // Add to visual history panel
+            if (window.s_oGame.addRollToHistory) {
+                const username = localStorage.getItem('playerName') || 'Você';
+                window.s_oGame.addRollToHistory(dice1, dice2, username);
+            }
+            
             // ===== START ANIMATION INSTANTLY FOR THIS PLAYER =====
             if (window.s_oGame._oDicesAnim) {
                 console.log('🎬 INSTANT: Starting animation for shooter:', [dice1, dice2]);
@@ -297,6 +303,12 @@
                     
                     if (!alreadyInHistory) {
                         window.s_oGame._aDiceResultHistory.push(diceResult);
+                        
+                        // Add to visual history panel (for observers)
+                        if (!isMyRoll && window.s_oGame.addRollToHistory) {
+                            const shooterName = rollData.shooterName || rollData.shooter || 'Outro jogador';
+                            window.s_oGame.addRollToHistory(diceResult[0], diceResult[1], shooterName);
+                        }
                     }
                 }
                 
