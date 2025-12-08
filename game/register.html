@@ -130,36 +130,65 @@
 
         <script>
             (function(){
-                function redirectIfLogged(){
-                    sb.auth.getSession().then(function(res){
-                        if(res.data && res.data.session){
-                            window.location.href = "index.html";
+                // Wait for DOM and scripts to be fully loaded
+                function init(){
+                    if (!window.sb) {
+                        console.error('Supabase client (sb) not initialized. Check auth-config.js and auth-client.js');
+                        showError('Erro ao inicializar sistema de autenticação. Verifique a configuração.');
+                        return;
+                    }
+
+                    function redirectIfLogged(){
+                        sb.auth.getSession().then(function(res){
+                            if(res.data && res.data.session){
+                                window.location.href = "index.html";
+                            }
+                        }).catch(function(error){
+                            console.error('Error checking session:', error);
+                        });
+                    }
+                    redirectIfLogged();
+
+                    var form = document.getElementById('register-form');
+                    form.addEventListener('submit', function(e){
+                        e.preventDefault();
+                        var email = document.getElementById('email').value;
+                        var password = document.getElementById('password').value;
+                        
+                        if (!email || !password) {
+                            showError('Por favor, preencha email e senha.');
+                            return;
                         }
+
+                        if (password.length < 6) {
+                            showError('A senha deve ter pelo menos 6 caracteres.');
+                            return;
+                        }
+
+                        sb.auth.signUp({ email: email, password: password })
+                          .then(function(res){
+                            if(res.error){
+                                showError(res.error.message);
+                            } else {
+                                alert('Verifique seu email para confirmar a conta.');
+                                window.location.href = "login.html";
+                            }
+                          })
+                          .catch(function(error){
+                            console.error('Registration error:', error);
+                            showError('Erro ao criar conta: ' + error.message);
+                          });
                     });
                 }
-                redirectIfLogged();
-
-                var form = document.getElementById('register-form');
-                form.addEventListener('submit', function(e){
-                    e.preventDefault();
-                    var email = document.getElementById('email').value;
-                    var password = document.getElementById('password').value;
-                    sb.auth.signUp({ email: email, password: password })
-                      .then(function(res){
-                        if(res.error){
-                            showError(res.error.message);
-                        } else {
-                            alert('Verifique seu email para confirmar a conta.');
-                            window.location.href = "login.html";
-                        }
-                      });
-                });
 
                 function showError(msg){
                     var el = document.getElementById('error');
                     el.textContent = msg;
                     el.style.display = 'block';
                 }
+
+                // Initialize after a short delay to ensure all scripts are loaded
+                setTimeout(init, 100);
             })();
         </script>
     </body>

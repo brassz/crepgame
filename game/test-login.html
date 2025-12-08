@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Login Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Login System</h1>
+    <div id="status"></div>
+    
+    <h2>Configuration Check</h2>
+    <button onclick="checkConfig()">Check Configuration</button>
+    
+    <h2>Supabase Client Check</h2>
+    <button onclick="checkSupabaseClient()">Check Supabase Client</button>
+    
+    <h2>Session Check</h2>
+    <button onclick="checkSession()">Check Current Session</button>
+    
+    <h2>Links</h2>
+    <a href="login.html">Go to Login Page</a> | 
+    <a href="register.html">Go to Register Page</a>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script type="text/javascript" src="js/auth-config.js"></script>
+    <script type="text/javascript" src="js/auth-client.js"></script>
+    
+    <script>
+        function showStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'status ' + type;
+            msgDiv.textContent = message;
+            statusDiv.appendChild(msgDiv);
+            console.log(message);
+        }
+        
+        function checkConfig() {
+            showStatus('Checking configuration...', 'info');
+            
+            if (typeof window.SUPABASE_URL !== 'undefined') {
+                showStatus('✓ SUPABASE_URL is set: ' + window.SUPABASE_URL, 'success');
+            } else {
+                showStatus('✗ SUPABASE_URL is NOT set', 'error');
+            }
+            
+            if (typeof window.SUPABASE_ANON_KEY !== 'undefined') {
+                showStatus('✓ SUPABASE_ANON_KEY is set: ' + window.SUPABASE_ANON_KEY.substring(0, 20) + '...', 'success');
+            } else {
+                showStatus('✗ SUPABASE_ANON_KEY is NOT set', 'error');
+            }
+        }
+        
+        function checkSupabaseClient() {
+            showStatus('Checking Supabase client...', 'info');
+            
+            if (typeof window.supabase !== 'undefined') {
+                showStatus('✓ window.supabase is defined', 'success');
+                
+                if (typeof window.supabase.createClient === 'function') {
+                    showStatus('✓ window.supabase.createClient is a function', 'success');
+                } else {
+                    showStatus('✗ window.supabase.createClient is NOT a function', 'error');
+                }
+            } else {
+                showStatus('✗ window.supabase is NOT defined', 'error');
+            }
+            
+            if (typeof window.sb !== 'undefined') {
+                showStatus('✓ window.sb (Supabase client instance) is defined', 'success');
+                
+                if (window.sb && window.sb.auth) {
+                    showStatus('✓ window.sb.auth is defined', 'success');
+                } else {
+                    showStatus('✗ window.sb.auth is NOT defined', 'error');
+                }
+            } else {
+                showStatus('✗ window.sb (Supabase client instance) is NOT defined', 'error');
+            }
+        }
+        
+        function checkSession() {
+            showStatus('Checking session...', 'info');
+            
+            if (!window.sb) {
+                showStatus('✗ Cannot check session: window.sb is not defined', 'error');
+                return;
+            }
+            
+            window.sb.auth.getSession()
+                .then(res => {
+                    if (res.data && res.data.session) {
+                        showStatus('✓ User is logged in: ' + res.data.session.user.email, 'success');
+                        showStatus('Session expires at: ' + new Date(res.data.session.expires_at * 1000), 'info');
+                    } else {
+                        showStatus('ℹ No active session', 'info');
+                    }
+                })
+                .catch(error => {
+                    showStatus('✗ Error checking session: ' + error.message, 'error');
+                    console.error(error);
+                });
+        }
+        
+        // Auto-run checks on page load
+        setTimeout(() => {
+            checkConfig();
+            checkSupabaseClient();
+            checkSession();
+        }, 500);
+    </script>
+</body>
+</html>
