@@ -28,6 +28,7 @@ window.GameClientSocketIO = (function() {
         onDisconnected: null,
         onAuthenticated: null,
         onGameState: null,
+        onDiceRollStart: null, // NEW: Instant animation start for all players
         onDiceRolled: null,
         onBetPlaced: null,
         onBetConfirmed: null,
@@ -150,6 +151,15 @@ window.GameClientSocketIO = (function() {
         });
         
         // Dice events - INSTANT BROADCAST TO ALL PLAYERS
+        socket.on('dice_roll_start', (data) => {
+            console.log('⚡ DICE ROLL START (INSTANT - ALL PLAYERS):', data);
+            // This fires IMMEDIATELY when any player clicks roll
+            // ALL players see animation start at the same time - ZERO DELAY
+            if (callbacks.onDiceRollStart) {
+                callbacks.onDiceRollStart(data);
+            }
+        });
+        
         socket.on('dice_rolled', (rollData) => {
             console.log('⚡ Dice rolled (INSTANT):', rollData);
             gameState.lastRoll = rollData;
@@ -397,6 +407,7 @@ window.GameClientSocketIO = (function() {
     function onDisconnected(callback) { callbacks.onDisconnected = callback; }
     function onAuthenticated(callback) { callbacks.onAuthenticated = callback; }
     function onGameState(callback) { callbacks.onGameState = callback; }
+    function onDiceRollStart(callback) { callbacks.onDiceRollStart = callback; }
     function onDiceRolled(callback) { callbacks.onDiceRolled = callback; }
     function onBetPlaced(callback) { callbacks.onBetPlaced = callback; }
     function onBetConfirmed(callback) { callbacks.onBetConfirmed = callback; }
@@ -426,6 +437,7 @@ window.GameClientSocketIO = (function() {
         onDisconnected,
         onAuthenticated,
         onGameState,
+        onDiceRollStart,
         onDiceRolled,
         onBetPlaced,
         onBetConfirmed,
