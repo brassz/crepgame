@@ -59,7 +59,7 @@
         // Add automatic timeout monitoring
         let rollingStartTime = null;
         let autoResetTimeout = null;
-        const MAX_ROLLING_TIME = 8000; // 8 seconds max
+        const MAX_ROLLING_TIME = 6000; // 6 seconds max (reduced from 8)
         
         // Monitor _isRolling flag changes
         let isRollingValue = false;
@@ -70,7 +70,7 @@
             
             // Detect when _isRolling changes from false to true
             if (currentValue && !isRollingValue) {
-                console.log('🎲 MONITOR: _isRolling changed to TRUE');
+                console.log('🎲 MONITOR: _isRolling changed to TRUE at', new Date().toISOString());
                 rollingStartTime = Date.now();
                 
                 // Set a safety timeout
@@ -81,12 +81,23 @@
                 autoResetTimeout = setTimeout(function() {
                     if (window.s_oGame && window.s_oGame._isRolling) {
                         console.warn('⚠️ AUTO-RESET: _isRolling has been TRUE for more than ' + (MAX_ROLLING_TIME / 1000) + ' seconds!');
-                        console.warn('⚠️ Automatically resetting to prevent freeze...');
+                        console.warn('⚠️ This indicates the animation is stuck - forcing reset...');
                         window.s_oGame._isRolling = false;
                         
                         // Hide block overlay
                         if (window.s_oGame._oInterface && window.s_oGame._oInterface.hideBlock) {
                             window.s_oGame._oInterface.hideBlock();
+                        }
+                        
+                        // Enable bet fiches
+                        if (window.s_oGame._oInterface && window.s_oGame._oInterface.enableBetFiches) {
+                            window.s_oGame._oInterface.enableBetFiches();
+                        }
+                        
+                        // Hide animation if visible
+                        if (window.s_oGame._oDicesAnim && window.s_oGame._oDicesAnim.isVisible && window.s_oGame._oDicesAnim.isVisible()) {
+                            console.warn('⚠️ Hiding stuck dice animation');
+                            window.s_oGame._oDicesAnim.hide();
                         }
                         
                         console.log('✅ Auto-reset complete - you can roll again');
@@ -97,7 +108,7 @@
             // Detect when _isRolling changes from true to false
             if (!currentValue && isRollingValue) {
                 const duration = Date.now() - rollingStartTime;
-                console.log('🎲 MONITOR: _isRolling changed to FALSE (duration: ' + duration + 'ms)');
+                console.log('🎲 MONITOR: _isRolling changed to FALSE (duration: ' + duration + 'ms) at', new Date().toISOString());
                 
                 if (autoResetTimeout) {
                     clearTimeout(autoResetTimeout);

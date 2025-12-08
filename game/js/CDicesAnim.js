@@ -106,6 +106,14 @@ function CDicesAnim(iX,iY){
         _oDiceASprite.visible = false;
         _oDiceBSprite.visible = false;
         
+        // Stop any ongoing sprite animations
+        if (_oDiceASprite) {
+            _oDiceASprite.stop();
+        }
+        if (_oDiceBSprite) {
+            _oDiceBSprite.stop();
+        }
+        
         for(var i=0;i<_aDicesAnimSprites.length;i++){
             _aDicesAnimSprites[i].visible = false;
         }
@@ -119,53 +127,107 @@ function CDicesAnim(iX,iY){
         
         console.log('✅ CDicesAnim.hide completed - animation state cleaned');
         
-        s_oGame.dicesAnimEnded();
+        // Call dicesAnimEnded to notify game that animation is complete
+        if (s_oGame && typeof s_oGame.dicesAnimEnded === 'function') {
+            s_oGame.dicesAnimEnded();
+        } else {
+            console.warn('⚠️ s_oGame.dicesAnimEnded not available');
+        }
     };
     
     this.startRolling = function(aDicesResult){
         console.log('🎲 CDicesAnim.startRolling called with result:', aDicesResult);
+        
+        // Validate input
+        if (!aDicesResult || aDicesResult.length !== 2) {
+            console.error('❌ Invalid dice result provided to startRolling:', aDicesResult);
+            return;
+        }
+        
+        // Store result
         _aDiceResult = aDicesResult;
+        
+        // Reset animation state
+        _iCurDiceIndex = 0;
+        _iFrameCont = 0;
+        
+        // Start from frame 0
         this.playToFrame(0);
 
+        // Show container
         _oContainer.visible = true;
 
+        // Enable update loop
         _bUpdate = true;
         
-        _oContainer.visible = true;
-        
+        // Play sound
         playSound("dice_rolling", 1, false);
         
-        // Safety timeout: force hide after 6 seconds if animation doesn't complete
+        // Reduced safety timeout for faster recovery
         setTimeout(function() {
             if (_oContainer.visible && _bUpdate) {
-                console.warn('⚠️ SAFETY TIMEOUT: Forcing dice animation to complete');
+                console.warn('⚠️ SAFETY TIMEOUT: Forcing dice animation to complete after 4 seconds');
                 _bUpdate = false;
                 if (_aDiceResult && _aDiceResult.length === 2) {
                     _oThis._setAnimForDiceResult();
                 } else {
+                    console.error('❌ No valid dice result, hiding animation');
                     _oThis.hide();
                 }
             }
-        }, 6000);
+        }, 4000); // Reduced from 6 to 4 seconds
     };
     
     // Inicia animação sem resultado definido (para outros jogadores observarem)
     this.startRollingWithoutResult = function(){
         console.log('🎲 CDicesAnim: Starting rolling animation without result');
+        
+        // Reset animation state
+        _iCurDiceIndex = 0;
+        _iFrameCont = 0;
+        _aDiceResult = null; // Clear any previous result
+        
+        // Start from frame 0
         this.playToFrame(0);
+        
+        // Show container and enable update
         _oContainer.visible = true;
         _bUpdate = true;
+        
         console.log('🎲 CDicesAnim: Animation container visible:', _oContainer.visible);
         console.log('🎲 CDicesAnim: Update flag set to:', _bUpdate);
+        
+        // Play sound
         playSound("dice_rolling", 1, false);
+        
+        // Safety timeout if result never arrives
+        setTimeout(function() {
+            if (_oContainer.visible && !_aDiceResult) {
+                console.error('❌ TIMEOUT: No dice result received after 5 seconds, forcing hide');
+                _bUpdate = false;
+                _oThis.hide();
+            }
+        }, 5000);
     };
     
     // Finaliza animação com resultado (quando recebe do servidor)
     this.finishRollingWithResult = function(aDicesResult){
         console.log('🎲 CDicesAnim: Finishing rolling with result:', aDicesResult);
+        
+        // Validate input
+        if (!aDicesResult || aDicesResult.length !== 2) {
+            console.error('❌ Invalid dice result provided to finishRollingWithResult:', aDicesResult);
+            // Force hide if invalid result
+            _bUpdate = false;
+            _oThis.hide();
+            return;
+        }
+        
+        // Store result
         _aDiceResult = aDicesResult;
+        
         // Se ainda estiver na animação de rolagem, deixa continuar
-        // Se já terminou, força o resultado
+        // Se já terminou, força o resultado imediatamente
         if(!_bUpdate){
             console.log('🎲 CDicesAnim: Animation not updating, setting result immediately');
             this._setAnimForDiceResult();
@@ -203,12 +265,18 @@ function CDicesAnim(iX,iY){
     
     this._onDiceBAnimEnded = function(evt){
         if(evt.currentTarget.currentAnimation.indexOf("stop_anim") !== -1){
+            console.log('🎲 Dice animation ended, showing result');
             _oThis.setShowNumberInfo();
+            
             // Reduced delay for faster gameplay
             var reducedTime = Math.max(1000, TIME_SHOW_DICES_RESULT * 0.5); // At least 1 second, but 50% faster
-            setTimeout(function(){_oThis.hide();}, reducedTime);
+            console.log('🎲 Will hide animation in', reducedTime, 'ms');
+            
+            setTimeout(function(){
+                console.log('🎲 Hiding animation now');
+                _oThis.hide();
+            }, reducedTime);
         }
-        
     };
     
     this.isVisible = function(){
