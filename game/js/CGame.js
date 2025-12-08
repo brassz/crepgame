@@ -191,6 +191,18 @@ function CGame(oData){
     };
     
     this._startRollingAnim = function(){
+        // Validate dice result before starting animation
+        if (!_aDiceResult || _aDiceResult.length !== 2 || 
+            typeof _aDiceResult[0] !== 'number' || typeof _aDiceResult[1] !== 'number' ||
+            _aDiceResult[0] < 1 || _aDiceResult[0] > 6 || 
+            _aDiceResult[1] < 1 || _aDiceResult[1] > 6) {
+            console.error('❌ Cannot start animation - invalid dice result:', _aDiceResult);
+            console.error('   Resetting game state...');
+            _oInterface.hideBlock();
+            _oInterface.enableBetFiches();
+            this._isRolling = false;
+            return;
+        }
         _oDicesAnim.startRolling(_aDiceResult);
     };
 

@@ -138,9 +138,14 @@ function CDicesAnim(iX,iY){
     this.startRolling = function(aDicesResult){
         console.log('🎲 CDicesAnim.startRolling called with result:', aDicesResult);
         
-        // Validate input
-        if (!aDicesResult || aDicesResult.length !== 2) {
+        // Validate input - check array exists, has 2 elements, and both are valid numbers
+        if (!aDicesResult || aDicesResult.length !== 2 || 
+            typeof aDicesResult[0] !== 'number' || typeof aDicesResult[1] !== 'number' ||
+            aDicesResult[0] < 1 || aDicesResult[0] > 6 || 
+            aDicesResult[1] < 1 || aDicesResult[1] > 6) {
             console.error('❌ Invalid dice result provided to startRolling:', aDicesResult);
+            console.error('   Expected: [number, number] where each is 1-6');
+            console.error('   Received:', typeof aDicesResult, aDicesResult);
             return;
         }
         
@@ -214,9 +219,14 @@ function CDicesAnim(iX,iY){
     this.finishRollingWithResult = function(aDicesResult){
         console.log('🎲 CDicesAnim: Finishing rolling with result:', aDicesResult);
         
-        // Validate input
-        if (!aDicesResult || aDicesResult.length !== 2) {
+        // Validate input - check array exists, has 2 elements, and both are valid numbers
+        if (!aDicesResult || aDicesResult.length !== 2 || 
+            typeof aDicesResult[0] !== 'number' || typeof aDicesResult[1] !== 'number' ||
+            aDicesResult[0] < 1 || aDicesResult[0] > 6 || 
+            aDicesResult[1] < 1 || aDicesResult[1] > 6) {
             console.error('❌ Invalid dice result provided to finishRollingWithResult:', aDicesResult);
+            console.error('   Expected: [number, number] where each is 1-6');
+            console.error('   Received:', typeof aDicesResult, aDicesResult);
             // Force hide if invalid result
             _bUpdate = false;
             _oThis.hide();
