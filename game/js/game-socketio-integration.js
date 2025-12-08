@@ -56,25 +56,26 @@
             console.log('✅ Setting _isRolling to true at:', new Date().toISOString());
             window.s_oGame._isRolling = true;
             
-            // Safety timeout to reset rolling flag in case something goes wrong
-            const safetyTimeout = setTimeout(() => {
+            // Single unified timeout to reset rolling flag
+            // This ensures _isRolling is ALWAYS reset, even if errors occur
+            const resetRollingFlag = function() {
                 if (window.s_oGame._isRolling) {
-                    console.error('❌ SAFETY TIMEOUT: Forcing reset of _isRolling flag after 5 seconds');
-                    console.error('❌ This indicates a problem in the dice roll flow');
+                    console.log('🔄 Resetting _isRolling flag');
                     window.s_oGame._isRolling = false;
                     
-                    // Also hide the block overlay
+                    // Also ensure UI is unlocked
                     if (window.s_oGame._oInterface && window.s_oGame._oInterface.hideBlock) {
                         window.s_oGame._oInterface.hideBlock();
-                        console.log('✅ Block overlay hidden by safety timeout');
                     }
                     
-                    // Enable bet fiches
                     if (window.s_oGame._oInterface && window.s_oGame._oInterface.enableBetFiches) {
                         window.s_oGame._oInterface.enableBetFiches();
                     }
                 }
-            }, 5000);
+            };
+            
+            // Safety timeout - will ALWAYS fire to reset flag
+            const safetyTimeout = setTimeout(resetRollingFlag, 5000);
             
             // ===== GENERATE DICE LOCALLY AND START ANIMATION IMMEDIATELY =====
             // This ensures ZERO LATENCY for the player who clicked
@@ -100,7 +101,19 @@
             // Start dice animation INSTANTLY (NO WAITING FOR SERVER)
             if (window.s_oGame._oDicesAnim) {
                 console.log('🎬 INSTANT: Starting dice animation NOW:', [dice1, dice2]);
-                window.s_oGame._oDicesAnim.startRolling([dice1, dice2]);
+                try {
+                    window.s_oGame._oDicesAnim.startRolling([dice1, dice2]);
+                } catch (error) {
+                    console.error('❌ Error starting dice animation:', error);
+                    clearTimeout(safetyTimeout);
+                    resetRollingFlag();
+                    return;
+                }
+            } else {
+                console.error('❌ Dice animation object not available');
+                clearTimeout(safetyTimeout);
+                resetRollingFlag();
+                return;
             }
             
             // Play sound
@@ -116,32 +129,14 @@
                 
                 if (!success) {
                     console.error('❌ Failed to send roll to server');
-                    clearTimeout(safetyTimeout);
-                    // Reset flag immediately if send failed
-                    setTimeout(() => {
-                        window.s_oGame._isRolling = false;
-                    }, 1000);
-                    return;
+                    // Don't reset immediately, let animation complete
+                    console.log('ℹ️ Animation will continue locally');
                 }
             } catch (error) {
                 console.error('❌ Exception while sending roll to server:', error);
-                clearTimeout(safetyTimeout);
-                // Reset flag immediately on exception
-                window.s_oGame._isRolling = false;
-                return;
+                // Don't reset immediately, let animation complete
+                console.log('ℹ️ Animation will continue locally');
             }
-            
-            // Reset rolling flag after animation completes (3 seconds)
-            setTimeout(() => {
-                if (window.s_oGame._isRolling) {
-                    console.log('⏰ Normal timeout: Resetting _isRolling flag after 3 seconds');
-                    clearTimeout(safetyTimeout);
-                    window.s_oGame._isRolling = false;
-                } else {
-                    console.log('ℹ️ Normal timeout: Flag already reset by game logic');
-                    clearTimeout(safetyTimeout);
-                }
-            }, 3000);
         };
         
         // Handle dice rolled event from server (FOR OTHER PLAYERS ONLY)
@@ -161,6 +156,35 @@
                 
                 console.log('👀 This is another player\'s roll - starting animation');
                 
+                // Prevent starting new animation if already rolling
+                if (window.s_oGame._isRolling) {
+                    console.warn('⚠️ Already rolling, skipping this dice roll event');
+                    return;
+                }
+                
+                // Set rolling flag for observers
+                window.s_oGame._isRolling = true;
+                
+                // Single unified timeout to reset rolling flag
+                const resetRollingFlag = function() {
+                    if (window.s_oGame._isRolling) {
+                        console.log('🔄 Resetting _isRolling flag for observer');
+                        window.s_oGame._isRolling = false;
+                        
+                        // Ensure UI is unlocked
+                        if (window.s_oGame._oInterface && window.s_oGame._oInterface.hideBlock) {
+                            window.s_oGame._oInterface.hideBlock();
+                        }
+                        
+                        if (window.s_oGame._oInterface && window.s_oGame._oInterface.enableBetFiches) {
+                            window.s_oGame._oInterface.enableBetFiches();
+                        }
+                    }
+                };
+                
+                // Safety timeout - will ALWAYS fire to reset flag
+                setTimeout(resetRollingFlag, 5000);
+                
                 // Update game state with dice result
                 if (window.s_oGame._aDiceResult) {
                     window.s_oGame._aDiceResult = [rollData.dice1, rollData.dice2];
@@ -178,26 +202,23 @@
                 // Start dice animation INSTANTLY for observer
                 if (window.s_oGame._oDicesAnim) {
                     console.log('🎬 Starting dice animation for observer:', [rollData.dice1, rollData.dice2]);
-                    window.s_oGame._oDicesAnim.startRolling([rollData.dice1, rollData.dice2]);
+                    try {
+                        window.s_oGame._oDicesAnim.startRolling([rollData.dice1, rollData.dice2]);
+                    } catch (error) {
+                        console.error('❌ Error starting dice animation:', error);
+                        resetRollingFlag();
+                        return;
+                    }
+                } else {
+                    console.error('❌ Dice animation object not available');
+                    resetRollingFlag();
+                    return;
                 }
                 
                 // Play sound
                 if (typeof playSound === 'function') {
                     playSound('dice_rolling', 1, false);
                 }
-                
-                // Set rolling flag for observers
-                window.s_oGame._isRolling = true;
-                
-                // Reset rolling flag after animation completes (for observers)
-                setTimeout(() => {
-                    if (window.s_oGame._isRolling) {
-                        console.log('🔄 Resetting _isRolling flag for observer after 3 seconds');
-                        window.s_oGame._isRolling = false;
-                    } else {
-                        console.log('ℹ️ Observer timeout: Flag already reset');
-                    }
-                }, 3000);
                 
             } catch (error) {
                 console.error('❌ Error handling dice_rolled event:', error);
