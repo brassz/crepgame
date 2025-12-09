@@ -26,6 +26,11 @@ function CGame(oData){
     var _oDiceHistory;
     var _sCurrentRoom = null;
     
+    // NOVAS VARIÁVEIS PARA CONTROLE DE APOSTA E TURNO
+    var _iLastWinAmount = 0;  // Último valor ganho
+    var _bMustBetFullWin = false;  // Flag: deve apostar valor inteiro ganho
+    var _bIsMyTurn = true;  // Flag: é minha vez de jogar (default true para single player)
+    
     
     this._init = function(){
         s_oTweenController = new CTweenController();
@@ -297,6 +302,10 @@ function CGame(oData){
                 }
             });
         }
+        
+        // ATUALIZAR FLAG DE TURNO
+        _bIsMyTurn = isMyTurn;
+        
         // Só permite rolar se for meu turno E se há aposta ativa
         var canRoll = isMyTurn && _oMySeat.getCurBet() > 0;
         _oInterface.enableRoll(canRoll);
@@ -318,6 +327,8 @@ function CGame(oData){
                     }
                 }, 2000);
             }
+        } else {
+            _oInterface.showMessage("AGUARDE SUA VEZ...");
         }
         
         // Update turn display immediately
@@ -425,6 +436,17 @@ function CGame(oData){
         // Reset rolling flag to allow next roll
         this._isRolling = false;
         
+        // SISTEMA DE RODADAS: Liberar turno após um delay (simula passar para próximo jogador)
+        // Em modo single player, libera imediatamente
+        // Em multiplayer, isso seria controlado pelo servidor
+        setTimeout(function(){
+            _bIsMyTurn = true;
+            if(_oMySeat.getCurBet() > 0){
+                _oInterface.enableRoll(true);
+            }
+            console.log("✅ Turno liberado! Você pode jogar novamente.");
+        }, 1000); // 1 segundo de delay para dar tempo de ver o resultado
+        
         } catch(error) {
             console.error("Erro em dicesAnimEnded:", error);
             // Reset do estado em caso de erro
@@ -432,6 +454,7 @@ function CGame(oData){
             _aFichesToMove = new Array();
             _iState = STATE_GAME_WAITING_FOR_BET;
             this._isRolling = false; // Reset flag on error too
+            _bIsMyTurn = true; // Liberar turno em caso de erro
         }
     };
     
@@ -496,7 +519,12 @@ function CGame(oData){
                     var iAutoWin = iTotalActiveBets * 2; // Dobro
                     _oMySeat.showWin(iAutoWin);
                     _iCasinoCash -= iAutoWin;
-                    new CScoreText("GANHOU! +" + iAutoWin + TEXT_CURRENCY, CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
+                    
+                    // REGRA: Próxima aposta deve ser o valor inteiro ganho
+                    _iLastWinAmount = iAutoWin;
+                    _bMustBetFullWin = true;
+                    
+                    new CScoreText("GANHOU! +" + iAutoWin + TEXT_CURRENCY + "\nPRÓXIMA APOSTA: " + iAutoWin + TEXT_CURRENCY, CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
                     playSound("win", 0.2, false);
                 }
                 // Remove todas as apostas ativas após pagamento
@@ -515,6 +543,10 @@ function CGame(oData){
                 _oMySeat.clearAllBets();
                 _aBetHistory = {};
                 _oInterface.setCurBet(_oMySeat.getCurBet());
+                
+                // Reset flag de aposta obrigatória ao perder
+                _bMustBetFullWin = false;
+                _iLastWinAmount = 0;
             } else if(iSumDices === 4 || iSumDices === 5 || iSumDices === 6 || iSumDices === 8 || iSumDices === 9 || iSumDices === 10){
                 // NÚMEROS DE PONTO: PERGUNTA SE QUER CONTINUAR
                 console.log("Número de ponto detectado:", iSumDices);
@@ -538,6 +570,10 @@ function CGame(oData){
                 // Volta para o estado de espera
                 _iNumberPoint = -1;
                 this._setState(STATE_GAME_WAITING_FOR_BET);
+                
+                // Reset flag de aposta obrigatória ao perder
+                _bMustBetFullWin = false;
+                _iLastWinAmount = 0;
             } else if(iSumDices === _iNumberPoint){
                 // ACERTOU O PONTO: PAGA CONFORME A MESA
                 var iTotalActiveBets = _oMySeat.getCurBet();
@@ -551,7 +587,12 @@ function CGame(oData){
                     var iAutoWin = iTotalActiveBets * iMultiplier;
                     _oMySeat.showWin(iAutoWin);
                     _iCasinoCash -= iAutoWin;
-                    new CScoreText("PONTO ACERTOU! +" + iAutoWin + TEXT_CURRENCY, CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
+                    
+                    // REGRA: Próxima aposta deve ser o valor inteiro ganho
+                    _iLastWinAmount = iAutoWin;
+                    _bMustBetFullWin = true;
+                    
+                    new CScoreText("PONTO ACERTOU! +" + iAutoWin + TEXT_CURRENCY + "\nPRÓXIMA APOSTA: " + iAutoWin + TEXT_CURRENCY, CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
                     playSound("win", 0.2, false);
                 }
                 // Remove todas as apostas ativas
@@ -619,6 +660,12 @@ function CGame(oData){
             return;
         }
         
+        // REGRA DE TURNO: Verificar se é a vez do jogador
+        if(!_bIsMyTurn){
+            _oMsgBox.show("AGUARDE SUA VEZ!\nO BOTÃO SERÁ LIBERADO QUANDO FOR SEU TURNO.");
+            return;
+        }
+        
         if (_oMySeat.getCurBet() === 0) {
                 return;
         }
@@ -636,6 +683,10 @@ function CGame(oData){
 
         // Set rolling flag to prevent double-clicks
         this._isRolling = true;
+        
+        // BLOQUEAR O TURNO: Após lançar, não é mais sua vez
+        _bIsMyTurn = false;
+        _oInterface.enableRoll(false);
         
         _oInterface.showBlock();
         
@@ -718,6 +769,30 @@ function CGame(oData){
         var iFicheValue=s_oGameSettings.getFicheValues(iIndexFicheSelected);
         
         var iCurBet=_oMySeat.getCurBet();
+        
+        // REGRA: Se deve apostar valor inteiro ganho, validar aposta
+        if(_bMustBetFullWin && _iLastWinAmount > 0){
+            var iNewTotalBet = iCurBet + iFicheValue;
+            
+            // Se ainda não chegou no valor mínimo
+            if(iNewTotalBet < _iLastWinAmount){
+                _oMsgBox.show("VOCÊ GANHOU " + _iLastWinAmount.toFixed(2) + TEXT_CURRENCY + "!\nDEVE APOSTAR O VALOR INTEIRO!\nAPOSTA ATUAL: " + iNewTotalBet.toFixed(2) + TEXT_CURRENCY);
+                return;
+            }
+            
+            // Se passou do valor exato
+            if(iNewTotalBet > _iLastWinAmount){
+                _oMsgBox.show("APOSTA DEVE SER EXATAMENTE " + _iLastWinAmount.toFixed(2) + TEXT_CURRENCY + "!\nNÃO PODE SER MAIOR!");
+                return;
+            }
+            
+            // Se chegou no valor exato, limpar a flag
+            if(iNewTotalBet === _iLastWinAmount){
+                _bMustBetFullWin = false;
+                _oInterface.refreshMsgHelp("VALOR CORRETO! Agora lance os dados!",true);
+            }
+        }
+        
         if( (_oMySeat.getCredit() - iFicheValue) < 0){
             //SHOW MSG BOX
             _oMsgBox.show(TEXT_ERROR_NO_MONEY_MSG);
@@ -742,7 +817,13 @@ function CGame(oData){
         _oInterface.setCurBet(_oMySeat.getCurBet());
         _oInterface.enableRoll(true);
         _oInterface.enableClearButton();
-        _oInterface.refreshMsgHelp("APOSTE AQUI - Clique para apostar e lançar os dados",true);
+        
+        // Mensagem personalizada se está apostando valor ganho
+        if(_bMustBetFullWin && iCurBet + iFicheValue < _iLastWinAmount){
+            _oInterface.refreshMsgHelp("CONTINUE APOSTANDO ATÉ " + _iLastWinAmount.toFixed(2) + TEXT_CURRENCY,true);
+        } else {
+            _oInterface.refreshMsgHelp("APOSTE AQUI - Clique para apostar e lançar os dados",true);
+        }
         
         playSound("chip", 1, false);
     };
@@ -779,6 +860,10 @@ function CGame(oData){
             _aBetHistory = new Object();
             _oInterface.enableRoll(false);
         }
+        
+        // Limpar flag de aposta obrigatória ao limpar apostas
+        _bMustBetFullWin = false;
+        _iLastWinAmount = 0;
         
         _oInterface.setMoney(_oMySeat.getCredit());
         _oInterface.setCurBet(_oMySeat.getCurBet());
