@@ -17,10 +17,10 @@ function CDiceHistory() {
         _oContainer.y = CANVAS_HEIGHT - 100; // 100px do fundo
         s_oStage.addChild(_oContainer);
 
-        // Background panel horizontal
+        // Background panel horizontal - aumentado para 95px de altura
         var oGraphics = new createjs.Graphics()
             .beginFill("rgba(0, 0, 0, 0.8)")
-            .drawRoundRect(0, 0, 800, 90, 10);
+            .drawRoundRect(0, 0, 800, 95, 10);
         _oBackground = new createjs.Shape(oGraphics);
         _oContainer.addChild(_oBackground);
 
@@ -28,14 +28,14 @@ function CDiceHistory() {
         var oBorderGraphics = new createjs.Graphics()
             .setStrokeStyle(2)
             .beginStroke("#FFD700")
-            .drawRoundRect(0, 0, 800, 90, 10);
+            .drawRoundRect(0, 0, 800, 95, 10);
         var oBorder = new createjs.Shape(oBorderGraphics);
         _oContainer.addChild(oBorder);
 
         // Title
         _oTitle = new createjs.Text("ÚLTIMAS 5 JOGADAS", "bold 14px Arial", "#FFD700");
         _oTitle.x = 400;
-        _oTitle.y = 15;
+        _oTitle.y = 12;
         _oTitle.textAlign = "center";
         _oTitle.textBaseline = "middle";
         _oContainer.addChild(_oTitle);
@@ -77,36 +77,36 @@ function CDiceHistory() {
         oItemContainer.x = xPosition;
         oItemContainer.y = 35; // Abaixo do título
 
-        // Background for this item
+        // Background for this item - aumentado para 58px de altura para acomodar o nome
         var oItemBg = new createjs.Graphics()
             .beginFill("rgba(255, 215, 0, 0.1)")
-            .drawRoundRect(0, 0, 145, 50, 5);
+            .drawRoundRect(0, 0, 145, 58, 5);
         var oBgShape = new createjs.Shape(oItemBg);
         oItemContainer.addChild(oBgShape);
 
+        // Shooter name (if provided, show at the top - ANTES dos dados para não sobrepor)
+        if (shooterName) {
+            var oShooterText = new createjs.Text(shooterName, "bold 9px Arial", "#FFD700");
+            oShooterText.x = 73; // Centralizado
+            oShooterText.y = 3; // Bem no topo
+            oShooterText.maxWidth = 70;
+            oShooterText.textAlign = "center";
+            oItemContainer.addChild(oShooterText);
+        }
+
         // Dice text (simple representation) - larger for horizontal layout
         var sDiceText = this._getDiceEmoji(dice1) + " " + this._getDiceEmoji(dice2);
-        var oDiceText = new createjs.Text(sDiceText, "24px Arial", "#FFFFFF");
-        oDiceText.x = 10;
-        oDiceText.y = 8;
+        var oDiceText = new createjs.Text(sDiceText, "22px Arial", "#FFFFFF");
+        oDiceText.x = 15;
+        oDiceText.y = shooterName ? 16 : 10; // Move um pouco para baixo se tiver nome
         oItemContainer.addChild(oDiceText);
 
         // Total - displayed below the dice
         var iTotal = dice1 + dice2;
         var oTotalText = new createjs.Text("= " + iTotal, "bold 16px Arial", "#FFD700");
-        oTotalText.x = 10;
-        oTotalText.y = 30;
+        oTotalText.x = 15;
+        oTotalText.y = shooterName ? 36 : 32; // Move um pouco para baixo se tiver nome
         oItemContainer.addChild(oTotalText);
-
-        // Shooter name (if provided, show on the right side)
-        if (shooterName) {
-            var oShooterText = new createjs.Text(shooterName, "9px Arial", "#AAAAAA");
-            oShooterText.x = 85;
-            oShooterText.y = 20;
-            oShooterText.maxWidth = 55;
-            oShooterText.textAlign = "right";
-            oItemContainer.addChild(oShooterText);
-        }
 
         _oContainer.addChild(oItemContainer);
 

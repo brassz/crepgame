@@ -275,17 +275,22 @@ function CDicesAnim(iX,iY){
     
     this._onDiceBAnimEnded = function(evt){
         if(evt.currentTarget.currentAnimation.indexOf("stop_anim") !== -1){
-            console.log('🎲 Dice animation ended, showing result');
-            _oThis.setShowNumberInfo();
+            console.log('🎲 Dice animation ended, will show result after delay');
             
-            // Reduced delay for faster gameplay
-            var reducedTime = Math.max(1000, TIME_SHOW_DICES_RESULT * 0.5); // At least 1 second, but 50% faster
-            console.log('🎲 Will hide animation in', reducedTime, 'ms');
-            
+            // Aguarda 800ms ANTES de mostrar o resultado dos dados
             setTimeout(function(){
-                console.log('🎲 Hiding animation now');
-                _oThis.hide();
-            }, reducedTime);
+                console.log('🎲 Now showing dice result');
+                _oThis.setShowNumberInfo();
+                
+                // Depois mostra o resultado por mais tempo antes de esconder
+                var displayTime = Math.max(1500, TIME_SHOW_DICES_RESULT); // Pelo menos 1.5 segundos
+                console.log('🎲 Will hide animation in', displayTime, 'ms');
+                
+                setTimeout(function(){
+                    console.log('🎲 Hiding animation now');
+                    _oThis.hide();
+                }, displayTime);
+            }, 800); // 800ms de delay antes de mostrar o resultado
         }
     };
     
