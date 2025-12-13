@@ -66,7 +66,7 @@ function createGameState(roomId) {
 }
 
 io.on('connection', (socket) => {
-  console.log(`Socket connected: ${socket.id}`);
+  console.log(`Socket conectado: ${socket.id}`);
   
   // Handle user authentication and identification
   socket.on('authenticate', (userData) => {
@@ -82,7 +82,7 @@ io.on('connection', (socket) => {
         lastActivity: new Date()
       });
       
-      console.log(`User authenticated: ${username} (${userId}) in room ${roomId}`);
+      console.log(`Usuário autenticado: ${username} (${userId}) na sala ${roomId}`);
       
       // Join the room
       if (roomId) {
@@ -159,7 +159,7 @@ io.on('connection', (socket) => {
       socket.emit('authenticated', { success: true });
       
     } catch (error) {
-      console.error('Authentication error:', error);
+      console.error('Erro de autenticação:', error);
       socket.emit('authenticated', { success: false, error: error.message });
     }
   });
@@ -169,7 +169,7 @@ io.on('connection', (socket) => {
     try {
       const user = connectedUsers.get(socket.id);
       if (!user) {
-        socket.emit('error', { message: 'User not authenticated' });
+        socket.emit('error', { message: 'Usuário não autenticado' });
         return;
       }
       
@@ -177,7 +177,7 @@ io.on('connection', (socket) => {
       const gameState = gameRooms.get(roomId);
       
       if (!gameState) {
-        socket.emit('error', { message: 'Game room not found' });
+        socket.emit('error', { message: 'Sala de jogo não encontrada' });
         return;
       }
       
@@ -185,7 +185,7 @@ io.on('connection', (socket) => {
       const dice1 = data.dice1 || Math.floor(Math.random() * 6) + 1;
       const dice2 = data.dice2 || Math.floor(Math.random() * 6) + 1;
       
-      console.log(`🎲 Received dice from shooter: ${dice1} + ${dice2}`);
+      console.log(`🎲 Dados recebidos do lançador: ${dice1} + ${dice2}`);
       
       // ===== STEP 2: BROADCAST TO OTHER PLAYERS ONLY (NOT back to shooter) =====
       // Shooter already started animation locally, so only notify observers
@@ -198,11 +198,11 @@ io.on('connection', (socket) => {
       
       // FIRST: Broadcast dice_roll_start to OTHER players so they start animation IMMEDIATELY
       socket.to(`room_${roomId}`).emit('dice_roll_start', instantRollData);
-      console.log(`⚡ Broadcast dice_roll_start to OTHER players in room ${roomId}`);
+      console.log(`⚡ Transmitindo dice_roll_start para OUTROS jogadores na sala ${roomId}`);
       
       // THEN: Broadcast dice_rolled with the result (for finishing animation)
       socket.to(`room_${roomId}`).emit('dice_rolled', instantRollData);
-      console.log(`📡 Broadcast dice_rolled to OTHER players in room ${roomId} - Dice ${dice1} + ${dice2}`);
+      console.log(`📡 Transmitindo dice_rolled para OUTROS jogadores na sala ${roomId} - Dados ${dice1} + ${dice2}`);
       
       // ===== STEP 3: VALIDATE AND PROCESS GAME LOGIC (ASYNC, NON-BLOCKING) =====
       // Do this AFTER broadcasting so it doesn't delay the event
@@ -210,18 +210,18 @@ io.on('connection', (socket) => {
         try {
           const player = gameState.players.get(user.userId);
           if (!player) {
-            console.warn('Player not found after dice roll');
+            console.warn('Jogador não encontrado após lançamento dos dados');
             return;
           }
           
           // Validate shooter (log warning but don't block)
           if (gameState.currentShooter !== user.userId) {
-            console.warn(`Non-shooter ${user.userId} rolled dice in room ${roomId}`);
+            console.warn(`Não-lançador ${user.userId} lançou dados na sala ${roomId}`);
           }
           
           // Validate bet (log warning but don't block)
           if (player.currentBet <= 0) {
-            console.warn(`Player ${user.userId} rolled without bet in room ${roomId}`);
+            console.warn(`Jogador ${user.userId} lançou sem apostar na sala ${roomId}`);
           }
           
           const total = dice1 + dice2;
@@ -245,7 +245,7 @@ io.on('connection', (socket) => {
             gameState.history.shift();
           }
           
-          console.log(`🎮 Game logic processed: ${dice1} + ${dice2} = ${total}`);
+          console.log(`🎮 Lógica do jogo processada: ${dice1} + ${dice2} = ${total}`);
           
           // Determine game logic
           if (!gameState.point) {
@@ -255,7 +255,7 @@ io.on('connection', (socket) => {
               io.to(`room_${roomId}`).emit('game_result', {
                 type: 'natural_win',
                 total,
-                message: `Natural ${total}! Shooter wins!`
+                message: `Natural ${total}! Lançador vence!`
               });
               // Reset for next round
               gameState.point = null;
@@ -264,7 +264,7 @@ io.on('connection', (socket) => {
               io.to(`room_${roomId}`).emit('game_result', {
                 type: 'craps',
                 total,
-                message: `Craps! Shooter loses!`
+                message: `Craps! Lançador perde!`
               });
               // Pass dice to next player
               passShooter(roomId);
@@ -273,7 +273,7 @@ io.on('connection', (socket) => {
               gameState.point = total;
               io.to(`room_${roomId}`).emit('point_established', {
                 point: total,
-                message: `Point is ${total}`
+                message: `Ponto é ${total}`
               });
             }
           } else {
@@ -284,7 +284,7 @@ io.on('connection', (socket) => {
                 type: 'point_made',
                 total,
                 point: gameState.point,
-                message: `Point ${gameState.point} made! Shooter wins!`
+                message: `Ponto ${gameState.point} feito! Lançador vence!`
               });
               gameState.point = null;
             } else if (total === 7) {
@@ -292,7 +292,7 @@ io.on('connection', (socket) => {
               io.to(`room_${roomId}`).emit('game_result', {
                 type: 'seven_out',
                 total,
-                message: `Seven out! Shooter loses!`
+                message: `Sete fora! Lançador perde!`
               });
               gameState.point = null;
               passShooter(roomId);
@@ -310,13 +310,13 @@ io.on('connection', (socket) => {
           });
           
         } catch (error) {
-          console.error('Game logic processing error:', error);
+          console.error('Erro ao processar lógica do jogo:', error);
         }
       });
       
     } catch (error) {
-      console.error('Roll dice error:', error);
-      socket.emit('error', { message: 'Failed to roll dice' });
+      console.error('Erro ao lançar dados:', error);
+      socket.emit('error', { message: 'Falha ao lançar dados' });
     }
   });
   
@@ -325,7 +325,7 @@ io.on('connection', (socket) => {
     try {
       const user = connectedUsers.get(socket.id);
       if (!user) {
-        socket.emit('error', { message: 'User not authenticated' });
+        socket.emit('error', { message: 'Usuário não autenticado' });
         return;
       }
       
@@ -333,13 +333,13 @@ io.on('connection', (socket) => {
       const gameState = gameRooms.get(roomId);
       
       if (!gameState) {
-        socket.emit('error', { message: 'Game room not found' });
+        socket.emit('error', { message: 'Sala de jogo não encontrada' });
         return;
       }
       
       const player = gameState.players.get(user.userId);
       if (!player) {
-        socket.emit('error', { message: 'Player not found in game' });
+        socket.emit('error', { message: 'Jogador não encontrado no jogo' });
         return;
       }
       
@@ -347,7 +347,7 @@ io.on('connection', (socket) => {
       
       // Validate bet amount
       if (amount <= 0 || amount > player.credit) {
-        socket.emit('error', { message: 'Invalid bet amount' });
+        socket.emit('error', { message: 'Valor de aposta inválido' });
         return;
       }
       
@@ -392,11 +392,11 @@ io.on('connection', (socket) => {
         totalBet: player.currentBet
       });
       
-      console.log(`Bet placed in room ${roomId}: ${user.username} bet ${amount} on ${betType}`);
+      console.log(`Aposta feita na sala ${roomId}: ${user.username} apostou ${amount} em ${betType}`);
       
     } catch (error) {
-      console.error('Place bet error:', error);
-      socket.emit('error', { message: 'Failed to place bet' });
+      console.error('Erro ao fazer aposta:', error);
+      socket.emit('error', { message: 'Falha ao fazer aposta' });
     }
   });
   
@@ -405,7 +405,7 @@ io.on('connection', (socket) => {
     try {
       const user = connectedUsers.get(socket.id);
       if (!user) {
-        socket.emit('error', { message: 'User not authenticated' });
+        socket.emit('error', { message: 'Usuário não autenticado' });
         return;
       }
       
@@ -413,13 +413,13 @@ io.on('connection', (socket) => {
       const gameState = gameRooms.get(roomId);
       
       if (!gameState) {
-        socket.emit('error', { message: 'Game room not found' });
+        socket.emit('error', { message: 'Sala de jogo não encontrada' });
         return;
       }
       
       const player = gameState.players.get(user.userId);
       if (!player) {
-        socket.emit('error', { message: 'Player not found in game' });
+        socket.emit('error', { message: 'Jogador não encontrado no jogo' });
         return;
       }
       
@@ -453,11 +453,11 @@ io.on('connection', (socket) => {
         username: user.username
       });
       
-      console.log(`Bets cleared in room ${roomId}: ${user.username} refunded ${refundAmount}`);
+      console.log(`Apostas limpas na sala ${roomId}: ${user.username} reembolsado ${refundAmount}`);
       
     } catch (error) {
-      console.error('Clear bets error:', error);
-      socket.emit('error', { message: 'Failed to clear bets' });
+      console.error('Erro ao limpar apostas:', error);
+      socket.emit('error', { message: 'Falha ao limpar apostas' });
     }
   });
   
@@ -466,7 +466,7 @@ io.on('connection', (socket) => {
     try {
       const user = connectedUsers.get(socket.id);
       if (!user) {
-        socket.emit('error', { message: 'User not authenticated' });
+        socket.emit('error', { message: 'Usuário não autenticado' });
         return;
       }
       
@@ -474,7 +474,7 @@ io.on('connection', (socket) => {
       const gameState = gameRooms.get(roomId);
       
       if (!gameState) {
-        socket.emit('error', { message: 'Game room not found' });
+        socket.emit('error', { message: 'Sala de jogo não encontrada' });
         return;
       }
       
@@ -489,8 +489,8 @@ io.on('connection', (socket) => {
       });
       
     } catch (error) {
-      console.error('Get game state error:', error);
-      socket.emit('error', { message: 'Failed to get game state' });
+      console.error('Erro ao obter estado do jogo:', error);
+      socket.emit('error', { message: 'Falha ao obter estado do jogo' });
     }
   });
   
@@ -528,7 +528,7 @@ io.on('connection', (socket) => {
     try {
       const user = connectedUsers.get(socket.id);
       if (!user) {
-        socket.emit('error', { message: 'User not authenticated' });
+        socket.emit('error', { message: 'Usuário não autenticado' });
         return;
       }
       
@@ -556,11 +556,11 @@ io.on('connection', (socket) => {
       // Broadcast message to room
       io.to(`room_${user.roomId}`).emit('chat_message', message);
       
-      console.log(`Chat message in room ${user.roomId}: ${user.username}: ${messageData.message}`);
+      console.log(`Mensagem de chat na sala ${user.roomId}: ${user.username}: ${messageData.message}`);
       
     } catch (error) {
-      console.error('Chat message error:', error);
-      socket.emit('error', { message: 'Failed to send message' });
+      console.error('Erro de mensagem de chat:', error);
+      socket.emit('error', { message: 'Falha ao enviar mensagem' });
     }
   });
   
@@ -635,7 +635,7 @@ io.on('connection', (socket) => {
   
   // Handle disconnection
   socket.on('disconnect', (reason) => {
-    console.log(`Socket disconnected: ${socket.id} (${reason})`);
+    console.log(`Socket desconectado: ${socket.id} (${reason})`);
     
     const user = connectedUsers.get(socket.id);
     if (user) {
@@ -667,7 +667,7 @@ io.on('connection', (socket) => {
           // Clean up empty game room
           if (gameState.players.size === 0) {
             gameRooms.delete(user.roomId);
-            console.log(`Game room ${user.roomId} cleaned up (empty)`);
+            console.log(`Sala de jogo ${user.roomId} limpa (vazia)`);
           } else {
             // Notify others about updated player list
             io.to(`room_${user.roomId}`).emit('players_updated', {
@@ -716,7 +716,7 @@ io.on('connection', (socket) => {
   
   // Handle errors
   socket.on('error', (error) => {
-    console.error('Socket error:', error);
+    console.error('Erro de socket:', error);
   });
 });
 
@@ -727,7 +727,7 @@ setInterval(() => {
   
   for (const [socketId, user] of connectedUsers.entries()) {
     if (now - user.lastActivity > timeout) {
-      console.log(`Cleaning up inactive user: ${user.username}`);
+      console.log(`Limpando usuário inativo: ${user.username}`);
       const socket = io.sockets.sockets.get(socketId);
       if (socket) {
         socket.disconnect(true);
@@ -756,9 +756,9 @@ setInterval(() => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`Server listening on http://localhost:${PORT}`);
-  console.log('✅ Socket.IO Pure: Complete game management');
-  console.log('🎮 Real-time multiplayer Craps game ready!');
-  console.log('📊 Features: Dice rolling, betting, chat, lobby');
+  console.log(`Servidor ouvindo em http://localhost:${PORT}`);
+  console.log('✅ Socket.IO Puro: Gerenciamento completo do jogo');
+  console.log('🎮 Jogo multiplayer de Craps em tempo real pronto!');
+  console.log('📊 Funcionalidades: Lançamento de dados, apostas, chat, lobby');
 });
 

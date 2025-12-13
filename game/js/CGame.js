@@ -135,7 +135,7 @@ function CGame(oData){
         // This function just sets up the UI for rolling
         
         if (window.GameClientSocketIO && window.GameClientSocketIO.isConnected && window.GameClientSocketIO.isAuthenticated){
-            console.log('🎲 Socket.IO connected - dice roll will be handled by server');
+            console.log('🎲 Socket.IO conectado - lançamento de dados será tratado pelo servidor');
             _oInterface.showMessage("Aguardando resultado...");
             // The actual roll request is sent by game-socketio-integration.js override
             // Server will broadcast dice_rolled event to all players
@@ -143,7 +143,7 @@ function CGame(oData){
         }
 
         // Fallback to local roll if Socket.IO not connected (offline mode)
-        console.log('⚠️ Socket.IO not connected - using local roll');
+        console.log('⚠️ Socket.IO não conectado - usando lançamento local');
         _iContRolling++;
         _aDiceResult = new Array();
         this._generateWinLoss();
@@ -208,8 +208,8 @@ function CGame(oData){
             typeof _aDiceResult[0] !== 'number' || typeof _aDiceResult[1] !== 'number' ||
             _aDiceResult[0] < 1 || _aDiceResult[0] > 6 || 
             _aDiceResult[1] < 1 || _aDiceResult[1] > 6) {
-            console.error('❌ Cannot start animation - invalid dice result:', _aDiceResult);
-            console.error('   Resetting game state...');
+            console.error('❌ Não é possível iniciar animação - resultado de dados inválido:', _aDiceResult);
+            console.error('   Redefinindo estado do jogo...');
             _oInterface.hideBlock();
             _oInterface.enableBetFiches();
             this._isRolling = false;
@@ -246,7 +246,7 @@ function CGame(oData){
                     isMyRoll = (currentUserId === data.shooter);
                 }
             } catch (error) {
-                console.warn('Error getting current user:', error);
+                console.warn('Erro ao obter usuário atual:', error);
             }
         }
         

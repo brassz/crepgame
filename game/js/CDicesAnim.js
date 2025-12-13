@@ -143,9 +143,9 @@ function CDicesAnim(iX,iY){
             typeof aDicesResult[0] !== 'number' || typeof aDicesResult[1] !== 'number' ||
             aDicesResult[0] < 1 || aDicesResult[0] > 6 || 
             aDicesResult[1] < 1 || aDicesResult[1] > 6) {
-            console.error('❌ Invalid dice result provided to startRolling:', aDicesResult);
-            console.error('   Expected: [number, number] where each is 1-6');
-            console.error('   Received:', typeof aDicesResult, aDicesResult);
+            console.error('❌ Resultado de dados inválido fornecido para startRolling:', aDicesResult);
+            console.error('   Esperado: [número, número] onde cada um é 1-6');
+            console.error('   Recebido:', typeof aDicesResult, aDicesResult);
             return;
         }
         
@@ -176,7 +176,7 @@ function CDicesAnim(iX,iY){
                 if (_aDiceResult && _aDiceResult.length === 2) {
                     _oThis._setAnimForDiceResult();
                 } else {
-                    console.error('❌ No valid dice result, hiding animation');
+                    console.error('❌ Nenhum resultado de dados válido, ocultando animação');
                     _oThis.hide();
                 }
             }
@@ -208,7 +208,7 @@ function CDicesAnim(iX,iY){
         // Safety timeout if result never arrives
         setTimeout(function() {
             if (_oContainer.visible && !_aDiceResult) {
-                console.error('❌ TIMEOUT: No dice result received after 5 seconds, forcing hide');
+                console.error('❌ TIMEOUT: Nenhum resultado de dados recebido após 5 segundos, forçando ocultar');
                 _bUpdate = false;
                 _oThis.hide();
             }
@@ -224,9 +224,9 @@ function CDicesAnim(iX,iY){
             typeof aDicesResult[0] !== 'number' || typeof aDicesResult[1] !== 'number' ||
             aDicesResult[0] < 1 || aDicesResult[0] > 6 || 
             aDicesResult[1] < 1 || aDicesResult[1] > 6) {
-            console.error('❌ Invalid dice result provided to finishRollingWithResult:', aDicesResult);
-            console.error('   Expected: [number, number] where each is 1-6');
-            console.error('   Received:', typeof aDicesResult, aDicesResult);
+            console.error('❌ Resultado de dados inválido fornecido para finishRollingWithResult:', aDicesResult);
+            console.error('   Esperado: [número, número] onde cada um é 1-6');
+            console.error('   Recebido:', typeof aDicesResult, aDicesResult);
             // Force hide if invalid result
             _bUpdate = false;
             _oThis.hide();
