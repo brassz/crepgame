@@ -49,7 +49,7 @@ window.GameClientSocketIO = (function() {
     function init(serverUrl) {
         return new Promise((resolve, reject) => {
             try {
-                console.log('Initializing Pure Socket.IO Game Client...');
+                console.log('Inicializando Cliente de Jogo Socket.IO Puro...');
                 
                 // Initialize Socket.IO connection - FORCE WEBSOCKET FOR ZERO DELAY
                 socket = io(serverUrl || window.location.origin, {
@@ -67,7 +67,7 @@ window.GameClientSocketIO = (function() {
                 setupSocketHandlers();
                 
                 socket.on('connect', () => {
-                    console.log('✅ Socket.IO connected:', socket.id);
+                    console.log('✅ Socket.IO conectado:', socket.id);
                     isConnected = true;
                     
                     if (callbacks.onConnected) {
@@ -78,7 +78,7 @@ window.GameClientSocketIO = (function() {
                 });
                 
                 socket.on('connect_error', (error) => {
-                    console.error('❌ Socket.IO connection error:', error);
+                    console.error('❌ Erro de conexão Socket.IO:', error);
                     isConnected = false;
                     
                     if (callbacks.onError) {
@@ -89,7 +89,7 @@ window.GameClientSocketIO = (function() {
                 });
                 
             } catch (error) {
-                console.error('Failed to initialize Socket.IO:', error);
+                console.error('Falha ao inicializar Socket.IO:', error);
                 reject(error);
             }
         });
@@ -101,7 +101,7 @@ window.GameClientSocketIO = (function() {
     function setupSocketHandlers() {
         // Connection events
         socket.on('disconnect', (reason) => {
-            console.log('Socket.IO disconnected:', reason);
+            console.log('Socket.IO desconectado:', reason);
             isConnected = false;
             isAuthenticated = false;
             
@@ -113,14 +113,14 @@ window.GameClientSocketIO = (function() {
         // Authentication
         socket.on('authenticated', (response) => {
             if (response.success) {
-                console.log('✅ Authenticated successfully');
+                console.log('✅ Autenticado com sucesso');
                 isAuthenticated = true;
                 
                 if (callbacks.onAuthenticated) {
                     callbacks.onAuthenticated();
                 }
             } else {
-                console.error('❌ Authentication failed:', response.error);
+                console.error('❌ Falha na autenticação:', response.error);
                 
                 if (callbacks.onError) {
                     callbacks.onError({ type: 'authentication', message: response.error });
@@ -152,7 +152,7 @@ window.GameClientSocketIO = (function() {
         
         // Dice events - INSTANT BROADCAST TO ALL PLAYERS
         socket.on('dice_roll_start', (data) => {
-            console.log('⚡ DICE ROLL START (INSTANT - ALL PLAYERS):', data);
+            console.log('⚡ INÍCIO DO LANÇAMENTO DOS DADOS (INSTANTÂNEO - TODOS OS JOGADORES):', data);
             // This fires IMMEDIATELY when any player clicks roll
             // ALL players see animation start at the same time - ZERO DELAY
             if (callbacks.onDiceRollStart) {
@@ -161,7 +161,7 @@ window.GameClientSocketIO = (function() {
         });
         
         socket.on('dice_rolled', (rollData) => {
-            console.log('⚡ Dice rolled (INSTANT):', rollData);
+            console.log('⚡ Dados lançados (INSTANTÂNEO):', rollData);
             gameState.lastRoll = rollData;
             
             if (callbacks.onDiceRolled) {
@@ -321,11 +321,11 @@ window.GameClientSocketIO = (function() {
      */
     function rollDice(dice1, dice2) {
         if (!socket || !isConnected || !isAuthenticated) {
-            console.error('Cannot roll: not connected or authenticated');
+            console.error('Não é possível lançar: não conectado ou não autenticado');
             return false;
         }
         
-        console.log('🎲 Sending dice to server:', dice1, dice2);
+        console.log('🎲 Enviando dados para o servidor:', dice1, dice2);
         socket.emit('roll_dice', { dice1, dice2 });
         return true;
     }
@@ -335,11 +335,11 @@ window.GameClientSocketIO = (function() {
      */
     function placeBet(betType, amount) {
         if (!socket || !isConnected || !isAuthenticated) {
-            console.error('Cannot place bet: not connected or authenticated');
+            console.error('Não é possível apostar: não conectado ou não autenticado');
             return false;
         }
         
-        console.log(`💰 Placing bet: ${betType} for ${amount}`);
+        console.log(`💰 Fazendo aposta: ${betType} por ${amount}`);
         socket.emit('place_bet', { betType, amount });
         return true;
     }
@@ -349,11 +349,11 @@ window.GameClientSocketIO = (function() {
      */
     function clearBets() {
         if (!socket || !isConnected || !isAuthenticated) {
-            console.error('Cannot clear bets: not connected or authenticated');
+            console.error('Não é possível limpar apostas: não conectado ou não autenticado');
             return false;
         }
         
-        console.log('🧹 Clearing bets...');
+        console.log('🧹 Limpando apostas...');
         socket.emit('clear_bets');
         return true;
     }
@@ -363,7 +363,7 @@ window.GameClientSocketIO = (function() {
      */
     function requestGameState() {
         if (!socket || !isConnected || !isAuthenticated) {
-            console.error('Cannot request game state: not connected or authenticated');
+            console.error('Não é possível solicitar estado do jogo: não conectado ou não autenticado');
             return false;
         }
         
@@ -376,7 +376,7 @@ window.GameClientSocketIO = (function() {
      */
     function sendChatMessage(message) {
         if (!socket || !isConnected || !isAuthenticated) {
-            console.error('Cannot send message: not connected or authenticated');
+            console.error('Não é possível enviar mensagem: não conectado ou não autenticado');
             return false;
         }
         

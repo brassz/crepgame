@@ -3,17 +3,17 @@
  * This bridges the pure Socket.IO system with the game UI
  */
 (function() {
-    console.log('🔌 Loading Socket.IO Game Integration...');
+    console.log('🔌 Carregando Integração Socket.IO do Jogo...');
     
     // Wait for game to be ready
     function waitForGame() {
         if (typeof window.s_oGame === 'undefined' || !window.s_oGame) {
-            console.log('⏳ Waiting for s_oGame to be initialized...');
+            console.log('⏳ Aguardando s_oGame ser inicializado...');
             setTimeout(waitForGame, 100);
             return;
         }
         
-        console.log('✅ s_oGame found, setting up integration');
+        console.log('✅ s_oGame encontrado, configurando integração');
         setupIntegration();
     }
     
@@ -21,20 +21,20 @@
         const gameClient = window.GameClientSocketIO;
         
         if (!gameClient) {
-            console.error('❌ GameClientSocketIO not found!');
+            console.error('❌ GameClientSocketIO não encontrado!');
             return;
         }
         
-        console.log('🎮 Setting up Socket.IO integration with game...');
+        console.log('🎮 Configurando integração Socket.IO com o jogo...');
         
         // Override the roll button handler
         const originalOnRoll = window.s_oGame.onRoll;
         window.s_oGame.onRoll = function() {
-            console.log('🎲 Roll button clicked - checking Socket.IO connection...');
+            console.log('🎲 Botão de lançar clicado - verificando conexão Socket.IO...');
             
             // Check if connected - if not, fall back to original offline behavior
             if (!gameClient.isConnected || !gameClient.isAuthenticated) {
-                console.warn('⚠️ Socket.IO not connected - using offline mode');
+                console.warn('⚠️ Socket.IO não conectado - usando modo offline');
                 // Call original onRoll for offline gameplay
                 if (originalOnRoll) {
                     return originalOnRoll.call(window.s_oGame);
@@ -42,22 +42,22 @@
                 return;
             }
             
-            console.log('✅ Socket.IO connected - using multiplayer mode');
+            console.log('✅ Socket.IO conectado - usando modo multiplayer');
             
             // Check if player has bets
             if (window.s_oGame._oMySeat && window.s_oGame._oMySeat.getCurBet() <= 0) {
-                console.log('❌ No bets placed');
+                console.log('❌ Nenhuma aposta feita');
                 alert('Você precisa fazer uma aposta primeiro!');
                 return;
             }
             
             // Prevent double-click
             if (window.s_oGame._isRolling) {
-                console.warn('⚠️ Already rolling, ignoring click');
+                console.warn('⚠️ Já está lançando, ignorando clique');
                 return;
             }
             
-            console.log('✅ Setting _isRolling to true at:', new Date().toISOString());
+            console.log('✅ Definindo _isRolling como true em:', new Date().toISOString());
             window.s_oGame._isRolling = true;
             
             // Set game state and UI (from original onRoll logic)
@@ -103,12 +103,12 @@
             const dice1 = Math.floor(Math.random() * 6) + 1;
             const dice2 = Math.floor(Math.random() * 6) + 1;
             
-            console.log('⚡ INSTANT: Generated dice locally:', dice1, dice2);
+            console.log('⚡ INSTANTÂNEO: Dados gerados localmente:', dice1, dice2);
             
             // Validate generated dice
             if (typeof dice1 !== 'number' || typeof dice2 !== 'number' ||
                 dice1 < 1 || dice1 > 6 || dice2 < 1 || dice2 > 6) {
-                console.error('❌ Invalid dice generated:', dice1, dice2);
+                console.error('❌ Dados inválidos gerados:', dice1, dice2);
                 clearTimeout(safetyTimeout);
                 resetRollingFlag();
                 return;
@@ -136,17 +136,17 @@
             
             // ===== START ANIMATION INSTANTLY FOR THIS PLAYER =====
             if (window.s_oGame._oDicesAnim) {
-                console.log('🎬 INSTANT: Starting animation for shooter:', [dice1, dice2]);
+                console.log('🎬 INSTANTÂNEO: Iniciando animação para o lançador:', [dice1, dice2]);
                 try {
                     window.s_oGame._oDicesAnim.startRolling([dice1, dice2]);
                 } catch (error) {
-                    console.error('❌ Error starting dice animation:', error);
+                    console.error('❌ Erro ao iniciar animação dos dados:', error);
                     clearTimeout(safetyTimeout);
                     resetRollingFlag();
                     return;
                 }
             } else {
-                console.error('❌ Dice animation object not available');
+                console.error('❌ Objeto de animação dos dados não disponível');
                 clearTimeout(safetyTimeout);
                 resetRollingFlag();
                 return;
@@ -160,18 +160,18 @@
             // Send dice values to server
             // Server will broadcast dice_roll_start to ALL OTHER players for instant animation
             // Then dice_rolled with the result
-            console.log('📤 Sending dice to server - will broadcast to all other players...');
+            console.log('📤 Enviando dados para o servidor - será transmitido para todos os outros jogadores...');
             
             try {
                 const success = gameClient.rollDice(dice1, dice2);
                 
                 if (!success) {
-                    console.error('❌ Failed to send roll to server');
-                    console.log('ℹ️ Animation will continue locally');
+                    console.error('❌ Falha ao enviar lançamento para o servidor');
+                    console.log('ℹ️ Animação continuará localmente');
                 }
             } catch (error) {
-                console.error('❌ Exception while sending roll to server:', error);
-                console.log('ℹ️ Animation will continue locally');
+                console.error('❌ Exceção ao enviar lançamento para o servidor:', error);
+                console.log('ℹ️ Animação continuará localmente');
             }
         };
         
@@ -180,22 +180,22 @@
         // This ensures ZERO DELAY - all players see animation start at the same time
         gameClient.onDiceRollStart((data) => {
             try {
-                console.log('⚡⚡⚡ DICE ROLL START - INSTANT ANIMATION FOR OBSERVER at:', new Date().toISOString());
-                console.log('⚡ Data:', data);
+                console.log('⚡⚡⚡ INÍCIO DO LANÇAMENTO DOS DADOS - ANIMAÇÃO INSTANTÂNEA PARA OBSERVADOR em:', new Date().toISOString());
+                console.log('⚡ Dados:', data);
                 
                 // This is ONLY for other players, not the shooter
                 const isMyRoll = (data.shooter === gameClient.currentUserId);
                 
                 if (isMyRoll) {
-                    console.log('ℹ️ This is my own roll - already animated locally, skipping');
+                    console.log('ℹ️ Este é meu próprio lançamento - já animado localmente, pulando');
                     return;
                 }
                 
-                console.log('👀 Another player rolling - START ANIMATION INSTANTLY');
+                console.log('👀 Outro jogador lançando - INICIAR ANIMAÇÃO INSTANTANEAMENTE');
                 
                 // Prevent starting new animation if already rolling
                 if (window.s_oGame._isRolling) {
-                    console.warn('⚠️ Already rolling, skipping this dice_roll_start event');
+                    console.warn('⚠️ Já está lançando, pulando este evento dice_roll_start');
                     return;
                 }
                 
@@ -205,7 +205,7 @@
                 // Safety timeout to reset flag
                 const resetRollingFlag = function() {
                     if (window.s_oGame._isRolling) {
-                        console.log('🔄 Resetting _isRolling flag for observer');
+                        console.log('🔄 Redefinindo flag _isRolling para observador');
                         window.s_oGame._isRolling = false;
                         
                         if (window.s_oGame._oInterface && window.s_oGame._oInterface.hideBlock) {
@@ -222,16 +222,16 @@
                 
                 // ===== START ANIMATION WITHOUT RESULT (result will come in dice_rolled event) =====
                 if (window.s_oGame._oDicesAnim && window.s_oGame._oDicesAnim.startRollingWithoutResult) {
-                    console.log('🎬 INSTANT: Starting animation for observer WITHOUT result');
+                    console.log('🎬 INSTANTÂNEO: Iniciando animação para observador SEM resultado');
                     try {
                         window.s_oGame._oDicesAnim.startRollingWithoutResult();
                     } catch (error) {
-                        console.error('❌ Error starting dice animation:', error);
+                        console.error('❌ Erro ao iniciar animação dos dados:', error);
                         resetRollingFlag();
                         return;
                     }
                 } else {
-                    console.error('❌ Dice animation object or startRollingWithoutResult not available');
+                    console.error('❌ Objeto de animação dos dados ou startRollingWithoutResult não disponível');
                     resetRollingFlag();
                     return;
                 }
@@ -241,10 +241,10 @@
                     playSound('dice_rolling', 1, false);
                 }
                 
-                console.log('✅ Observer animation started - waiting for result...');
+                console.log('✅ Animação do observador iniciada - aguardando resultado...');
                 
             } catch (error) {
-                console.error('❌ Error handling dice_roll_start event:', error);
+                console.error('❌ Erro ao processar evento dice_roll_start:', error);
                 if (window.s_oGame) {
                     window.s_oGame._isRolling = false;
                 }
@@ -255,13 +255,13 @@
         // This completes the animation that was started by dice_roll_start
         gameClient.onDiceRolled((rollData) => {
             try {
-                console.log('🎯 Received dice_rolled with RESULT at:', new Date().toISOString());
-                console.log('🎯 Roll data:', rollData);
+                console.log('🎯 Recebido dice_rolled com RESULTADO em:', new Date().toISOString());
+                console.log('🎯 Dados do lançamento:', rollData);
                 
                 // Validate dice data
                 if (typeof rollData.dice1 !== 'number' || typeof rollData.dice2 !== 'number' ||
                     rollData.dice1 < 1 || rollData.dice1 > 6 || rollData.dice2 < 1 || rollData.dice2 > 6) {
-                    console.error('❌ Invalid dice data received from server:', rollData);
+                    console.error('❌ Dados inválidos recebidos do servidor:', rollData);
                     return;
                 }
                 
@@ -271,18 +271,18 @@
                 const isMyRoll = (rollData.shooter === gameClient.currentUserId);
                 
                 if (isMyRoll) {
-                    console.log('✅ My own roll result confirmed by server:', diceResult);
+                    console.log('✅ Resultado do meu próprio lançamento confirmado pelo servidor:', diceResult);
                     // For shooter: animation is already running with the result
                     // Just update game state to match server
                 } else {
-                    console.log('✅ Observer: Finishing animation with result:', diceResult);
+                    console.log('✅ Observador: Finalizando animação com resultado:', diceResult);
                     // For observer: animation is running without result
                     // Now we finish it with the actual result
                     if (window.s_oGame._oDicesAnim && window.s_oGame._oDicesAnim.finishRollingWithResult) {
                         try {
                             window.s_oGame._oDicesAnim.finishRollingWithResult(diceResult);
                         } catch (error) {
-                            console.error('❌ Error finishing dice animation:', error);
+                            console.error('❌ Erro ao finalizar animação dos dados:', error);
                         }
                     }
                 }
@@ -312,16 +312,16 @@
                     }
                 }
                 
-                console.log('✅ Dice result processed:', diceResult);
+                console.log('✅ Resultado dos dados processado:', diceResult);
                 
             } catch (error) {
-                console.error('❌ Error handling dice_rolled event:', error);
+                console.error('❌ Erro ao processar evento dice_rolled:', error);
             }
         });
         
         // Handle game result
         gameClient.onGameResult((result) => {
-            console.log('🎯 Game result:', result);
+            console.log('🎯 Resultado do jogo:', result);
             
             // Show message to player
             if (window.CScoreText) {
@@ -331,16 +331,16 @@
             // Update game state based on result type
             if (result.type === 'natural_win' || result.type === 'point_made') {
                 // Player won
-                console.log('✅ Player won!');
+                console.log('✅ Jogador ganhou!');
             } else if (result.type === 'craps' || result.type === 'seven_out') {
                 // Player lost
-                console.log('❌ Player lost');
+                console.log('❌ Jogador perdeu');
             }
         });
         
         // Handle point established
         gameClient.onPointEstablished((data) => {
-            console.log('📍 Point established:', data.point);
+            console.log('📍 Ponto estabelecido:', data.point);
             
             // Update puck position
             if (window.s_oGame._oPuck && window.s_oGameSettings) {
@@ -361,7 +361,7 @@
         
         // Handle shooter changed
         gameClient.onShooterChanged((data) => {
-            console.log('🔄 Shooter changed to:', data.shooterName);
+            console.log('🔄 Atirador mudou para:', data.shooterName);
             
             // Show notification
             if (window.CScoreText) {
@@ -374,7 +374,7 @@
         
         // Handle bet confirmed
         gameClient.onBetConfirmed((confirmation) => {
-            console.log('✅ Bet confirmed:', confirmation);
+            console.log('✅ Aposta confirmada:', confirmation);
             
             // Update credit display
             if (window.s_oGame._oInterface) {
@@ -394,7 +394,7 @@
         
         // Handle bets cleared
         gameClient.onBetsCleared((data) => {
-            console.log('🧹 Bets cleared:', data);
+            console.log('🧹 Apostas limpas:', data);
             
             // Update credit display
             if (window.s_oGame._oInterface) {
@@ -419,33 +419,33 @@
         
         // Handle players updated
         gameClient.onPlayersUpdated((players) => {
-            console.log('👥 Players in room:', players.length, players);
+            console.log('👥 Jogadores na sala:', players.length, players);
             
             // Update player count in UI
             if (window.s_oInterface && window.s_oInterface.updateRoomInfo) {
                 const currentRoom = gameClient.currentRoomId || 'table1';
                 const roomType = 'bronze'; // Default room type, adjust if you have room selection
                 window.s_oInterface.updateRoomInfo(roomType, players.length);
-                console.log('✅ Updated player count in UI:', players.length);
+                console.log('✅ Contagem de jogadores atualizada na UI:', players.length);
             }
         });
         
         // Handle game state (initial state when joining)
         gameClient.onGameState((state) => {
-            console.log('📊 Game state received:', state);
+            console.log('📊 Estado do jogo recebido:', state);
             
             // Update player count from initial state
             if (state.players && window.s_oInterface && window.s_oInterface.updateRoomInfo) {
                 const playerCount = Array.isArray(state.players) ? state.players.length : 0;
                 const roomType = 'bronze'; // Default room type
                 window.s_oInterface.updateRoomInfo(roomType, playerCount);
-                console.log('✅ Updated player count from game state:', playerCount);
+                console.log('✅ Contagem de jogadores atualizada do estado do jogo:', playerCount);
             }
         });
         
         // Handle connection status
         gameClient.onConnected(() => {
-            console.log('✅ Connected to Socket.IO server');
+            console.log('✅ Conectado ao servidor Socket.IO');
             
             // Show notification
             if (window.CScoreText) {
@@ -454,7 +454,7 @@
         });
         
         gameClient.onDisconnected((reason) => {
-            console.log('❌ Disconnected from server:', reason);
+            console.log('❌ Desconectado do servidor:', reason);
             
             // Show notification
             if (window.CScoreText) {
@@ -464,7 +464,7 @@
         
         // Handle errors
         gameClient.onError((error) => {
-            console.error('❌ Socket.IO error:', error);
+            console.error('❌ Erro Socket.IO:', error);
             
             // Show error message
             if (error.message) {
@@ -491,15 +491,15 @@
                 localStorage.setItem('playerName', username);
             }
             
-            console.log('🔌 Auto-connecting to Socket.IO...');
-            console.log('   User ID:', userId);
-            console.log('   Username:', username);
-            console.log('   Room ID:', roomId);
+            console.log('🔌 Conectando automaticamente ao Socket.IO...');
+            console.log('   ID do Usuário:', userId);
+            console.log('   Nome de Usuário:', username);
+            console.log('   ID da Sala:', roomId);
             
             // Initialize and authenticate
             gameClient.init()
                 .then(() => {
-                    console.log('✅ Socket.IO initialized');
+                    console.log('✅ Socket.IO inicializado');
                     return new Promise((resolve) => {
                         // Wait a bit for connection to establish
                         setTimeout(() => {
@@ -509,17 +509,17 @@
                     });
                 })
                 .then(() => {
-                    console.log('✅ Socket.IO integration complete!');
+                    console.log('✅ Integração Socket.IO completa!');
                 })
                 .catch((error) => {
-                    console.error('❌ Failed to initialize Socket.IO:', error);
+                    console.error('❌ Falha ao inicializar Socket.IO:', error);
                 });
         }
         
         // Connect after a short delay to ensure everything is loaded
         setTimeout(autoConnect, 1000);
         
-        console.log('✅ Socket.IO integration setup complete!');
+        console.log('✅ Configuração da integração Socket.IO completa!');
     }
     
     // Start waiting for game

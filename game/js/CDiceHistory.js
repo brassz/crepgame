@@ -55,7 +55,7 @@ function CDiceHistory() {
         // Validate input
         if (typeof dice1 !== 'number' || typeof dice2 !== 'number' ||
             dice1 < 1 || dice1 > 6 || dice2 < 1 || dice2 > 6) {
-            console.error('❌ Invalid dice values for history:', dice1, dice2);
+            console.error('❌ Valores de dados inválidos para o histórico:', dice1, dice2);
             return;
         }
 
