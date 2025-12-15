@@ -753,6 +753,34 @@ function CGame(oData){
         return _sCurrentRoom || "bronze";
     };
     
+    // Handler for turn changes (called by Socket.IO integration)
+    this.onTurnChange = function(data){
+        console.log('🔄 Turn change received:', data);
+        
+        const isMyTurn = data.isMyTurn;
+        const playerId = data.playerId || null;
+        
+        // UPDATE TURN FLAG
+        _bIsMyTurn = isMyTurn;
+        
+        // Only allow rolling if it's my turn AND there's an active bet
+        const canRoll = isMyTurn && _oMySeat.getCurBet() > 0;
+        _oInterface.enableRoll(canRoll);
+        
+        console.log(`✅ Turn updated - isMyTurn: ${isMyTurn}, canRoll: ${canRoll}`);
+        
+        // Show clear feedback about turn status
+        if (isMyTurn) {
+            if (_oMySeat.getCurBet() > 0) {
+                console.log("🎲 É sua vez e você tem apostas - botão de lançar habilitado!");
+            } else {
+                console.log("⚠️ É sua vez mas você precisa fazer uma aposta primeiro!");
+            }
+        } else {
+            console.log("⏳ Não é sua vez - aguarde...");
+        }
+    };
+    
     this._onShowBetOnTable = function(oParams){
         if(_bDistributeFiches){
             return;
