@@ -306,6 +306,13 @@ function CGame(oData){
         // ATUALIZAR FLAG DE TURNO
         _bIsMyTurn = isMyTurn;
         
+        // OCULTAR/MOSTRAR FICHAS BASEADO NO TURNO
+        if (isMyTurn) {
+            _oInterface.showFiches();
+        } else {
+            _oInterface.hideFiches();
+        }
+        
         // Só permite rolar se for meu turno E se há aposta ativa
         var canRoll = isMyTurn && _oMySeat.getCurBet() > 0;
         _oInterface.enableRoll(canRoll);
@@ -441,6 +448,8 @@ function CGame(oData){
         // Em multiplayer, isso seria controlado pelo servidor
         setTimeout(function(){
             _bIsMyTurn = true;
+            // Mostrar fichas quando o turno for liberado
+            _oInterface.showFiches();
             if(_oMySeat.getCurBet() > 0){
                 _oInterface.enableRoll(true);
             }
@@ -688,6 +697,9 @@ function CGame(oData){
         _bIsMyTurn = false;
         _oInterface.enableRoll(false);
         
+        // OCULTAR FICHAS quando lançar os dados
+        _oInterface.hideFiches();
+        
         _oInterface.showBlock();
         
         if(_iState === STATE_GAME_WAITING_FOR_BET){
@@ -704,6 +716,13 @@ function CGame(oData){
         _oMySeat.setInfo(TOTAL_MONEY, _oTableController.getContainer());
         _oInterface.setMoney(TOTAL_MONEY);
         _oInterface.setCurBet(0);
+        
+        // MOSTRAR FICHAS no início do jogo (single player ou primeiro turno)
+        if(_bIsMyTurn){
+            _oInterface.showFiches();
+        } else {
+            _oInterface.hideFiches();
+        }
         
         // Sala padrão: BRONZE
         console.log('🏠 Setting up default room (bronze)...');
@@ -762,6 +781,13 @@ function CGame(oData){
         
         // UPDATE TURN FLAG
         _bIsMyTurn = isMyTurn;
+        
+        // OCULTAR/MOSTRAR FICHAS BASEADO NO TURNO
+        if (isMyTurn) {
+            _oInterface.showFiches();
+        } else {
+            _oInterface.hideFiches();
+        }
         
         // Only allow rolling if it's my turn AND there's an active bet
         const canRoll = isMyTurn && _oMySeat.getCurBet() > 0;
