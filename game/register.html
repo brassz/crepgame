@@ -109,6 +109,27 @@
                 text-align:center;
                 font-size: 14px;
             }
+            .auth-container .success{
+                color:#22c55e;
+                background:rgba(34, 197, 94, 0.1);
+                padding:10px;
+                border-radius:8px;
+                margin-top:10px; 
+                text-align:center;
+                font-size: 14px;
+                border:1px solid rgba(34, 197, 94, 0.3);
+            }
+            .info-box{
+                background:rgba(34, 197, 94, 0.15);
+                border:1px solid rgba(34, 197, 94, 0.3);
+                border-radius:8px;
+                padding:12px;
+                margin:12px 0;
+                color:#22c55e;
+                text-align:center;
+                font-size: 14px;
+                font-family:'arialbold', Arial, sans-serif;
+            }
         </style>
         <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
         <script type="text/javascript" src="js/auth-config.js"></script>
@@ -119,12 +140,18 @@
             <div class="brand">DADOS DA SORTE</div>
             <h1>Criar Conta</h1>
             <form id="register-form">
+                <input id="full-name" type="text" placeholder="Nome Completo" required>
                 <input id="email" type="email" placeholder="Email" required>
-                <input id="password" type="password" placeholder="Senha" required>
-                <button type="submit">Registrar</button>
+                <input id="password" type="password" placeholder="Senha (mínimo 6 caracteres)" required minlength="6">
+                <input id="confirm-password" type="password" placeholder="Confirmar Senha" required minlength="6">
+                <div class="info-box">
+                    💰 Você começará com um saldo de R$ 1.000,00
+                </div>
+                <button type="submit">Criar Conta</button>
             </form>
             
             <div id="error" class="error" style="display:none;"></div>
+            <div id="success" class="success" style="display:none;"></div>
             <div class="muted">Já tem conta? <a href="login.html">Entrar</a></div>
         </div>
 
@@ -142,23 +169,90 @@
                 var form = document.getElementById('register-form');
                 form.addEventListener('submit', function(e){
                     e.preventDefault();
-                    var email = document.getElementById('email').value;
+                    
+                    var fullName = document.getElementById('full-name').value.trim();
+                    var email = document.getElementById('email').value.trim();
                     var password = document.getElementById('password').value;
-                    sb.auth.signUp({ email: email, password: password })
-                      .then(function(res){
+                    var confirmPassword = document.getElementById('confirm-password').value;
+                    
+                    // Validações
+                    if(!fullName || fullName.length < 3){
+                        showError('Por favor, insira seu nome completo (mínimo 3 caracteres)');
+                        return;
+                    }
+                    
+                    if(password !== confirmPassword){
+                        showError('As senhas não coincidem!');
+                        return;
+                    }
+                    
+                    if(password.length < 6){
+                        showError('A senha deve ter no mínimo 6 caracteres');
+                        return;
+                    }
+                    
+                    // Criar username a partir do email
+                    var username = email.split('@')[0];
+                    
+                    // Desabilitar botão durante o processo
+                    var submitBtn = form.querySelector('button[type="submit"]');
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = 'Criando conta...';
+                    
+                    // Registrar usuário com metadados
+                    sb.auth.signUp({ 
+                        email: email, 
+                        password: password,
+                        options: {
+                            data: {
+                                full_name: fullName,
+                                username: username
+                            }
+                        }
+                    })
+                    .then(function(res){
                         if(res.error){
                             showError(res.error.message);
+                            submitBtn.disabled = false;
+                            submitBtn.textContent = 'Criar Conta';
                         } else {
-                            alert('Verifique seu email para confirmar a conta.');
-                            window.location.href = "login.html";
+                            hideError();
+                            showSuccess('✅ Conta criada com sucesso! Você será redirecionado para o login...');
+                            
+                            // Redirecionar após 2 segundos
+                            setTimeout(function(){
+                                window.location.href = "login.html";
+                            }, 2000);
                         }
-                      });
+                    })
+                    .catch(function(error){
+                        showError('Erro ao criar conta: ' + error.message);
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Criar Conta';
+                    });
                 });
 
                 function showError(msg){
                     var el = document.getElementById('error');
                     el.textContent = msg;
                     el.style.display = 'block';
+                    
+                    var successEl = document.getElementById('success');
+                    successEl.style.display = 'none';
+                }
+                
+                function hideError(){
+                    var el = document.getElementById('error');
+                    el.style.display = 'none';
+                }
+                
+                function showSuccess(msg){
+                    var el = document.getElementById('success');
+                    el.textContent = msg;
+                    el.style.display = 'block';
+                    
+                    var errorEl = document.getElementById('error');
+                    errorEl.style.display = 'none';
                 }
             })();
         </script>
