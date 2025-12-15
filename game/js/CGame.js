@@ -527,8 +527,8 @@ function CGame(oData){
                     new CScoreText("GANHOU! +" + iAutoWin + TEXT_CURRENCY + "\nPRÓXIMA APOSTA: " + iAutoWin + TEXT_CURRENCY, CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
                     playSound("win", 0.2, false);
                 }
-                // Remove todas as apostas ativas após pagamento
-                _oMySeat.clearAllBets();
+                // Remove as fichas visualmente mas NÃO devolve crédito (já foi adicionado via showWin)
+                _oMySeat.clearAllBetsVisualOnly();
                 _aBetHistory = {};
                 _oInterface.setCurBet(_oMySeat.getCurBet());
             } else if(iSumDices === 2 || iSumDices === 3 || iSumDices === 12){
@@ -595,8 +595,8 @@ function CGame(oData){
                     new CScoreText("PONTO ACERTOU! +" + iAutoWin + TEXT_CURRENCY + "\nPRÓXIMA APOSTA: " + iAutoWin + TEXT_CURRENCY, CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
                     playSound("win", 0.2, false);
                 }
-                // Remove todas as apostas ativas
-                _oMySeat.clearAllBets();
+                // Remove as fichas visualmente mas NÃO devolve crédito (já foi adicionado via showWin)
+                _oMySeat.clearAllBetsVisualOnly();
                 _aBetHistory = {};
                 _oInterface.setCurBet(_oMySeat.getCurBet());
                 // Volta para o estado de espera
@@ -790,6 +790,12 @@ function CGame(oData){
 
         // Só aceita apostas do botão principal
         if(szBut !== "main_bet"){
+            return;
+        }
+        
+        // BLOQUEIO DE APOSTAS: Não permite apostar se não for o turno do jogador
+        if(!_bIsMyTurn){
+            _oMsgBox.show("AGUARDE SUA VEZ!\nVOCÊ SÓ PODE APOSTAR QUANDO FOR SEU TURNO.");
             return;
         }
 

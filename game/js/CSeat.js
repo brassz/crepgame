@@ -62,6 +62,13 @@ function CSeat(){
         _iCurBet=0;
     };
     
+    this.clearAllBetsVisualOnly = function(){
+        // Remove fichas visualmente mas NÃO devolve crédito
+        // Usado quando o jogador ganha e o valor já foi adicionado via showWin()
+        _oFicheController.clearAllBets();
+        _iCurBet=0;
+    };
+    
     this.clearAllBetsInComePoint = function(){
         var iBetToSubtract = _oFicheController.clearAllBetsInComePoint();
         _iCurBet -= iBetToSubtract;
