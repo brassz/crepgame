@@ -506,6 +506,8 @@ io.on('connection', (socket) => {
     const nextIndex = (currentIndex + 1) % playerIds.length;
     const nextShooterId = playerIds[nextIndex];
     
+    console.log(`🔄 Passing shooter from ${gameState.currentShooter} to ${nextShooterId} in room ${roomId}`);
+    
     // Update shooter
     if (gameState.currentShooter) {
       const oldShooter = gameState.players.get(gameState.currentShooter);
@@ -516,11 +518,13 @@ io.on('connection', (socket) => {
     const newShooter = gameState.players.get(nextShooterId);
     if (newShooter) newShooter.isShooter = true;
     
-    // Notify room
+    // Notify room - CRITICAL: This enables the roll button for the next player
     io.to(`room_${roomId}`).emit('shooter_changed', {
       newShooter: nextShooterId,
       shooterName: newShooter ? newShooter.username : 'Unknown'
     });
+    
+    console.log(`✅ Shooter changed event emitted to room ${roomId} - new shooter: ${newShooter ? newShooter.username : 'Unknown'}`);
   }
   
   // Handle chat messages

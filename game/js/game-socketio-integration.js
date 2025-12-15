@@ -314,6 +314,25 @@
                 
                 console.log('✅ Resultado dos dados processado:', diceResult);
                 
+                // CRITICAL: Reset rolling flag after animation completes (after a delay)
+                // This ensures the next player can roll when their turn comes
+                setTimeout(() => {
+                    if (window.s_oGame && window.s_oGame._isRolling) {
+                        console.log('🔄 Auto-resetting _isRolling flag after dice animation');
+                        window.s_oGame._isRolling = false;
+                        
+                        // Re-enable UI
+                        if (window.s_oGame._oInterface) {
+                            if (window.s_oGame._oInterface.hideBlock) {
+                                window.s_oGame._oInterface.hideBlock();
+                            }
+                            if (window.s_oGame._oInterface.enableBetFiches) {
+                                window.s_oGame._oInterface.enableBetFiches();
+                            }
+                        }
+                    }
+                }, 3500); // Wait for animation to complete (should match time_show_dice_result)
+                
             } catch (error) {
                 console.error('❌ Erro ao processar evento dice_rolled:', error);
             }
@@ -336,6 +355,24 @@
                 // Player lost
                 console.log('❌ Jogador perdeu');
             }
+            
+            // Reset rolling flag after game result is shown
+            setTimeout(() => {
+                if (window.s_oGame && window.s_oGame._isRolling) {
+                    console.log('🔄 Resetting _isRolling flag after game result');
+                    window.s_oGame._isRolling = false;
+                    
+                    // Re-enable UI if needed
+                    if (window.s_oGame._oInterface) {
+                        if (window.s_oGame._oInterface.hideBlock) {
+                            window.s_oGame._oInterface.hideBlock();
+                        }
+                        if (window.s_oGame._oInterface.enableBetFiches) {
+                            window.s_oGame._oInterface.enableBetFiches();
+                        }
+                    }
+                }
+            }, 1000);
         });
         
         // Handle point established
@@ -362,13 +399,63 @@
         // Handle shooter changed
         gameClient.onShooterChanged((data) => {
             console.log('🔄 Atirador mudou para:', data.shooterName);
+            console.log('🔄 Novo atirador ID:', data.newShooter);
+            console.log('🔄 ID do jogador atual:', gameClient.currentUserId);
+            
+            const isMyTurn = data.newShooter === gameClient.currentUserId;
+            
+            console.log('🔄 É meu turno?', isMyTurn);
+            
+            // CRITICAL FIX: Update _bIsMyTurn flag when shooter changes
+            if (window.s_oGame) {
+                // Call the turn change handler to update internal state
+                if (window.s_oGame.onTurnChange) {
+                    console.log('✅ Atualizando turno via onTurnChange handler');
+                    window.s_oGame.onTurnChange({ 
+                        isMyTurn: isMyTurn,
+                        playerId: data.newShooter 
+                    });
+                } else {
+                    console.warn('⚠️ onTurnChange handler não encontrado');
+                    
+                    // Fallback: directly enable/disable roll button
+                    if (window.s_oGame._oInterface) {
+                        const hasMinBet = window.s_oGame._oMySeat && window.s_oGame._oMySeat.getCurBet() > 0;
+                        const canRoll = isMyTurn && hasMinBet;
+                        
+                        console.log(`🎲 Turno mudou - isMyTurn: ${isMyTurn}, hasMinBet: ${hasMinBet}, canRoll: ${canRoll}`);
+                        window.s_oGame._oInterface.enableRoll(canRoll);
+                    }
+                }
+                
+                // Reset rolling flag to ensure clean state for next turn
+                if (window.s_oGame._isRolling) {
+                    console.log('🔄 Resetting _isRolling flag on shooter change');
+                    window.s_oGame._isRolling = false;
+                }
+            }
             
             // Show notification
             if (window.CScoreText) {
-                const message = data.newShooter === gameClient.currentUserId 
+                const message = isMyTurn
                     ? 'É SUA VEZ DE ROLAR!' 
                     : `${data.shooterName} é o atirador agora`;
                 new CScoreText(message, CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
+            }
+            
+            // If it's my turn, show additional feedback
+            if (isMyTurn && window.s_oGame._oInterface) {
+                if (window.s_oGame._oMySeat && window.s_oGame._oMySeat.getCurBet() > 0) {
+                    window.s_oGame._oInterface.showMessage("SUA VEZ! Clique para lançar os dados");
+                } else {
+                    window.s_oGame._oInterface.showMessage("Faça uma aposta para lançar os dados!");
+                }
+                
+                setTimeout(function() {
+                    if (window.s_oGame._oInterface && window.s_oGame._oInterface.hideMessage) {
+                        window.s_oGame._oInterface.hideMessage();
+                    }
+                }, 2000);
             }
         });
         
