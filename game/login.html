@@ -105,9 +105,27 @@
             }
             .auth-container .error{
                 color:#f87171;
+                background:rgba(248, 113, 113, 0.1);
+                padding:10px;
+                border-radius:8px;
                 margin-top:10px; 
                 text-align:center;
                 font-size: 14px;
+                border:1px solid rgba(248, 113, 113, 0.3);
+            }
+            .auth-container .success{
+                color:#22c55e;
+                background:rgba(34, 197, 94, 0.1);
+                padding:10px;
+                border-radius:8px;
+                margin-top:10px; 
+                text-align:center;
+                font-size: 14px;
+                border:1px solid rgba(34, 197, 94, 0.3);
+            }
+            .auth-container button:disabled{
+                opacity:0.6;
+                cursor:not-allowed;
             }
         </style>
         <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -119,12 +137,13 @@
             <div class="brand">DADOS DA SORTE</div>
             <h1>Entrar</h1>
             <form id="login-form">
-                <input id="email" type="email" placeholder="Email" required>
-                <input id="password" type="password" placeholder="Senha" required>
+                <input id="email" type="email" placeholder="Email" required autocomplete="email">
+                <input id="password" type="password" placeholder="Senha" required autocomplete="current-password">
                 <button type="submit">Entrar</button>
             </form>
             
             <div id="error" class="error" style="display:none;"></div>
+            <div id="success" class="success" style="display:none;"></div>
             <div class="muted">Novo aqui? <a href="register.html">Crie uma conta</a></div>
         </div>
 
@@ -142,22 +161,76 @@
                 var form = document.getElementById('login-form');
                 form.addEventListener('submit', function(e){
                     e.preventDefault();
-                    var email = document.getElementById('email').value;
+                    
+                    var email = document.getElementById('email').value.trim();
                     var password = document.getElementById('password').value;
+                    
+                    // Validação básica
+                    if(!email || !password){
+                        showError('Por favor, preencha todos os campos');
+                        return;
+                    }
+                    
+                    // Desabilitar botão durante o processo
+                    var submitBtn = form.querySelector('button[type="submit"]');
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = 'Entrando...';
+                    
                     sb.auth.signInWithPassword({ email: email, password: password })
                       .then(function(res){
                         if(res.error){
-                            showError(res.error.message);
+                            showError(translateError(res.error.message));
+                            submitBtn.disabled = false;
+                            submitBtn.textContent = 'Entrar';
                         } else {
-                            window.location.href = "index.html";
+                            hideError();
+                            showSuccess('✅ Login realizado com sucesso! Redirecionando...');
+                            
+                            // Pequeno delay para o usuário ver a mensagem
+                            setTimeout(function(){
+                                window.location.href = "index.html";
+                            }, 800);
                         }
+                      })
+                      .catch(function(error){
+                        showError('Erro ao fazer login: ' + error.message);
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Entrar';
                       });
                 });
+
+                function translateError(msg){
+                    // Traduzir mensagens de erro comuns do Supabase
+                    if(msg.includes('Invalid login credentials')){
+                        return 'Email ou senha incorretos';
+                    }
+                    if(msg.includes('Email not confirmed')){
+                        return 'Por favor, confirme seu email antes de fazer login';
+                    }
+                    return msg;
+                }
 
                 function showError(msg){
                     var el = document.getElementById('error');
                     el.textContent = msg;
                     el.style.display = 'block';
+                    
+                    var successEl = document.getElementById('success');
+                    successEl.style.display = 'none';
+                }
+                
+                function hideError(){
+                    var el = document.getElementById('error');
+                    el.style.display = 'none';
+                }
+                
+                function showSuccess(msg){
+                    var el = document.getElementById('success');
+                    el.textContent = msg;
+                    el.style.display = 'block';
+                    
+                    var errorEl = document.getElementById('error');
+                    errorEl.style.display = 'none';
                 }
             })();
         </script>
