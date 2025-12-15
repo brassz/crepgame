@@ -90,9 +90,11 @@
                         window.s_oGame._oInterface.hideBlock();
                     }
                     
+                    // Mostrar fichas apenas se for o turno do jogador
                     if (window.s_oGame._oInterface && window.s_oGame._oInterface.enableBetFiches) {
                         window.s_oGame._oInterface.enableBetFiches();
                     }
+                    // Nota: As fichas são controladas pelo sistema de turnos (onTurnChange)
                 }
             };
             
@@ -212,6 +214,7 @@
                             window.s_oGame._oInterface.hideBlock();
                         }
                         
+                        // Habilitar fichas mas não mostrar ainda (controlado pelo sistema de turnos)
                         if (window.s_oGame._oInterface && window.s_oGame._oInterface.enableBetFiches) {
                             window.s_oGame._oInterface.enableBetFiches();
                         }
@@ -326,6 +329,7 @@
                             if (window.s_oGame._oInterface.hideBlock) {
                                 window.s_oGame._oInterface.hideBlock();
                             }
+                            // Habilitar fichas mas não mostrar (controlado pelo sistema de turnos)
                             if (window.s_oGame._oInterface.enableBetFiches) {
                                 window.s_oGame._oInterface.enableBetFiches();
                             }
@@ -367,6 +371,7 @@
                         if (window.s_oGame._oInterface.hideBlock) {
                             window.s_oGame._oInterface.hideBlock();
                         }
+                        // Habilitar fichas mas não mostrar (controlado pelo sistema de turnos)
                         if (window.s_oGame._oInterface.enableBetFiches) {
                             window.s_oGame._oInterface.enableBetFiches();
                         }

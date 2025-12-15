@@ -267,6 +267,20 @@ function CInterface(){
          }
     };
     
+    // Ocultar todas as fichas (quando não for o turno do jogador)
+    this.hideFiches = function(){
+        for(var i=0;i<NUM_FICHES;i++){
+            _aFiches[i].setVisible(false);
+        }
+    };
+    
+    // Mostrar todas as fichas (quando for o turno do jogador)
+    this.showFiches = function(){
+        for(var i=0;i<NUM_FICHES;i++){
+            _aFiches[i].setVisible(true);
+        }
+    };
+    
     this.enableRoll = function(bEnable){
         if(bEnable){
             _oRollBut.enable();

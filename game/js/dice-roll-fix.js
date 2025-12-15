@@ -89,7 +89,7 @@
                             window.s_oGame._oInterface.hideBlock();
                         }
                         
-                        // Enable bet fiches
+                        // Enable bet fiches (nota: visibilidade é controlada pelo sistema de turnos)
                         if (window.s_oGame._oInterface && window.s_oGame._oInterface.enableBetFiches) {
                             window.s_oGame._oInterface.enableBetFiches();
                         }
@@ -177,6 +177,7 @@
                         if (this._oInterface.hideBlock) {
                             this._oInterface.hideBlock();
                         }
+                        // Enable bet fiches (nota: visibilidade é controlada pelo sistema de turnos)
                         if (this._oInterface.enableBetFiches) {
                             this._oInterface.enableBetFiches();
                         }
