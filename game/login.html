@@ -130,7 +130,7 @@
         </style>
         <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
         <script type="text/javascript" src="js/auth-config.js"></script>
-        <script type="text/javascript" src="js/auth-client.js"></script>
+        <script type="text/javascript" src="js/custom-auth.js"></script>
     </head>
     <body>
         <div class="auth-container">
@@ -149,17 +149,24 @@
 
         <script>
             (function(){
+                // Redirecionar se já estiver logado
                 function redirectIfLogged(){
-                    sb.auth.getSession().then(function(res){
-                        if(res.data && res.data.session){
-                            window.location.href = "index.html";
-                        }
-                    });
+                    var user = window.customAuth.getCurrentUser();
+                    if(user){
+                        window.location.href = "index.html";
+                    }
                 }
-                redirectIfLogged();
+                
+                // Aguardar carregamento do custom-auth
+                var checkInterval = setInterval(function(){
+                    if(window.customAuth){
+                        clearInterval(checkInterval);
+                        redirectIfLogged();
+                    }
+                }, 100);
 
                 var form = document.getElementById('login-form');
-                form.addEventListener('submit', function(e){
+                form.addEventListener('submit', async function(e){
                     e.preventDefault();
                     
                     var email = document.getElementById('email').value.trim();
@@ -176,10 +183,12 @@
                     submitBtn.disabled = true;
                     submitBtn.textContent = 'Entrando...';
                     
-                    sb.auth.signInWithPassword({ email: email, password: password })
-                      .then(function(res){
-                        if(res.error){
-                            showError(translateError(res.error.message));
+                    try {
+                        // Fazer login usando sistema customizado
+                        const result = await window.customAuth.login(email, password);
+                        
+                        if(!result.success){
+                            showError(result.error || 'Email ou senha incorretos');
                             submitBtn.disabled = false;
                             submitBtn.textContent = 'Entrar';
                         } else {
@@ -191,24 +200,12 @@
                                 window.location.href = "index.html";
                             }, 800);
                         }
-                      })
-                      .catch(function(error){
+                    } catch(error) {
                         showError('Erro ao fazer login: ' + error.message);
                         submitBtn.disabled = false;
                         submitBtn.textContent = 'Entrar';
-                      });
+                    }
                 });
-
-                function translateError(msg){
-                    // Traduzir mensagens de erro comuns do Supabase
-                    if(msg.includes('Invalid login credentials')){
-                        return 'Email ou senha incorretos';
-                    }
-                    if(msg.includes('Email not confirmed')){
-                        return 'Por favor, confirme seu email antes de fazer login';
-                    }
-                    return msg;
-                }
 
                 function showError(msg){
                     var el = document.getElementById('error');

@@ -133,7 +133,7 @@
         </style>
         <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
         <script type="text/javascript" src="js/auth-config.js"></script>
-        <script type="text/javascript" src="js/auth-client.js"></script>
+        <script type="text/javascript" src="js/custom-auth.js"></script>
     </head>
     <body>
         <div class="auth-container">
@@ -157,17 +157,24 @@
 
         <script>
             (function(){
+                // Redirecionar se já estiver logado
                 function redirectIfLogged(){
-                    sb.auth.getSession().then(function(res){
-                        if(res.data && res.data.session){
-                            window.location.href = "index.html";
-                        }
-                    });
+                    var user = window.customAuth.getCurrentUser();
+                    if(user){
+                        window.location.href = "index.html";
+                    }
                 }
-                redirectIfLogged();
+                
+                // Aguardar carregamento do custom-auth
+                var checkInterval = setInterval(function(){
+                    if(window.customAuth){
+                        clearInterval(checkInterval);
+                        redirectIfLogged();
+                    }
+                }, 100);
 
                 var form = document.getElementById('register-form');
-                form.addEventListener('submit', function(e){
+                form.addEventListener('submit', async function(e){
                     e.preventDefault();
                     
                     var fullName = document.getElementById('full-name').value.trim();
@@ -178,6 +185,11 @@
                     // Validações
                     if(!fullName || fullName.length < 3){
                         showError('Por favor, insira seu nome completo (mínimo 3 caracteres)');
+                        return;
+                    }
+                    
+                    if(!email || !email.includes('@')){
+                        showError('Por favor, insira um email válido');
                         return;
                     }
                     
@@ -192,27 +204,19 @@
                     }
                     
                     // Criar username a partir do email
-                    var username = email.split('@')[0];
+                    var username = email.split('@')[0].replace(/[^a-zA-Z0-9]/g, '');
                     
                     // Desabilitar botão durante o processo
                     var submitBtn = form.querySelector('button[type="submit"]');
                     submitBtn.disabled = true;
                     submitBtn.textContent = 'Criando conta...';
                     
-                    // Registrar usuário com metadados
-                    sb.auth.signUp({ 
-                        email: email, 
-                        password: password,
-                        options: {
-                            data: {
-                                full_name: fullName,
-                                username: username
-                            }
-                        }
-                    })
-                    .then(function(res){
-                        if(res.error){
-                            showError(res.error.message);
+                    try {
+                        // Registrar usuário usando sistema customizado
+                        const result = await window.customAuth.register(email, username, password, fullName);
+                        
+                        if(!result.success){
+                            showError(result.error || 'Erro ao criar conta');
                             submitBtn.disabled = false;
                             submitBtn.textContent = 'Criar Conta';
                         } else {
@@ -224,12 +228,11 @@
                                 window.location.href = "login.html";
                             }, 2000);
                         }
-                    })
-                    .catch(function(error){
+                    } catch(error) {
                         showError('Erro ao criar conta: ' + error.message);
                         submitBtn.disabled = false;
                         submitBtn.textContent = 'Criar Conta';
-                    });
+                    }
                 });
 
                 function showError(msg){
