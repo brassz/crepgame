@@ -18,16 +18,16 @@ function CGameSettings(){
     this._initAttachFiches = function(){
         _aAttachFiches = new Array();
 
-        _aAttachFiches["pass_line"] = {x:390,y:585};
-        _aAttachFiches["dont_pass1"] = {x:760,y:533};
-        _aAttachFiches["dont_pass2"] = {x:284,y:350};
-        _aAttachFiches["dont_come"] = {x:352,y:268};
-        _aAttachFiches["come"] = {x:770,y:360};
-        _aAttachFiches["field"] = {x:600,y:450};
-        _aAttachFiches["big_6"] = {x:290,y:470};
-        _aAttachFiches["big_8"] = {x:346,y:520};
+        _aAttachFiches["pass_line"] = {x:360,y:555};
+        _aAttachFiches["dont_pass1"] = {x:730,y:503};
+        _aAttachFiches["dont_pass2"] = {x:254,y:320};
+        _aAttachFiches["dont_come"] = {x:322,y:238};
+        _aAttachFiches["come"] = {x:740,y:330};
+        _aAttachFiches["field"] = {x:570,y:420};
+        _aAttachFiches["big_6"] = {x:260,y:440};
+        _aAttachFiches["big_8"] = {x:316,y:490};
         
-        var aData = [{value:4,x:438,y:172},{value:5,x:524,y:172},{value:6,x:610,y:172},{value:8,x:696,y:172},{value:9,x:782,y:172},{value:10,x:868,y:172}];
+        var aData = [{value:4,x:408,y:142},{value:5,x:494,y:142},{value:6,x:580,y:142},{value:8,x:666,y:142},{value:9,x:752,y:142},{value:10,x:838,y:142}];
         for(var i=0;i<aData.length;i++){
             _aAttachFiches["lay_bet"+aData[i].value] = {x:aData[i].x+20,y:aData[i].y};
             _aAttachFiches["lose_bet"+aData[i].value] = {x:aData[i].x-20,y:aData[i].y+20};
@@ -35,22 +35,22 @@ function CGameSettings(){
             _aAttachFiches["win_bet"+aData[i].value] = {x:aData[i].x,y:aData[i].y+116};
         }
 
-        _aAttachFiches["any11_7"] = {x:1062,y:612};
-        _aAttachFiches["any_craps_7"] = {x:1062,y:661};
+        _aAttachFiches["any11_7"] = {x:1032,y:582};
+        _aAttachFiches["any_craps_7"] = {x:1032,y:631};
             
-        _aAttachFiches["seven_bet"] = {x:1062,y:386};
-        _aAttachFiches["hardway6"] = {x:985,y:430};
-        _aAttachFiches["hardway10"] = {x:1142,y:430};
-        _aAttachFiches["hardway8"] = {x:985,y:490};
-        _aAttachFiches["hardway4"] = {x:1142,y:490};
-        _aAttachFiches["horn3"] = {x:960,y:550};
-        _aAttachFiches["horn2"] = {x:1062,y:550};
-        _aAttachFiches["horn12"] = {x:1164,y:550};
+        _aAttachFiches["seven_bet"] = {x:1032,y:356};
+        _aAttachFiches["hardway6"] = {x:955,y:400};
+        _aAttachFiches["hardway10"] = {x:1112,y:400};
+        _aAttachFiches["hardway8"] = {x:955,y:460};
+        _aAttachFiches["hardway4"] = {x:1112,y:460};
+        _aAttachFiches["horn3"] = {x:930,y:520};
+        _aAttachFiches["horn2"] = {x:1032,y:520};
+        _aAttachFiches["horn12"] = {x:1134,y:520};
         
         // Posições para as novas apostas específicas
-        _aAttachFiches["bet_4_10"] = {x:430,y:480};
-        _aAttachFiches["bet_6_8"] = {x:630,y:480};
-        _aAttachFiches["bet_5_9"] = {x:830,y:480};
+        _aAttachFiches["bet_4_10"] = {x:400,y:450};
+        _aAttachFiches["bet_6_8"] = {x:600,y:450};
+        _aAttachFiches["bet_5_9"] = {x:800,y:450};
         
         
         _aAttachFiches["oDealerWin"] = {x:CANVAS_WIDTH/2,y:-232};
