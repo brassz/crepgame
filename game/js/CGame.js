@@ -469,6 +469,8 @@ function CGame(oData){
         _oInterface.hideBlock();
     };
     
+    // FUNÇÕES REMOVIDAS - Não são mais necessárias porque a aposta contra o 7 é automática
+    /*
     this._showContinueDialog = function(iNumber){
         // Mostra janela de confirmação quando sai um número de ponto
         console.log("Mostrando diálogo para número:", iNumber);
@@ -503,6 +505,7 @@ function CGame(oData){
         this._setState(STATE_GAME_WAITING_FOR_BET);
         new CScoreText("Jogo cancelado. Faça uma nova aposta.", CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
     };
+    */
 
     
     this._checkWinForBet = function(){
@@ -548,9 +551,26 @@ function CGame(oData){
                 _bMustBetFullWin = false;
                 _iLastWinAmount = 0;
             } else if(iSumDices === 4 || iSumDices === 5 || iSumDices === 6 || iSumDices === 8 || iSumDices === 9 || iSumDices === 10){
-                // NÚMEROS DE PONTO: PERGUNTA SE QUER CONTINUAR
-                console.log("Número de ponto detectado:", iSumDices);
-                this._showContinueDialog(iSumDices);
+                // NÚMEROS DE PONTO: CONTINUA AUTOMATICAMENTE APOSTANDO CONTRA O 7
+                console.log("Número de ponto detectado:", iSumDices, "- continuando automaticamente");
+                
+                // Determina o pagamento baseado no número
+                var szPayout = "";
+                if(iSumDices === 4 || iSumDices === 10) szPayout = "dobra o valor";
+                else if(iSumDices === 5 || iSumDices === 9) szPayout = "paga 50%";
+                else if(iSumDices === 6 || iSumDices === 8) szPayout = "paga 25%";
+                
+                // Configura automaticamente a aposta contra o 7
+                _iNumberPoint = iSumDices;
+                this._setState(STATE_GAME_COME_POINT);
+                
+                // Mostra mensagem explicativa
+                new CScoreText("APOSTA CONTRA O 7!\n• Se sair 7: PERDE TUDO\n• Se sair " + iSumDices + ": " + szPayout, CANVAS_WIDTH/2, CANVAS_HEIGHT/2 - 50);
+                
+                // Coloca o puck no número correspondente
+                var iNewX = s_oGameSettings.getPuckXByNumber(iSumDices);
+                _oPuck.switchOn(iNewX);
+                
                 return;
             }
         } else if(_iState === STATE_GAME_COME_POINT){
