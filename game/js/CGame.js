@@ -53,11 +53,11 @@ function CGame(oData){
         _aBetHistory = new Object();
 
         _oMySeat = new CSeat();
-        _oPuck = new CPuck(325,108,s_oStage);
+        _oPuck = new CPuck(375,108,s_oStage); // Ajustado para acompanhar a mesa (era 325)
         
         _oInterface = new CInterface();
         
-        _oDicesAnim = new CDicesAnim(240,159);
+        _oDicesAnim = new CDicesAnim(290,159); // Ajustado para acompanhar a mesa (era 240)
         
         _oAreYouSurePanel = new CAreYouSurePanel(s_oStage);
         _oGameOverPanel = new CGameOver();

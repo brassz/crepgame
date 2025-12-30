@@ -8,6 +8,8 @@ function CTableController(){
     
     this._init = function(){
         _oContainer = new createjs.Container();
+        _oContainer.x = 50;  // Posiciona a mesa no lado ESQUERDO (não muito à esquerda)
+        _oContainer.y = 0;
         s_oStage.addChild(_oContainer);
         
         var oBg = createBitmap(s_oSpriteLibrary.getSprite('board_table'));
