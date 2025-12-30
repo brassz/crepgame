@@ -6,13 +6,11 @@ body{
     background-color: #000;
     background-repeat: repeat-x;
     background-position: top;
-    margin: 0;
-    padding: 0;
+    margin: 0 !important;
+    padding: 0 !important;
     width: 100vw;
     height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: block;
     overflow: hidden;
 }
 
@@ -23,6 +21,22 @@ body{
     -ms-user-select: none;
     user-select: none;
     box-sizing: border-box;
+}
+
+html {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.game-container, .game-wrapper {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    overflow: hidden;
 }
      
 input, input:before, input:after {
@@ -40,25 +54,26 @@ input, input:before, input:after {
 .canvas-container {
     width: 100vw;
     height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: block;
     position: relative;
     overflow: hidden;
+    margin: 0;
+    padding: 0;
 }
 
 #canvas{
     position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
+    top: 0;
+    left: 0;
+    width: 100vw !important;
+    height: 100vh !important;
+    object-fit: fill;
 }
 
 canvas {
-    display: block;
+    display: block !important;
+    width: 100vw !important;
+    height: 100vh !important;
     image-rendering: optimizeSpeed;
     image-rendering:-o-crisp-edges;
     image-rendering:-webkit-optimize-contrast;
@@ -66,6 +81,11 @@ canvas {
     touch-action: none;
 	-ms-touch-action: none;
     background: #000;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
 }
 
 .ani_hack{
@@ -114,4 +134,17 @@ canvas {
 }
 .check-font-2{
         font-family: 'Digital-7';
+}
+
+/* OVERRIDE FINAL - FORÇA CANVAS PREENCHER TELA SEM BORDAS */
+#canvas[style] {
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: none !important;
+    max-height: none !important;
+    object-fit: fill !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    transform: none !important;
 }

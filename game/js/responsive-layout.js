@@ -124,18 +124,16 @@ var s_oResponsiveLayout = null;
             var viewportWidth = this._getViewportWidth();
             var viewportHeight = this._getViewportHeight();
             
-            // Calcula dimensões respeitando aspect ratio
-            var scale = Math.min(
-                viewportWidth / CANVAS_WIDTH,
-                viewportHeight / CANVAS_HEIGHT
-            );
+            // PREENCHE TODA A TELA SEM BORDAS - usa toda viewport
+            var scaleX = viewportWidth / CANVAS_WIDTH;
+            var scaleY = viewportHeight / CANVAS_HEIGHT;
+            var scale = Math.max(scaleX, scaleY); // Usa MAX para preencher tudo
             
-            // Calcula dimensões finais do canvas
-            var canvasWidth = Math.floor(CANVAS_WIDTH * scale);
-            var canvasHeight = Math.floor(CANVAS_HEIGHT * scale);
+            // Calcula dimensões finais do canvas para preencher toda a tela
+            var canvasWidth = viewportWidth;
+            var canvasHeight = viewportHeight;
             
-            // Aplica dimensões ao canvas usando CSS
-            // O CSS transform: translate(-50%, -50%) já centraliza
+            // Aplica dimensões ao canvas usando CSS - PREENCHE TODA A VIEWPORT
             _canvas.style.width = canvasWidth + 'px';
             _canvas.style.height = canvasHeight + 'px';
             

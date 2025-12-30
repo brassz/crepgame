@@ -309,13 +309,13 @@ function CInterface(){
     
     this._initFichesBut = function(){
         var oFicheBg = createBitmap(s_oSpriteLibrary.getSprite('chip_box'));
-        oFicheBg.x = 1050;  // MOVIDO PARA A DIREITA junto com a mesa (era 50)
-        oFicheBg.y = 280; // Abaixo do botão de lançar
+        oFicheBg.x = 950;  // Ajustado para ficar visível à direita (era 1050)
+        oFicheBg.y = 420; // Posicionado na lateral direita, próximo à mesa
         s_oStage.addChild(oFicheBg);
         
-        //SET FICHES BUTTON - MAIS À DIREITA
-        var iCurX = 1092;   // Ajustado conforme nova posição à direita (era 92)
-        var iCurY = 330;    // Ajustado conforme nova posição (era 170)
+        //SET FICHES BUTTON - LADO DIREITO MAS VISÍVEL
+        var iCurX = 992;   // Ajustado para ficar dentro da área visível (era 1092)
+        var iCurY = 470;   // Ajustado verticalmente (era 330)
         _aFiches = new Array();
         for(var i=0;i<NUM_FICHES;i++){
             var oSprite = s_oSpriteLibrary.getSprite('fiche_'+i);
