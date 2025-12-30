@@ -125,8 +125,8 @@ function CTableController(){
         
         var oBut;
         
-        // Criar único botão "APOSTE AQUI" centralizado
-        var oMainBetButton = new CTextButton(640, 450, s_oSpriteLibrary.getSprite('but_bg'), "APOSTE AQUI", FONT1, "#fff", 18, "center", _oContainer);
+        // Criar único botão "APOSTE AQUI" MAIOR E CENTRALIZADO
+        var oMainBetButton = new CTextButton(640, 480, s_oSpriteLibrary.getSprite('but_bg'), "APOSTE AQUI", FONT1, "#fff", 28, "center", _oContainer);
         oMainBetButton.addEventListener(ON_MOUSE_UP, this._onMainBetClick.bind(this), this);
         oMainBetButton.addEventListener(ON_MOUSE_OVER, this._onBetNumberOver.bind(this, {button: "main_bet"}), this);
         oMainBetButton.addEventListener(ON_MOUSE_OUT, this._onBetNumberOut.bind(this, {button: "main_bet"}), this);

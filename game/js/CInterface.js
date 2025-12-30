@@ -31,11 +31,11 @@ function CInterface(){
         
         var oMoneyBg = createBitmap(s_oSpriteLibrary.getSprite('but_bg'));
         oMoneyBg.x = 251;
-        oMoneyBg.y = 470; // Movido para cima (era 603)
+        oMoneyBg.y = 540; // MOVIDO MAIS PARA BAIXO (era 470)
         s_oStage.addChild(oMoneyBg);
         
         var oMoneyText = new CTLText(s_oStage, 
-                    260, 483, 140, 16, 
+                    260, 553, 140, 16, 
                     16, "center", "#fff", FONT1, 1,
                     0, 0,
                     TEXT_MONEY,
@@ -45,7 +45,7 @@ function CInterface(){
 
         
         _oMoneyAmountText = new CTLText(s_oStage, 
-                    260, 503, 140, 16, 
+                    260, 573, 140, 16, 
                     16, "center", "#fff", FONT1, 1,
                     0, 0,
                     " ",
@@ -55,11 +55,11 @@ function CInterface(){
         
         var oCurBetBg = createBitmap(s_oSpriteLibrary.getSprite('but_bg'));
         oCurBetBg.x = 410;
-        oCurBetBg.y = 470; // Movido para cima (era 603)
+        oCurBetBg.y = 540; // MOVIDO MAIS PARA BAIXO (era 470)
         s_oStage.addChild(oCurBetBg);
         
         var oCurBetText = new CTLText(s_oStage, 
-                    419, 483, 140, 16, 
+                    419, 553, 140, 16, 
                     16, "center", "#fff", FONT1, 1,
                     0, 0,
                     TEXT_CUR_BET,
@@ -68,7 +68,7 @@ function CInterface(){
                     
         
         _oBetAmountText = new CTLText(s_oStage, 
-                    419, 503, 140, 16, 
+                    419, 573, 140, 16, 
                     16, "center", "#fff", FONT1, 1,
                     0, 0,
                     " ",
@@ -79,7 +79,7 @@ function CInterface(){
         
         _oDisplayBg = createBitmap(s_oSpriteLibrary.getSprite('but_bets'));
         _oDisplayBg.x = 575;
-        _oDisplayBg.y = 477; // Movido para cima (era 610)
+        _oDisplayBg.y = 547; // MOVIDO MAIS PARA BAIXO (era 477)
         s_oStage.addChild(_oDisplayBg);
 
         _oMsgTitle = new CTLText(s_oStage, 
@@ -146,8 +146,8 @@ function CInterface(){
                     true, true, false,
                     false );
       
-        // BOTÃO REFAZER APOSTA - Movido para cima (era 636)
-        _oClearAllBet = new CGfxButton(764,503,s_oSpriteLibrary.getSprite('but_clear_all'),s_oStage);
+        // BOTÃO REFAZER APOSTA - MOVIDO MAIS PARA BAIXO
+        _oClearAllBet = new CGfxButton(764,573,s_oSpriteLibrary.getSprite('but_clear_all'),s_oStage);
         _oClearAllBet.addEventListener(ON_MOUSE_UP, this._onClearAllBet, this);
        
         this._initFichesBut();
