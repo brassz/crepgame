@@ -91,10 +91,10 @@ function CInterface(){
                     false );
 
         
-        // INFORMAÇÕES DA SALA - CENTRALIZADA
+        // INFORMAÇÕES DA SALA - NO TOPO CENTRALIZADA
         var oRoomInfoBg = createBitmap(s_oSpriteLibrary.getSprite('display_bg'));
-        oRoomInfoBg.x = 530; // Mais centralizado
-        oRoomInfoBg.y = 50;  // Parte superior da mesa
+        oRoomInfoBg.x = 530; // Centralizado no topo
+        oRoomInfoBg.y = 20;  // Bem no topo
         s_oStage.addChild(oRoomInfoBg);
         
         _oRoomInfoText = new CTLText(s_oStage, 
@@ -105,11 +105,11 @@ function CInterface(){
                     true, true, true,
                     false );
 
-        // Botões de seleção de sala - MAIS CENTRALIZADOS
-        var iRoomButtonX = s_bMobile ? 640 : 640; // Centralizados
-        _oButRoomBronze = new CTextButton(iRoomButtonX, 180, s_oSpriteLibrary.getSprite('but_bg'), "BRONZE", FONT1, "#fff", 16, "center", s_oStage);
+        // Botões de seleção de sala - AO LADO DAS FICHAS
+        var iRoomButtonX = 280; // Ao lado direito das fichas
+        _oButRoomBronze = new CTextButton(iRoomButtonX, 150, s_oSpriteLibrary.getSprite('but_bg'), "BRONZE", FONT1, "#fff", 16, "center", s_oStage);
         _oButRoomBronze.addEventListener(ON_MOUSE_UP, function(){ s_oGame.changeRoom("bronze"); }, this);
-        _oButRoomPrata = new CTextButton(iRoomButtonX, 225, s_oSpriteLibrary.getSprite('but_bg'), "PRATA", FONT1, "#fff", 16, "center", s_oStage);
+        _oButRoomPrata = new CTextButton(iRoomButtonX, 210, s_oSpriteLibrary.getSprite('but_bg'), "PRATA", FONT1, "#fff", 16, "center", s_oStage);
         _oButRoomPrata.addEventListener(ON_MOUSE_UP, function(){ s_oGame.changeRoom("prata"); }, this);
         _oButRoomOuro = new CTextButton(iRoomButtonX, 270, s_oSpriteLibrary.getSprite('but_bg'), "OURO", FONT1, "#fff", 16, "center", s_oStage);
         _oButRoomOuro.addEventListener(ON_MOUSE_UP, function(){ s_oGame.changeRoom("ouro"); }, this);
@@ -221,17 +221,17 @@ function CInterface(){
         }
         _oButExit.setPosition(_pStartPosExit.x - iNewX,_pStartPosExit.y + iNewY);
         
-        // Botões de sala centralizados
+        // Botões de sala ao lado das fichas
         if(s_bMobile){
-            // No mobile, centralizado
-            if (_oButRoomBronze) { _oButRoomBronze.setPosition(640, 180 + iNewY); }
-            if (_oButRoomPrata) { _oButRoomPrata.setPosition(640, 225 + iNewY); }
-            if (_oButRoomOuro) { _oButRoomOuro.setPosition(640, 270 + iNewY); }
+            // No mobile, ao lado das fichas
+            if (_oButRoomBronze) { _oButRoomBronze.setPosition(280 + iNewX, 150 + iNewY); }
+            if (_oButRoomPrata) { _oButRoomPrata.setPosition(280 + iNewX, 210 + iNewY); }
+            if (_oButRoomOuro) { _oButRoomOuro.setPosition(280 + iNewX, 270 + iNewY); }
         } else {
-            // No desktop, centralizado
-            if (_oButRoomBronze) { _oButRoomBronze.setPosition(640 - iNewX, 180 + iNewY); }
-            if (_oButRoomPrata) { _oButRoomPrata.setPosition(640 - iNewX, 225 + iNewY); }
-            if (_oButRoomOuro) { _oButRoomOuro.setPosition(640 - iNewX, 270 + iNewY); }
+            // No desktop, ao lado das fichas
+            if (_oButRoomBronze) { _oButRoomBronze.setPosition(280 + iNewX, 150 + iNewY); }
+            if (_oButRoomPrata) { _oButRoomPrata.setPosition(280 + iNewX, 210 + iNewY); }
+            if (_oButRoomOuro) { _oButRoomOuro.setPosition(280 + iNewX, 270 + iNewY); }
         }
     };
     
@@ -309,13 +309,13 @@ function CInterface(){
     
     this._initFichesBut = function(){
         var oFicheBg = createBitmap(s_oSpriteLibrary.getSprite('chip_box'));
-        oFicheBg.x = 120;  // LADO ESQUERDO (era 950)
-        oFicheBg.y = 250;  // Boa altura para visualização
+        oFicheBg.x = 120;  // LADO ESQUERDO
+        oFicheBg.y = 100;  // MOVIDO MAIS PARA CIMA (era 250)
         s_oStage.addChild(oFicheBg);
         
-        //SET FICHES BUTTON - LADO ESQUERDO
-        var iCurX = 162;   // Lado esquerdo (era 992)
-        var iCurY = 300;   // Ajustado verticalmente
+        //SET FICHES BUTTON - LADO ESQUERDO E MAIS ACIMA
+        var iCurX = 162;   // Lado esquerdo
+        var iCurY = 150;   // MAIS PARA CIMA (era 300)
         _aFiches = new Array();
         for(var i=0;i<NUM_FICHES;i++){
             var oSprite = s_oSpriteLibrary.getSprite('fiche_'+i);
