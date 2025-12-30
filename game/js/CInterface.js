@@ -31,11 +31,11 @@ function CInterface(){
         
         var oMoneyBg = createBitmap(s_oSpriteLibrary.getSprite('but_bg'));
         oMoneyBg.x = 251;
-        oMoneyBg.y = 603;
+        oMoneyBg.y = 470; // Movido para cima (era 603)
         s_oStage.addChild(oMoneyBg);
         
         var oMoneyText = new CTLText(s_oStage, 
-                    260, 616, 140, 16, 
+                    260, 483, 140, 16, 
                     16, "center", "#fff", FONT1, 1,
                     0, 0,
                     TEXT_MONEY,
@@ -45,7 +45,7 @@ function CInterface(){
 
         
         _oMoneyAmountText = new CTLText(s_oStage, 
-                    260, 636, 140, 16, 
+                    260, 503, 140, 16, 
                     16, "center", "#fff", FONT1, 1,
                     0, 0,
                     " ",
@@ -55,11 +55,11 @@ function CInterface(){
         
         var oCurBetBg = createBitmap(s_oSpriteLibrary.getSprite('but_bg'));
         oCurBetBg.x = 410;
-        oCurBetBg.y = 603;
+        oCurBetBg.y = 470; // Movido para cima (era 603)
         s_oStage.addChild(oCurBetBg);
         
         var oCurBetText = new CTLText(s_oStage, 
-                    419, 616, 140, 16, 
+                    419, 483, 140, 16, 
                     16, "center", "#fff", FONT1, 1,
                     0, 0,
                     TEXT_CUR_BET,
@@ -68,7 +68,7 @@ function CInterface(){
                     
         
         _oBetAmountText = new CTLText(s_oStage, 
-                    419, 636, 140, 16, 
+                    419, 503, 140, 16, 
                     16, "center", "#fff", FONT1, 1,
                     0, 0,
                     " ",
@@ -79,7 +79,7 @@ function CInterface(){
         
         _oDisplayBg = createBitmap(s_oSpriteLibrary.getSprite('but_bets'));
         _oDisplayBg.x = 575;
-        _oDisplayBg.y = 610;
+        _oDisplayBg.y = 477; // Movido para cima (era 610)
         s_oStage.addChild(_oDisplayBg);
 
         _oMsgTitle = new CTLText(s_oStage, 
@@ -91,9 +91,9 @@ function CInterface(){
                     false );
 
         
-        // INFORMAÇÕES DA SALA - MOVIDO PARA O ESPAÇO VERDE DA MESA
+        // INFORMAÇÕES DA SALA - CENTRALIZADA
         var oRoomInfoBg = createBitmap(s_oSpriteLibrary.getSprite('display_bg'));
-        oRoomInfoBg.x = 450; // Posição no espaço verde da mesa
+        oRoomInfoBg.x = 530; // Mais centralizado
         oRoomInfoBg.y = 50;  // Parte superior da mesa
         s_oStage.addChild(oRoomInfoBg);
         
@@ -105,19 +105,19 @@ function CInterface(){
                     true, true, true,
                     false );
 
-        // Botões de seleção de sala - posição ajustada para mobile
-        var iRoomButtonX = s_bMobile ? 200 : 220;
-        _oButRoomBronze = new CTextButton(iRoomButtonX, 40, s_oSpriteLibrary.getSprite('but_bg'), "BRONZE", FONT1, "#fff", 16, "center", s_oStage);
+        // Botões de seleção de sala - MAIS CENTRALIZADOS
+        var iRoomButtonX = s_bMobile ? 640 : 640; // Centralizados
+        _oButRoomBronze = new CTextButton(iRoomButtonX, 180, s_oSpriteLibrary.getSprite('but_bg'), "BRONZE", FONT1, "#fff", 16, "center", s_oStage);
         _oButRoomBronze.addEventListener(ON_MOUSE_UP, function(){ s_oGame.changeRoom("bronze"); }, this);
-        _oButRoomPrata = new CTextButton(iRoomButtonX, 85, s_oSpriteLibrary.getSprite('but_bg'), "PRATA", FONT1, "#fff", 16, "center", s_oStage);
+        _oButRoomPrata = new CTextButton(iRoomButtonX, 225, s_oSpriteLibrary.getSprite('but_bg'), "PRATA", FONT1, "#fff", 16, "center", s_oStage);
         _oButRoomPrata.addEventListener(ON_MOUSE_UP, function(){ s_oGame.changeRoom("prata"); }, this);
-        _oButRoomOuro = new CTextButton(iRoomButtonX, 130, s_oSpriteLibrary.getSprite('but_bg'), "OURO", FONT1, "#fff", 16, "center", s_oStage);
+        _oButRoomOuro = new CTextButton(iRoomButtonX, 270, s_oSpriteLibrary.getSprite('but_bg'), "OURO", FONT1, "#fff", 16, "center", s_oStage);
         _oButRoomOuro.addEventListener(ON_MOUSE_UP, function(){ s_oGame.changeRoom("ouro"); }, this);
         // garantir que fiquem acima: adicionar novamente ao stage após criação das fichas (feito abaixo)
 
         // HELP TEXT - MANTIDO NO CANTO DIREITO MAS AJUSTADO
         var oHelpBg = createBitmap(s_oSpriteLibrary.getSprite('display_bg'));
-        oHelpBg.x = 880;
+        oHelpBg.x = 950; // Movido mais para a direita
         oHelpBg.y = 210;
         s_oStage.addChild(oHelpBg);
         
@@ -132,20 +132,22 @@ function CInterface(){
         
         _szLastMsgHelp = TEXT_WAITING_BET;
 
-        _oRollBut = new CTextButton(1030,162,s_oSpriteLibrary.getSprite('roll_but'),"  "+TEXT_ROLL,FONT1,"#fff",22,"right",s_oStage);
+        // BOTÃO DE LANÇAR DADOS - MAIOR E MAIS DESTACADO
+        _oRollBut = new CTextButton(1080,120,s_oSpriteLibrary.getSprite('roll_but'),"  "+TEXT_ROLL,FONT1,"#fff",28,"right",s_oStage); // Fonte aumentada de 22 para 28
         _oRollBut.disable();
         _oRollBut.addEventListener(ON_MOUSE_UP, this._onRoll, this);
 
         // Timer de turno (topo direito, abaixo do botão lançar)
         _oTurnTimerText = new CTLText(s_oStage, 
-                    1030, 210, 200, 30, 
+                    1080, 200, 200, 30, 
                     18, "right", "#ffde00", FONT2, 1,
                     0, 0,
                     "",
                     true, true, false,
                     false );
       
-        _oClearAllBet = new CGfxButton(764,636,s_oSpriteLibrary.getSprite('but_clear_all'),s_oStage);
+        // BOTÃO REFAZER APOSTA - Movido para cima (era 636)
+        _oClearAllBet = new CGfxButton(764,503,s_oSpriteLibrary.getSprite('but_clear_all'),s_oStage);
         _oClearAllBet.addEventListener(ON_MOUSE_UP, this._onClearAllBet, this);
        
         this._initFichesBut();
@@ -219,17 +221,17 @@ function CInterface(){
         }
         _oButExit.setPosition(_pStartPosExit.x - iNewX,_pStartPosExit.y + iNewY);
         
-        // Correção para botões de sala no mobile - manter posição fixa
+        // Botões de sala centralizados
         if(s_bMobile){
-            // No mobile, manter posição fixa mais à direita
-            if (_oButRoomBronze) { _oButRoomBronze.setPosition(200, 40 + iNewY); }
-            if (_oButRoomPrata) { _oButRoomPrata.setPosition(200, 85 + iNewY); }
-            if (_oButRoomOuro) { _oButRoomOuro.setPosition(200, 130 + iNewY); }
+            // No mobile, centralizado
+            if (_oButRoomBronze) { _oButRoomBronze.setPosition(640, 180 + iNewY); }
+            if (_oButRoomPrata) { _oButRoomPrata.setPosition(640, 225 + iNewY); }
+            if (_oButRoomOuro) { _oButRoomOuro.setPosition(640, 270 + iNewY); }
         } else {
-            // No desktop, aplicar offset normal
-            if (_oButRoomBronze) { _oButRoomBronze.setPosition(220 - iNewX, 40 + iNewY); }
-            if (_oButRoomPrata) { _oButRoomPrata.setPosition(220 - iNewX, 85 + iNewY); }
-            if (_oButRoomOuro) { _oButRoomOuro.setPosition(220 - iNewX, 130 + iNewY); }
+            // No desktop, centralizado
+            if (_oButRoomBronze) { _oButRoomBronze.setPosition(640 - iNewX, 180 + iNewY); }
+            if (_oButRoomPrata) { _oButRoomPrata.setPosition(640 - iNewX, 225 + iNewY); }
+            if (_oButRoomOuro) { _oButRoomOuro.setPosition(640 - iNewX, 270 + iNewY); }
         }
     };
     
@@ -307,13 +309,13 @@ function CInterface(){
     
     this._initFichesBut = function(){
         var oFicheBg = createBitmap(s_oSpriteLibrary.getSprite('chip_box'));
-        oFicheBg.x = 50;  // Movido mais para a esquerda para dar espaço
-        oFicheBg.y = 120; // Movido um pouco para baixo
+        oFicheBg.x = 1050;  // MOVIDO PARA A DIREITA junto com a mesa (era 50)
+        oFicheBg.y = 280; // Abaixo do botão de lançar
         s_oStage.addChild(oFicheBg);
         
-        //SET FICHES BUTTON
-        var iCurX = 92;   // Ajustado conforme nova posição
-        var iCurY = 170;  // Ajustado conforme nova posição
+        //SET FICHES BUTTON - MAIS À DIREITA
+        var iCurX = 1092;   // Ajustado conforme nova posição à direita (era 92)
+        var iCurY = 330;    // Ajustado conforme nova posição (era 170)
         _aFiches = new Array();
         for(var i=0;i<NUM_FICHES;i++){
             var oSprite = s_oSpriteLibrary.getSprite('fiche_'+i);

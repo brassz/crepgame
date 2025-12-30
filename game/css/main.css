@@ -8,11 +8,12 @@ body{
     background-position: top;
     margin: 0;
     padding: 0;
-    width: 100%;
+    width: 100vw;
     height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
 }
 
 *, *:before, *:after {
@@ -37,13 +38,13 @@ input, input:before, input:after {
 
 /* Container centralizado para o canvas */
 .canvas-container {
-    width: 100%;
-    max-width: 100vw;
+    width: 100vw;
     height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
     position: relative;
+    overflow: hidden;
 }
 
 #canvas{
@@ -51,8 +52,9 @@ input, input:before, input:after {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    max-width: 100%;
-    max-height: 100%;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
 }
 
 canvas {
@@ -61,7 +63,9 @@ canvas {
     image-rendering:-o-crisp-edges;
     image-rendering:-webkit-optimize-contrast;
     -ms-interpolation-mode: nearest-neighbor;
+    touch-action: none;
 	-ms-touch-action: none;
+    background: #000;
 }
 
 .ani_hack{

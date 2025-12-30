@@ -11,10 +11,10 @@ function CDiceHistory() {
     var _oThis;
 
     this._init = function() {
-        // Container posicionado na parte inferior central da tela
+        // Container posicionado na parte inferior central da tela - MAIS ACIMA
         _oContainer = new createjs.Container();
         _oContainer.x = CANVAS_WIDTH / 2 - 400; // Centralizado
-        _oContainer.y = CANVAS_HEIGHT - 100; // 100px do fundo
+        _oContainer.y = CANVAS_HEIGHT - 150; // 150px do fundo para aparecer 100% (era 100)
         s_oStage.addChild(_oContainer);
 
         // Background panel horizontal - aumentado para 95px de altura
