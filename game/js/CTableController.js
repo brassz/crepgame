@@ -125,8 +125,8 @@ function CTableController(){
         
         var oBut;
         
-        // Criar único botão "APOSTE AQUI" MUITO MAIOR
-        var oMainBetButton = new CTextButton(640, 480, s_oSpriteLibrary.getSprite('but_bg'), "APOSTE AQUI", FONT1, "#fff", 38, "center", _oContainer);
+        // Criar único botão "APOSTE AQUI" MUITO MAIOR E CENTRALIZADO
+        var oMainBetButton = new CTextButton(550, 430, s_oSpriteLibrary.getSprite('but_bg'), "APOSTE AQUI", FONT1, "#fff", 38, "center", _oContainer);
         // Aumentar o scale do botão para ficar maior
         oMainBetButton.setScale(1.5); // 50% maior que o normal
         oMainBetButton.addEventListener(ON_MOUSE_UP, this._onMainBetClick.bind(this), this);
