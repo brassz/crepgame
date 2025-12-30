@@ -91,15 +91,17 @@ function CInterface(){
                     false );
 
         
-        // INFORMAÇÕES DA SALA - NO TOPO CENTRALIZADA
+        // INFORMAÇÕES DA SALA - NO TOPO CENTRALIZADA E MAIOR
         var oRoomInfoBg = createBitmap(s_oSpriteLibrary.getSprite('display_bg'));
         oRoomInfoBg.x = 530; // Centralizado no topo
         oRoomInfoBg.y = 20;  // Bem no topo
+        oRoomInfoBg.scaleX = 1.3; // Aumenta largura do fundo em 30%
+        oRoomInfoBg.scaleY = 1.3; // Aumenta altura do fundo em 30%
         s_oStage.addChild(oRoomInfoBg);
         
         _oRoomInfoText = new CTLText(s_oStage, 
-                    oRoomInfoBg.x+114, oRoomInfoBg.y + 13, 130, 80, 
-                    16, "center", "#fff", FONT1, 1,
+                    oRoomInfoBg.x+114, oRoomInfoBg.y + 13, 180, 110, 
+                    22, "center", "#fff", FONT1, 1,
                     0, 0,
                     "SALA: " + s_oRoomConfig.getRoomName("bronze") + "\nJOGADORES: 1/" + s_oRoomConfig.getRoomMaxPlayers("bronze") + "\nAPOSTA MIN: " + s_oRoomConfig.getRoomMinBet("bronze") + "\nAPOSTA MAX: " + (s_oRoomConfig.getRoomMaxBet("bronze") ? s_oRoomConfig.getRoomMaxBet("bronze") : "Sem limite"),
                     true, true, true,
@@ -115,15 +117,17 @@ function CInterface(){
         _oButRoomOuro.addEventListener(ON_MOUSE_UP, function(){ s_oGame.changeRoom("ouro"); }, this);
         // garantir que fiquem acima: adicionar novamente ao stage após criação das fichas (feito abaixo)
 
-        // HELP TEXT - MANTIDO NO CANTO DIREITO MAS AJUSTADO
+        // HELP TEXT - AGUARDANDO SUA APOSTA - MAIOR
         var oHelpBg = createBitmap(s_oSpriteLibrary.getSprite('display_bg'));
         oHelpBg.x = 950; // Movido mais para a direita
         oHelpBg.y = 210;
+        oHelpBg.scaleX = 1.3; // Aumenta largura do fundo em 30%
+        oHelpBg.scaleY = 1.3; // Aumenta altura do fundo em 30%
         s_oStage.addChild(oHelpBg);
         
         _oHelpText =  new CTLText(s_oStage, 
-                    oHelpBg.x+114, oHelpBg.y + 13, 130, 80, 
-                    20, "center", "#ffde00", FONT2, 1,
+                    oHelpBg.x+114, oHelpBg.y + 13, 180, 110, 
+                    28, "center", "#ffde00", FONT2, 1,
                     0, 0,
                     TEXT_WAITING_BET,
                     true, true, true,
