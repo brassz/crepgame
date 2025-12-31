@@ -425,6 +425,7 @@
                         
                         console.log(`🎲 Turno mudou - isMyTurn: ${isMyTurn}, hasMinBet: ${hasMinBet}, canRoll: ${canRoll}`);
                         window.s_oGame._oInterface.enableRoll(canRoll);
+                        window.s_oGame._oInterface.enablePassDice(isMyTurn);
                     }
                 }
                 
@@ -458,6 +459,28 @@
                 }, 2000);
             }
         });
+        
+        // Handle player passed dice notification
+        if (gameClient.socket) {
+            gameClient.socket.on('player_passed_dice', (data) => {
+                console.log('🎲 Jogador passou o dado:', data);
+                
+                // Show notification
+                if (window.CScoreText) {
+                    new CScoreText(data.message, CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
+                }
+                
+                // Show message in interface
+                if (window.s_oGame && window.s_oGame._oInterface) {
+                    window.s_oGame._oInterface.showMessage(data.message);
+                    setTimeout(function() {
+                        if (window.s_oGame._oInterface && window.s_oGame._oInterface.hideMessage) {
+                            window.s_oGame._oInterface.hideMessage();
+                        }
+                    }, 2000);
+                }
+            });
+        }
         
         // Handle bet confirmed
         gameClient.onBetConfirmed((confirmation) => {

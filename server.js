@@ -527,6 +527,50 @@ io.on('connection', (socket) => {
     console.log(`✅ Shooter changed event emitted to room ${roomId} - new shooter: ${newShooter ? newShooter.username : 'Unknown'}`);
   }
   
+  // Handle manual pass dice request
+  socket.on('pass_dice', () => {
+    try {
+      const user = connectedUsers.get(socket.id);
+      if (!user) {
+        socket.emit('error', { message: 'Usuário não autenticado' });
+        return;
+      }
+      
+      const roomId = user.roomId;
+      const gameState = gameRooms.get(roomId);
+      
+      if (!gameState) {
+        socket.emit('error', { message: 'Sala de jogo não encontrada' });
+        return;
+      }
+      
+      // Verify it's the current shooter
+      if (gameState.currentShooter !== user.userId) {
+        socket.emit('error', { message: 'Não é sua vez de lançar!' });
+        console.warn(`⚠️ Jogador ${user.username} tentou passar o dado mas não é o lançador`);
+        return;
+      }
+      
+      console.log(`🎲 Jogador ${user.username} está passando o dado manualmente na sala ${roomId}`);
+      
+      // Notify the room that the player passed
+      io.to(`room_${roomId}`).emit('player_passed_dice', {
+        userId: user.userId,
+        username: user.username,
+        message: `${user.username} passou o dado!`
+      });
+      
+      // Pass shooter to next player
+      passShooter(roomId);
+      
+      console.log(`✅ Dado passou manualmente de ${user.username} para o próximo jogador`);
+      
+    } catch (error) {
+      console.error('Erro ao passar o dado:', error);
+      socket.emit('error', { message: 'Falha ao passar o dado' });
+    }
+  });
+  
   // Handle chat messages
   socket.on('chat_message', (messageData) => {
     try {

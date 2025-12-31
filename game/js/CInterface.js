@@ -10,11 +10,13 @@ function CInterface(){
     var _oAudioToggle;
     var _oMoneyAmountText;
     var _oBetAmountText;
+    var _oLockedBalanceText;
     var _oMsgTitle;
     var _oHelpText;
     var _oRoomInfoText;
     var _oDisplayBg;
     var _oRollBut;
+    var _oPassDiceBut;
     var _oClearAllBet;
     var _oRollingText;
     var _oButFullscreen;
@@ -72,6 +74,28 @@ function CInterface(){
                     16, "center", "#fff", FONT1, 1,
                     0, 0,
                     " ",
+                    true, true, false,
+                    false );
+        
+        // SALDO TRAVADO - Novo display
+        var oLockedBalanceBg = createBitmap(s_oSpriteLibrary.getSprite('but_bg'));
+        oLockedBalanceBg.x = 251;
+        oLockedBalanceBg.y = 540; // Abaixo do money
+        s_oStage.addChild(oLockedBalanceBg);
+        
+        var oLockedBalanceLabel = new CTLText(s_oStage, 
+                    260, 553, 140, 16, 
+                    14, "center", "#ffde00", FONT1, 1,
+                    0, 0,
+                    "🔒 TRAVADO",
+                    true, true, false,
+                    false );
+        
+        _oLockedBalanceText = new CTLText(s_oStage, 
+                    260, 573, 140, 16, 
+                    16, "center", "#ffde00", FONT1, 1,
+                    0, 0,
+                    "0.00" + TEXT_CURRENCY,
                     true, true, false,
                     false );
                     
@@ -141,9 +165,14 @@ function CInterface(){
         _oRollBut.disable();
         _oRollBut.addEventListener(ON_MOUSE_UP, this._onRoll, this);
 
-        // Timer de turno (topo direito, abaixo do botão lançar)
+        // BOTÃO PASSAR O DADO - Logo abaixo do botão de lançar
+        _oPassDiceBut = new CTextButton(1080, 160, s_oSpriteLibrary.getSprite('but_bg'), "PASSAR", FONT1, "#fff", 20, "right", s_oStage);
+        _oPassDiceBut.disable();
+        _oPassDiceBut.addEventListener(ON_MOUSE_UP, this._onPassDice, this);
+
+        // Timer de turno (topo direito, abaixo do botão passar)
         _oTurnTimerText = new CTLText(s_oStage, 
-                    1080, 200, 200, 30, 
+                    1080, 220, 200, 30, 
                     18, "right", "#ffde00", FONT2, 1,
                     0, 0,
                     "",
@@ -212,6 +241,7 @@ function CInterface(){
             _oButFullscreen.unload();
         }
         _oRollBut.unload();
+        _oPassDiceBut.unload();
         _oClearAllBet.unload();
         s_oInterface = null;
     };
@@ -281,6 +311,14 @@ function CInterface(){
         }
         
     };
+    
+    this.enablePassDice = function(bEnable){
+        if(bEnable){
+            _oPassDiceBut.enable();
+        }else{
+            _oPassDiceBut.disable();
+        }
+    };
 
     // Atualiza contador visual de turno (segundos restantes)
     this.updateTurnTimer = function(iSeconds, playerInfo){
@@ -342,6 +380,12 @@ function CInterface(){
         _oBetAmountText.refreshText(iCurBet.toFixed(2) + TEXT_CURRENCY);
     };
     
+    this.setLockedBalance = function(iLockedBalance){
+        if(_oLockedBalanceText){
+            _oLockedBalanceText.refreshText(iLockedBalance.toFixed(2) + TEXT_CURRENCY);
+        }
+    };
+    
     this.refreshMsgHelp = function(szText,bLastState){
         _oHelpText.refreshText(szText);
         if(bLastState){
@@ -395,6 +439,17 @@ function CInterface(){
             this.disableBetFiches();
             this.enableRoll(false);
             s_oGame.onRoll();    
+    };
+    
+    this._onPassDice = function(){
+        // Desabilita o botão de passar e o de lançar
+        this.enablePassDice(false);
+        this.enableRoll(false);
+        
+        // Chama função do jogo para passar o dado
+        if(s_oGame && s_oGame.onPassDice){
+            s_oGame.onPassDice();
+        }
     };
     
     this._onClearAllBet = function(){
