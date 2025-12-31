@@ -551,6 +551,35 @@
                 window.s_oInterface.updateRoomInfo(roomType, playerCount);
                 console.log('✅ Contagem de jogadores atualizada do estado do jogo:', playerCount);
             }
+            
+            // CRITICAL: Check if I'm the current shooter when joining
+            if (state.currentShooter && window.s_oGame) {
+                const isMyTurn = state.currentShooter === gameClient.currentUserId;
+                console.log('🎯 Estado inicial - É meu turno?', isMyTurn);
+                console.log('🎯 Atirador atual:', state.currentShooter);
+                console.log('🎯 Meu ID:', gameClient.currentUserId);
+                
+                // Update turn state
+                if (window.s_oGame.onTurnChange) {
+                    window.s_oGame.onTurnChange({
+                        isMyTurn: isMyTurn,
+                        playerId: state.currentShooter
+                    });
+                }
+                
+                // If not my turn, show message
+                if (!isMyTurn && window.s_oGame._oInterface) {
+                    window.s_oGame._oInterface.showMessage("AGUARDE SUA VEZ - Outro jogador está com o dado");
+                    window.s_oGame._oInterface.enableRoll(false);
+                    window.s_oGame._oInterface.enablePassDice(false);
+                    
+                    setTimeout(function() {
+                        if (window.s_oGame._oInterface && window.s_oGame._oInterface.hideMessage) {
+                            window.s_oGame._oInterface.hideMessage();
+                        }
+                    }, 3000);
+                }
+            }
         });
         
         // Handle connection status

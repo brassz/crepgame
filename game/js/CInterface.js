@@ -76,28 +76,6 @@ function CInterface(){
                     " ",
                     true, true, false,
                     false );
-        
-        // SALDO TRAVADO - Novo display
-        var oLockedBalanceBg = createBitmap(s_oSpriteLibrary.getSprite('but_bg'));
-        oLockedBalanceBg.x = 251;
-        oLockedBalanceBg.y = 540; // Abaixo do money
-        s_oStage.addChild(oLockedBalanceBg);
-        
-        var oLockedBalanceLabel = new CTLText(s_oStage, 
-                    260, 553, 140, 16, 
-                    14, "center", "#ffde00", FONT1, 1,
-                    0, 0,
-                    "🔒 TRAVADO",
-                    true, true, false,
-                    false );
-        
-        _oLockedBalanceText = new CTLText(s_oStage, 
-                    260, 573, 140, 16, 
-                    16, "center", "#ffde00", FONT1, 1,
-                    0, 0,
-                    "0.00" + TEXT_CURRENCY,
-                    true, true, false,
-                    false );
                     
 
         
@@ -165,19 +143,19 @@ function CInterface(){
         _oRollBut.disable();
         _oRollBut.addEventListener(ON_MOUSE_UP, this._onRoll, this);
 
-        // BOTÃO PASSAR O DADO - Logo abaixo do botão de lançar
-        _oPassDiceBut = new CTextButton(1080, 160, s_oSpriteLibrary.getSprite('but_bg'), "PASSAR", FONT1, "#fff", 20, "right", s_oStage);
-        _oPassDiceBut.disable();
-        _oPassDiceBut.addEventListener(ON_MOUSE_UP, this._onPassDice, this);
-
-        // Timer de turno (topo direito, abaixo do botão passar)
+        // Timer de turno (topo direito, abaixo do botão lançar)
         _oTurnTimerText = new CTLText(s_oStage, 
-                    1080, 220, 200, 30, 
+                    1080, 180, 200, 30, 
                     18, "right", "#ffde00", FONT2, 1,
                     0, 0,
                     "",
                     true, true, false,
                     false );
+
+        // BOTÃO PASSAR O DADO - Mais abaixo, longe do botão de lançar
+        _oPassDiceBut = new CTextButton(1080, 240, s_oSpriteLibrary.getSprite('but_bg'), "PASSAR DADO", FONT1, "#fff", 18, "right", s_oStage);
+        _oPassDiceBut.disable();
+        _oPassDiceBut.addEventListener(ON_MOUSE_UP, this._onPassDice, this);
       
         // BOTÃO REFAZER APOSTA - SUBIDO PARA CIMA
         _oClearAllBet = new CGfxButton(764,513,s_oSpriteLibrary.getSprite('but_clear_all'),s_oStage);
@@ -381,8 +359,10 @@ function CInterface(){
     };
     
     this.setLockedBalance = function(iLockedBalance){
-        if(_oLockedBalanceText){
-            _oLockedBalanceText.refreshText(iLockedBalance.toFixed(2) + TEXT_CURRENCY);
+        // Usa a mesma caixa de aposta atual para mostrar saldo travado
+        // Se há saldo travado, mostra ele na caixa de aposta atual
+        if(iLockedBalance > 0){
+            _oBetAmountText.refreshText(iLockedBalance.toFixed(2) + TEXT_CURRENCY);
         }
     };
     

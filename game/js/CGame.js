@@ -532,10 +532,10 @@ function CGame(oData){
                     // _oMySeat.showWin(iAutoWin); // REMOVIDO - não vai para saldo disponível
                     _iCasinoCash -= iAutoWin;
                     
-                    // Atualizar interface para mostrar saldo travado
-                    _oInterface.setLockedBalance(_iLockedBalance);
+                    // Atualizar interface - usa mesma caixa de aposta atual
+                    _oInterface.setCurBet(_iLockedBalance);
                     
-                    new CScoreText("GANHOU! +" + iAutoWin + TEXT_CURRENCY + "\n⚠️ SALDO TRAVADO ATÉ PASSAR O DADO!", CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
+                    new CScoreText("GANHOU! +" + iAutoWin + TEXT_CURRENCY + "\n⚠️ PASSE O DADO PARA LIBERAR!", CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
                     playSound("win", 0.2, false);
                 }
                 // Remove as fichas visualmente
@@ -557,7 +557,7 @@ function CGame(oData){
                 
                 // PERDER também perde o saldo travado
                 _iLockedBalance = 0;
-                _oInterface.setLockedBalance(0);
+                _oInterface.setCurBet(0);
                 
                 // Reset flag de aposta obrigatória ao perder
                 _bMustBetFullWin = false;
@@ -605,7 +605,7 @@ function CGame(oData){
                 
                 // PERDER também perde o saldo travado
                 _iLockedBalance = 0;
-                _oInterface.setLockedBalance(0);
+                _oInterface.setCurBet(0);
                 
                 // Reset flag de aposta obrigatória ao perder
                 _bMustBetFullWin = false;
@@ -629,10 +629,10 @@ function CGame(oData){
                     // _oMySeat.showWin(iAutoWin); // REMOVIDO - não vai para saldo disponível
                     _iCasinoCash -= iAutoWin;
                     
-                    // Atualizar interface para mostrar saldo travado
-                    _oInterface.setLockedBalance(_iLockedBalance);
+                    // Atualizar interface - usa mesma caixa de aposta atual
+                    _oInterface.setCurBet(_iLockedBalance);
                     
-                    new CScoreText("PONTO ACERTOU! +" + iAutoWin + TEXT_CURRENCY + "\n⚠️ SALDO TRAVADO ATÉ PASSAR O DADO!", CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
+                    new CScoreText("PONTO ACERTOU! +" + iAutoWin + TEXT_CURRENCY + "\n⚠️ PASSE O DADO PARA LIBERAR!", CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
                     playSound("win", 0.2, false);
                 }
                 // Remove as fichas visualmente
@@ -745,6 +745,12 @@ function CGame(oData){
         _oInterface.setMoney(TOTAL_MONEY);
         _oInterface.setCurBet(0);
         
+        // Inicializar saldo travado (usa a caixa de aposta atual)
+        _oInterface.setCurBet(0);
+        
+        // Inicialmente desabilitar botão de passar (até confirmar que é seu turno)
+        _oInterface.enablePassDice(false);
+        
         // Sala padrão: BRONZE
         console.log('🏠 Setting up default room (bronze)...');
         this.changeRoom("bronze");
@@ -837,8 +843,12 @@ function CGame(oData){
         }
         
         // BLOQUEIO DE APOSTAS: Não permite apostar se não for o turno do jogador
-        if(!_bIsMyTurn){
+        // Verificar se está em modo multiplayer (Socket.IO conectado)
+        var isMultiplayer = window.GameClientSocketIO && window.GameClientSocketIO.isConnected && window.GameClientSocketIO.isAuthenticated;
+        
+        if(isMultiplayer && !_bIsMyTurn){
             _oMsgBox.show("AGUARDE SUA VEZ!\nVOCÊ SÓ PODE APOSTAR QUANDO FOR SEU TURNO.");
+            playSound("lose", 0.3, false);
             return;
         }
 
@@ -949,7 +959,7 @@ function CGame(oData){
             
             // Resetar saldo travado
             _iLockedBalance = 0;
-            _oInterface.setLockedBalance(0);
+            _oInterface.setCurBet(0);
         }
         
         // Emitir evento para o servidor
