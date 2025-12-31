@@ -151,15 +151,15 @@ function CInterface(){
                     "",
                     true, true, false,
                     false );
-
-        // BOTÃO PASSAR O DADO - Mais abaixo, longe do botão de lançar
-        _oPassDiceBut = new CTextButton(1080, 240, s_oSpriteLibrary.getSprite('but_bg'), "PASSAR DADO", FONT1, "#fff", 18, "right", s_oStage);
-        _oPassDiceBut.disable();
-        _oPassDiceBut.addEventListener(ON_MOUSE_UP, this._onPassDice, this);
       
         // BOTÃO REFAZER APOSTA - SUBIDO PARA CIMA
         _oClearAllBet = new CGfxButton(764,513,s_oSpriteLibrary.getSprite('but_clear_all'),s_oStage);
         _oClearAllBet.addEventListener(ON_MOUSE_UP, this._onClearAllBet, this);
+        
+        // BOTÃO PASSAR O DADO - Ao lado do botão de refazer (à esquerda)
+        _oPassDiceBut = new CTextButton(620, 513, s_oSpriteLibrary.getSprite('but_bg'), "PASSAR", FONT1, "#fff", 16, "center", s_oStage);
+        _oPassDiceBut.disable();
+        _oPassDiceBut.addEventListener(ON_MOUSE_UP, this._onPassDice, this);
        
         this._initFichesBut();
         // Trazer os botões de sala para frente, acima das fichas
@@ -359,11 +359,8 @@ function CInterface(){
     };
     
     this.setLockedBalance = function(iLockedBalance){
-        // Usa a mesma caixa de aposta atual para mostrar saldo travado
-        // Se há saldo travado, mostra ele na caixa de aposta atual
-        if(iLockedBalance > 0){
-            _oBetAmountText.refreshText(iLockedBalance.toFixed(2) + TEXT_CURRENCY);
-        }
+        // Sempre mostra o saldo travado na caixa de aposta atual
+        _oBetAmountText.refreshText(iLockedBalance.toFixed(2) + TEXT_CURRENCY);
     };
     
     this.refreshMsgHelp = function(szText,bLastState){

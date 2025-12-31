@@ -532,7 +532,7 @@ function CGame(oData){
                     // _oMySeat.showWin(iAutoWin); // REMOVIDO - não vai para saldo disponível
                     _iCasinoCash -= iAutoWin;
                     
-                    // Atualizar interface - usa mesma caixa de aposta atual
+                    // Atualizar interface - mostra valor ganho
                     _oInterface.setCurBet(_iLockedBalance);
                     
                     new CScoreText("GANHOU! +" + iAutoWin + TEXT_CURRENCY + "\n⚠️ PASSE O DADO PARA LIBERAR!", CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
@@ -541,7 +541,6 @@ function CGame(oData){
                 // Remove as fichas visualmente
                 _oMySeat.clearAllBetsVisualOnly();
                 _aBetHistory = {};
-                _oInterface.setCurBet(_oMySeat.getCurBet());
             } else if(iSumDices === 2 || iSumDices === 3 || iSumDices === 12){
                 // 2-3-12: PERDE TUDO
                 var iTotalActiveBets = _oMySeat.getCurBet();
@@ -629,7 +628,7 @@ function CGame(oData){
                     // _oMySeat.showWin(iAutoWin); // REMOVIDO - não vai para saldo disponível
                     _iCasinoCash -= iAutoWin;
                     
-                    // Atualizar interface - usa mesma caixa de aposta atual
+                    // Atualizar interface - mostra valor ganho
                     _oInterface.setCurBet(_iLockedBalance);
                     
                     new CScoreText("PONTO ACERTOU! +" + iAutoWin + TEXT_CURRENCY + "\n⚠️ PASSE O DADO PARA LIBERAR!", CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
@@ -638,7 +637,6 @@ function CGame(oData){
                 // Remove as fichas visualmente
                 _oMySeat.clearAllBetsVisualOnly();
                 _aBetHistory = {};
-                _oInterface.setCurBet(_oMySeat.getCurBet());
                 // Volta para o estado de espera
                 _iNumberPoint = -1;
                 this._setState(STATE_GAME_WAITING_FOR_BET);
@@ -950,16 +948,19 @@ function CGame(oData){
         // LIBERAR SALDO TRAVADO ao passar o dado
         if(_iLockedBalance > 0){
             console.log('💰 Liberando saldo travado:', _iLockedBalance);
+            var valorLiberado = _iLockedBalance; // Salva o valor para mostrar depois
+            
             _oMySeat.showWin(_iLockedBalance); // Adiciona ao saldo disponível
             _oInterface.setMoney(_oMySeat.getCredit()); // Atualiza display
             
             // Mostrar mensagem de saldo liberado
-            new CScoreText("SALDO LIBERADO! +" + _iLockedBalance.toFixed(2) + TEXT_CURRENCY, CANVAS_WIDTH/2, CANVAS_HEIGHT/2 - 100);
+            new CScoreText("SALDO LIBERADO! +" + valorLiberado.toFixed(2) + TEXT_CURRENCY, CANVAS_WIDTH/2, CANVAS_HEIGHT/2 - 100);
             playSound("win", 0.3, false);
             
-            // Resetar saldo travado
+            // Resetar saldo travado internamente MAS manter visível na interface
             _iLockedBalance = 0;
-            _oInterface.setCurBet(0);
+            // NÃO zera o display - mantém o valor ganho visível
+            _oInterface.setCurBet(valorLiberado);
         }
         
         // Emitir evento para o servidor
