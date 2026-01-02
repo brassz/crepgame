@@ -335,11 +335,13 @@ function CGame(oData){
         // Habilitar botão "Passar o Dado" apenas se for meu turno
         _oInterface.enablePassDice(isMyTurn);
         
-        // CONTROLE DAS FICHAS: Só permite apostar quando for o turno do jogador
+        // CONTROLE DAS FICHAS E BOTÕES: Só permite apostar quando for o turno do jogador
         if (isMyTurn) {
             _oInterface.enableBetFiches();
+            _oInterface.enableClearButton();
         } else {
             _oInterface.disableBetFiches();
+            _oInterface.disableClearButton();
         }
         
         // Show clear feedback about turn status
@@ -862,13 +864,15 @@ function CGame(oData){
         // Habilitar botão "Passar o Dado" apenas se for meu turno
         _oInterface.enablePassDice(isMyTurn);
         
-        // CONTROLE DAS FICHAS: Habilitar quando for o turno do jogador
+        // CONTROLE DAS FICHAS E BOTÕES: Habilitar quando for o turno do jogador
         if (isMyTurn) {
             _oInterface.enableBetFiches();
-            console.log("✅ Fichas HABILITADAS - É seu turno!");
+            _oInterface.enableClearButton();
+            console.log("✅ Fichas e Botões HABILITADOS - É seu turno!");
         } else {
             _oInterface.disableBetFiches();
-            console.log("🔒 Fichas DESABILITADAS - Aguarde sua vez!");
+            _oInterface.disableClearButton();
+            console.log("🔒 Fichas e Botões DESABILITADOS - Aguarde sua vez!");
         }
         
         console.log(`✅ Turn updated - isMyTurn: ${isMyTurn}, canRoll: ${canRoll}`);
@@ -1042,6 +1046,17 @@ function CGame(oData){
     };
     
     this.onClearAllBets = function(){
+        // BLOQUEIO: Não permite limpar apostas se não for o turno do jogador
+        var isMultiplayer = window.GameClientSocketIO && 
+                           window.GameClientSocketIO.isConnected && 
+                           window.GameClientSocketIO.isAuthenticated;
+        
+        if(isMultiplayer && !_bIsMyTurn){
+            _oMsgBox.show("AGUARDE SUA VEZ!\nVOCÊ SÓ PODE GERENCIAR APOSTAS QUANDO FOR SEU TURNO.");
+            playSound("lose", 0.3, false);
+            return;
+        }
+        
         $(s_oMain).trigger("clear_bet",_oMySeat.getCurBet());
         
         if(_iState === STATE_GAME_COME_POINT){
