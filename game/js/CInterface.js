@@ -156,8 +156,8 @@ function CInterface(){
         _oClearAllBet = new CGfxButton(764,513,s_oSpriteLibrary.getSprite('but_clear_all'),s_oStage);
         _oClearAllBet.addEventListener(ON_MOUSE_UP, this._onClearAllBet, this);
         
-        // BOTÃO PASSAR O DADO - Ao lado do botão de refazer (à esquerda)
-        _oPassDiceBut = new CTextButton(620, 513, s_oSpriteLibrary.getSprite('but_bg'), "PASSAR", FONT1, "#fff", 16, "center", s_oStage);
+        // BOTÃO PASSAR O DADO - Ao lado direito do botão de refazer
+        _oPassDiceBut = new CTextButton(900, 513, s_oSpriteLibrary.getSprite('but_bg'), "PASSAR", FONT1, "#fff", 16, "center", s_oStage);
         _oPassDiceBut.disable();
         _oPassDiceBut.addEventListener(ON_MOUSE_UP, this._onPassDice, this);
        
