@@ -426,6 +426,13 @@
                         console.log(`🎲 Turno mudou - isMyTurn: ${isMyTurn}, hasMinBet: ${hasMinBet}, canRoll: ${canRoll}`);
                         window.s_oGame._oInterface.enableRoll(canRoll);
                         window.s_oGame._oInterface.enablePassDice(isMyTurn);
+                        
+                        // CONTROLE DAS FICHAS: Habilitar/desabilitar baseado no turno
+                        if (isMyTurn) {
+                            window.s_oGame._oInterface.enableBetFiches();
+                        } else {
+                            window.s_oGame._oInterface.disableBetFiches();
+                        }
                     }
                 }
                 
@@ -567,17 +574,21 @@
                     });
                 }
                 
-                // If not my turn, show message
+                // If not my turn, show message and disable betting
                 if (!isMyTurn && window.s_oGame._oInterface) {
                     window.s_oGame._oInterface.showMessage("AGUARDE SUA VEZ - Outro jogador está com o dado");
                     window.s_oGame._oInterface.enableRoll(false);
                     window.s_oGame._oInterface.enablePassDice(false);
+                    window.s_oGame._oInterface.disableBetFiches();
                     
                     setTimeout(function() {
                         if (window.s_oGame._oInterface && window.s_oGame._oInterface.hideMessage) {
                             window.s_oGame._oInterface.hideMessage();
                         }
                     }, 3000);
+                } else if (isMyTurn && window.s_oGame._oInterface) {
+                    // If it's my turn from the start, enable betting
+                    window.s_oGame._oInterface.enableBetFiches();
                 }
             }
         });

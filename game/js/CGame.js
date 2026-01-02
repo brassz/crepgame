@@ -110,6 +110,19 @@ function CGame(oData){
                     _oInterface.enableRoll(false);
                 }
                 
+                // Verificar se está em modo multiplayer ou single player
+                var isMultiplayer = window.GameClientSocketIO && 
+                                   window.GameClientSocketIO.isConnected && 
+                                   window.GameClientSocketIO.isAuthenticated;
+                
+                // Em single player, sempre habilita fichas
+                // Em multiplayer, só habilita se for o turno do jogador
+                if (!isMultiplayer) {
+                    _oInterface.enableBetFiches();
+                    _bIsMyTurn = true; // Single player sempre é seu turno
+                }
+                // Em multiplayer, as fichas serão controladas pelo onTurnUpdate
+                
                 _iHandCont++;
                 if(_iHandCont > NUM_HAND_FOR_ADS){
                     _iHandCont = 0;
@@ -313,6 +326,13 @@ function CGame(oData){
         
         // Habilitar botão "Passar o Dado" apenas se for meu turno
         _oInterface.enablePassDice(isMyTurn);
+        
+        // CONTROLE DAS FICHAS: Só permite apostar quando for o turno do jogador
+        if (isMyTurn) {
+            _oInterface.enableBetFiches();
+        } else {
+            _oInterface.disableBetFiches();
+        }
         
         // Show clear feedback about turn status
         if (isMyTurn) {
@@ -748,6 +768,10 @@ function CGame(oData){
         
         // Inicialmente desabilitar botão de passar (até confirmar que é seu turno)
         _oInterface.enablePassDice(false);
+        
+        // Inicialmente desabilitar fichas (até confirmar que é seu turno no multiplayer)
+        // Em modo single player, será habilitado automaticamente logo após
+        _oInterface.disableBetFiches();
         
         // Sala padrão: BRONZE
         console.log('🏠 Setting up default room (bronze)...');
