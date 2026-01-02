@@ -225,7 +225,15 @@ function CGame(oData){
             console.error('❌ Não é possível iniciar animação - resultado de dados inválido:', _aDiceResult);
             console.error('   Redefinindo estado do jogo...');
             _oInterface.hideBlock();
-            _oInterface.enableBetFiches();
+            
+            // Só habilita fichas se for single player OU se for o turno do jogador
+            var isMultiplayer = window.GameClientSocketIO && 
+                               window.GameClientSocketIO.isConnected && 
+                               window.GameClientSocketIO.isAuthenticated;
+            if (!isMultiplayer || _bIsMyTurn) {
+                _oInterface.enableBetFiches();
+            }
+            
             this._isRolling = false;
             return;
         }
@@ -454,7 +462,15 @@ function CGame(oData){
         }
         
         _oInterface.hideBlock();
-        _oInterface.enableBetFiches();
+        
+        // Só habilita fichas se for single player OU se for o turno do jogador
+        var isMultiplayer = window.GameClientSocketIO && 
+                           window.GameClientSocketIO.isConnected && 
+                           window.GameClientSocketIO.isAuthenticated;
+        if (!isMultiplayer || _bIsMyTurn) {
+            _oInterface.enableBetFiches();
+        }
+        
         $(s_oMain).trigger("save_score",[_oMySeat.getCredit()]);
         
         // Reset rolling flag to allow next roll
@@ -730,8 +746,16 @@ function CGame(oData){
 
         if(_oMySeat.getCurBet() < MIN_BET){
             _oMsgBox.show(TEXT_ERROR_MIN_BET);
-            _oInterface.enableBetFiches();
-            _oInterface.enableRoll(true);
+            
+            // Só habilita fichas se for single player OU se for o turno do jogador
+            var isMultiplayer = window.GameClientSocketIO && 
+                               window.GameClientSocketIO.isConnected && 
+                               window.GameClientSocketIO.isAuthenticated;
+            if (!isMultiplayer || _bIsMyTurn) {
+                _oInterface.enableBetFiches();
+                _oInterface.enableRoll(true);
+            }
+            
             return;
         }
 
@@ -837,6 +861,15 @@ function CGame(oData){
         
         // Habilitar botão "Passar o Dado" apenas se for meu turno
         _oInterface.enablePassDice(isMyTurn);
+        
+        // CONTROLE DAS FICHAS: Habilitar quando for o turno do jogador
+        if (isMyTurn) {
+            _oInterface.enableBetFiches();
+            console.log("✅ Fichas HABILITADAS - É seu turno!");
+        } else {
+            _oInterface.disableBetFiches();
+            console.log("🔒 Fichas DESABILITADAS - Aguarde sua vez!");
+        }
         
         console.log(`✅ Turn updated - isMyTurn: ${isMyTurn}, canRoll: ${canRoll}`);
         
