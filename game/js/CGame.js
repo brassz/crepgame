@@ -32,6 +32,10 @@ function CGame(oData){
     var _bIsMyTurn = true;  // Flag: é minha vez de jogar (default true para single player)
     var _iLockedBalance = 0;  // Saldo travado (aposta obrigatória até passar o dado)
     
+    // CONTROLE DE APOSTAS NA FASE POINT
+    var _bPointBettingOpen = false;  // Flag: período de apostas no ponto está aberto
+    var _iPointBettingTimer = null;  // Timer para fechar apostas após 7 segundos
+    
     
     this._init = function(){
         s_oTweenController = new CTweenController();
@@ -120,8 +124,17 @@ function CGame(oData){
                 if (!isMultiplayer) {
                     _oInterface.enableBetFiches();
                     _bIsMyTurn = true; // Single player sempre é seu turno
+                } else {
+                    // Em multiplayer, resetar controle de fichas baseado no turno
+                    if(_bIsMyTurn){
+                        _oInterface.enableBetFiches();
+                        _oInterface.enableClearButton();
+                    } else {
+                        _oInterface.disableBetFiches();
+                        _oInterface.disableClearButton();
+                        console.log("🔒 Fase POINT terminou - Aguarde sua vez para apostar");
+                    }
                 }
-                // Em multiplayer, as fichas serão controladas pelo onTurnUpdate
                 
                 _iHandCont++;
                 if(_iHandCont > NUM_HAND_FOR_ADS){
@@ -335,10 +348,15 @@ function CGame(oData){
         // Habilitar botão "Passar o Dado" apenas se for meu turno
         _oInterface.enablePassDice(isMyTurn);
         
-        // CONTROLE DAS FICHAS E BOTÕES: Só permite apostar quando for o turno do jogador
-        if (isMyTurn) {
+        // CONTROLE DAS FICHAS E BOTÕES: Habilitar quando for o turno do jogador
+        // OU durante os 7 SEGUNDOS de apostas no POINT
+        if (isMyTurn || _bPointBettingOpen) {
             _oInterface.enableBetFiches();
-            _oInterface.enableClearButton();
+            if (isMyTurn) {
+                _oInterface.enableClearButton();
+            } else if (_bPointBettingOpen) {
+                _oInterface.enableClearButton(); // Pode limpar suas próprias apostas durante o período de apostas
+            }
         } else {
             _oInterface.disableBetFiches();
             _oInterface.disableClearButton();
@@ -447,11 +465,27 @@ function CGame(oData){
             if(_iNumberPoint === iSumDices){
                 //PASS LINE WINS
                 _oPuck.switchOff();
+                
+                // FECHAR período de apostas do POINT
+                _bPointBettingOpen = false;
+                if(_iPointBettingTimer){
+                    clearTimeout(_iPointBettingTimer);
+                    _iPointBettingTimer = null;
+                }
+                
                 this._setState(STATE_GAME_WAITING_FOR_BET);
                 
             }else if(iSumDices === 7){
-                //END TURN
+                //END TURN (SEVEN OUT)
                 _oPuck.switchOff();
+                
+                // FECHAR período de apostas do POINT
+                _bPointBettingOpen = false;
+                if(_iPointBettingTimer){
+                    clearTimeout(_iPointBettingTimer);
+                    _iPointBettingTimer = null;
+                }
+                
                 this._setState(STATE_GAME_WAITING_FOR_BET);
             }
         }
@@ -509,6 +543,61 @@ function CGame(oData){
         
         //ENABLE GUI
         _oInterface.hideBlock();
+        
+        // FASE POINT ESTABELECIDA: Abrir período de apostas por 7 SEGUNDOS
+        // Outros jogadores têm 7 segundos para apostar no ponto ou no 7
+        var isMultiplayer = window.GameClientSocketIO && 
+                           window.GameClientSocketIO.isConnected && 
+                           window.GameClientSocketIO.isAuthenticated;
+        
+        if(isMultiplayer){
+            // ABRIR período de apostas
+            _bPointBettingOpen = true;
+            
+            // Habilitar fichas para TODOS os jogadores
+            _oInterface.enableBetFiches();
+            _oInterface.enableClearButton();
+            
+            console.log("📊 PONTO ESTABELECIDO EM " + iNumber + " - 7 SEGUNDOS PARA APOSTAR!");
+            
+            // Limpar timer anterior se existir
+            if(_iPointBettingTimer){
+                clearTimeout(_iPointBettingTimer);
+            }
+            
+            // CONTADOR VISUAL: Mostrar segundos restantes
+            var secondsLeft = 7;
+            _oInterface.showMessage("PONTO: " + iNumber + " | APOSTE AGORA! ⏰ " + secondsLeft + "s");
+            
+            var countdownInterval = setInterval(function() {
+                secondsLeft--;
+                if(secondsLeft > 0 && _bPointBettingOpen){
+                    _oInterface.showMessage("PONTO: " + iNumber + " | APOSTE AGORA! ⏰ " + secondsLeft + "s");
+                } else {
+                    clearInterval(countdownInterval);
+                }
+            }, 1000);
+            
+            // TIMER DE 7 SEGUNDOS: Após isso, fecha as apostas
+            _iPointBettingTimer = setTimeout(function() {
+                _bPointBettingOpen = false;
+                clearInterval(countdownInterval);
+                
+                // Desabilitar fichas para jogadores que NÃO são o atirador
+                if(!_bIsMyTurn){
+                    _oInterface.disableBetFiches();
+                    _oInterface.disableClearButton();
+                    console.log("⏰ TEMPO ESGOTADO - Apostas fechadas!");
+                    _oInterface.showMessage("APOSTAS FECHADAS! Aguarde o atirador jogar.");
+                    
+                    setTimeout(function() {
+                        if (_oInterface && _oInterface.hideMessage) {
+                            _oInterface.hideMessage();
+                        }
+                    }, 2000);
+                }
+            }, 7000); // 7 segundos
+        }
     };
     
     // FUNÇÕES REMOVIDAS - Não são mais necessárias porque a aposta contra o 7 é automática
@@ -865,10 +954,16 @@ function CGame(oData){
         _oInterface.enablePassDice(isMyTurn);
         
         // CONTROLE DAS FICHAS E BOTÕES: Habilitar quando for o turno do jogador
-        if (isMyTurn) {
+        // OU durante os 7 SEGUNDOS de apostas no POINT
+        if (isMyTurn || _bPointBettingOpen) {
             _oInterface.enableBetFiches();
-            _oInterface.enableClearButton();
-            console.log("✅ Fichas e Botões HABILITADOS - É seu turno!");
+            if (isMyTurn) {
+                _oInterface.enableClearButton();
+                console.log("✅ Fichas e Botões HABILITADOS - É seu turno!");
+            } else if (_bPointBettingOpen) {
+                _oInterface.enableClearButton();
+                console.log("📊 Fichas HABILITADAS - 7 SEGUNDOS para apostar no POINT!");
+            }
         } else {
             _oInterface.disableBetFiches();
             _oInterface.disableClearButton();
@@ -902,13 +997,19 @@ function CGame(oData){
         }
         
         // BLOQUEIO DE APOSTAS: Não permite apostar se não for o turno do jogador
-        // Verificar se está em modo multiplayer (Socket.IO conectado)
+        // EXCEÇÃO: Durante os 7 SEGUNDOS após estabelecer o POINT, outros jogadores podem apostar
         var isMultiplayer = window.GameClientSocketIO && window.GameClientSocketIO.isConnected && window.GameClientSocketIO.isAuthenticated;
         
-        if(isMultiplayer && !_bIsMyTurn){
-            _oMsgBox.show("AGUARDE SUA VEZ!\nVOCÊ SÓ PODE APOSTAR QUANDO FOR SEU TURNO.");
+        // Verificar se o período de apostas no POINT está aberto (7 segundos)
+        if(isMultiplayer && !_bIsMyTurn && !_bPointBettingOpen){
+            _oMsgBox.show("AGUARDE SUA VEZ!\nVOCÊ SÓ PODE APOSTAR QUANDO FOR SEU TURNO\nOU NOS 7 SEGUNDOS APÓS O PONTO SER ESTABELECIDO.");
             playSound("lose", 0.3, false);
             return;
+        }
+        
+        // Mensagem informativa durante o período de apostas do POINT
+        if(isMultiplayer && !_bIsMyTurn && _bPointBettingOpen){
+            console.log("📊 Jogador apostando durante os 7 segundos do POINT - permitido!");
         }
 
         var  iIndexFicheSelected = _oInterface.getCurFicheSelected();
@@ -1047,12 +1148,13 @@ function CGame(oData){
     
     this.onClearAllBets = function(){
         // BLOQUEIO: Não permite limpar apostas se não for o turno do jogador
+        // EXCEÇÃO: Durante os 7 SEGUNDOS de apostas no POINT, jogadores podem limpar suas apostas
         var isMultiplayer = window.GameClientSocketIO && 
                            window.GameClientSocketIO.isConnected && 
                            window.GameClientSocketIO.isAuthenticated;
         
-        if(isMultiplayer && !_bIsMyTurn){
-            _oMsgBox.show("AGUARDE SUA VEZ!\nVOCÊ SÓ PODE GERENCIAR APOSTAS QUANDO FOR SEU TURNO.");
+        if(isMultiplayer && !_bIsMyTurn && !_bPointBettingOpen){
+            _oMsgBox.show("AGUARDE SUA VEZ!\nVOCÊ SÓ PODE GERENCIAR APOSTAS QUANDO FOR SEU TURNO\nOU NOS 7 SEGUNDOS APÓS O PONTO.");
             playSound("lose", 0.3, false);
             return;
         }
