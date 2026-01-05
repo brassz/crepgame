@@ -575,20 +575,22 @@ function CGame(oData){
                            window.GameClientSocketIO.isConnected && 
                            window.GameClientSocketIO.isAuthenticated;
         
-        console.log("🔍 ==========================================");
+        console.log("");
+        console.log("🔍 ============================================================");
         console.log("🔍 DEBUG _assignNumber - PONTO ESTABELECIDO");
-        console.log("🔍 ==========================================");
+        console.log("🔍 ============================================================");
         console.log("   📍 Ponto estabelecido:", iNumber);
         console.log("   🎮 isMultiplayer:", isMultiplayer);
         console.log("   🎯 _bIsMyTurn (É MEU turno?):", _bIsMyTurn);
-        console.log("   🎲 _bIAmShooter (EU sou o shooter?):", _bIAmShooter);
+        console.log("   🎲🎲🎲 _bIAmShooter (EU sou o shooter?):", _bIAmShooter);
         console.log("   👤 Devo VER os botões?:", !_bIAmShooter);
         console.log("   🔌 Socket.IO exists:", !!window.GameClientSocketIO);
         if(window.GameClientSocketIO){
             console.log("   🔌 Socket.IO connected:", window.GameClientSocketIO.isConnected);
             console.log("   🔌 Socket.IO authenticated:", window.GameClientSocketIO.isAuthenticated);
         }
-        console.log("🔍 ==========================================");
+        console.log("🔍 ============================================================");
+        console.log("");
         
         // SEMPRE ABRIR PERÍODO DE APOSTAS (mesmo em single player para teste)
         _bPointBettingOpen = true;
@@ -599,7 +601,7 @@ function CGame(oData){
         // MOSTRAR BOTÕES DE APOSTA NO PONTO E NO 7 - APENAS PARA OUTROS JOGADORES
         // USAR _bIAmShooter AO INVÉS DE _bIsMyTurn
         if(!_bIAmShooter){
-            console.log("✅✅✅ SIM! Mostrando botões - você NÃO é o shooter");
+            console.log("✅✅✅ DECISÃO: Mostrando botões - você NÃO é o shooter (_bIAmShooter = false)");
             _oInterface.showPointBettingButtons(iNumber);
             
             // Habilitar fichas para OUTROS jogadores
@@ -607,8 +609,11 @@ function CGame(oData){
             _oInterface.enableClearButton();
             
             console.log("💰 Fichas habilitadas para apostar no ponto ou no 7");
+            console.log("");
         } else {
-            console.log("❌❌❌ NÃO! Você É o shooter - botões NÃO serão mostrados");
+            console.log("❌❌❌ DECISÃO: NÃO mostrar botões - você É o shooter (_bIAmShooter = true)");
+            console.log("   Os botões NÃO serão exibidos para você.");
+            console.log("");
         }
         
         // SEMPRE EXECUTAR O TIMER (independente de multiplayer)
@@ -1000,6 +1005,11 @@ function CGame(oData){
         // Set rolling flag to prevent double-clicks
         this._isRolling = true;
         
+        // ⚠️⚠️⚠️ IMPORTANTE: MARCAR QUE EU SOU O SHOOTER LOGO NO INÍCIO ⚠️⚠️⚠️
+        // Isso DEVE acontecer ANTES de qualquer outra coisa
+        _bIAmShooter = true;
+        console.log("🎯🎯🎯 SETANDO _bIAmShooter = true (EU SOU O SHOOTER QUE ESTÁ LANÇANDO)");
+        
         // BLOQUEAR O TURNO: Após lançar, não é mais sua vez
         _bIsMyTurn = false;
         _oInterface.enableRoll(false);
@@ -1008,10 +1018,6 @@ function CGame(oData){
         
         if(_iState === STATE_GAME_WAITING_FOR_BET){
             this._setState(STATE_GAME_COME_OUT);
-            
-            // Marcar que EU sou o shooter desta rodada
-            _bIAmShooter = true;
-            console.log("🎯 Você é o shooter desta rodada - _bIAmShooter = true");
         }
         
         $(s_oMain).trigger("bet_placed",_oMySeat.getCurBet());
