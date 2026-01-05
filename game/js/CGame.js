@@ -575,15 +575,19 @@ function CGame(oData){
                            window.GameClientSocketIO.isConnected && 
                            window.GameClientSocketIO.isAuthenticated;
         
-        console.log("🔍 DEBUG _assignNumber:");
-        console.log("   - Ponto estabelecido:", iNumber);
-        console.log("   - isMultiplayer:", isMultiplayer);
-        console.log("   - _bIsMyTurn:", _bIsMyTurn);
-        console.log("   - Socket.IO exists:", !!window.GameClientSocketIO);
+        console.log("🔍 ==========================================");
+        console.log("🔍 DEBUG _assignNumber - PONTO ESTABELECIDO");
+        console.log("🔍 ==========================================");
+        console.log("   📍 Ponto estabelecido:", iNumber);
+        console.log("   🎮 isMultiplayer:", isMultiplayer);
+        console.log("   🎯 _bIsMyTurn (É MEU turno?):", _bIsMyTurn);
+        console.log("   👤 Devo VER os botões?:", !_bIsMyTurn);
+        console.log("   🔌 Socket.IO exists:", !!window.GameClientSocketIO);
         if(window.GameClientSocketIO){
-            console.log("   - Socket.IO connected:", window.GameClientSocketIO.isConnected);
-            console.log("   - Socket.IO authenticated:", window.GameClientSocketIO.isAuthenticated);
+            console.log("   🔌 Socket.IO connected:", window.GameClientSocketIO.isConnected);
+            console.log("   🔌 Socket.IO authenticated:", window.GameClientSocketIO.isAuthenticated);
         }
+        console.log("🔍 ==========================================");
         
         // SEMPRE ABRIR PERÍODO DE APOSTAS (mesmo em single player para teste)
         _bPointBettingOpen = true;
@@ -592,12 +596,8 @@ function CGame(oData){
         _oTableController.disableMainBetButton();
         
         // MOSTRAR BOTÕES DE APOSTA NO PONTO E NO 7 - APENAS PARA OUTROS JOGADORES
-        // MODO DE TESTE: Sempre mostra os botões para poder testar (comentar depois)
-        var forceShowButtons = true; // SET TO FALSE PARA MODO NORMAL
-        
-        if(!_bIsMyTurn || forceShowButtons){
-            // Se NÃO é meu turno (não sou o shooter), mostra os botões
-            console.log("✅ Mostrando botões para OUTROS jogadores (não shooter) - forceShow:", forceShowButtons);
+        if(!_bIsMyTurn){
+            console.log("✅✅✅ SIM! Mostrando botões - você NÃO é o shooter");
             _oInterface.showPointBettingButtons(iNumber);
             
             // Habilitar fichas para OUTROS jogadores
@@ -606,8 +606,8 @@ function CGame(oData){
             
             console.log("💰 Fichas habilitadas para apostar no ponto ou no 7");
         } else {
-            // Se É meu turno (sou o shooter), NÃO mostra os botões
-            console.log("🎯 Você é o shooter - aguarde os outros jogadores apostarem");
+            console.log("❌❌❌ NÃO! Você É o shooter - botões NÃO serão mostrados");
+            console.log("   (Se você está vendo isto e deveria ver os botões, o sistema de turnos não está sincronizado)");
         }
         
         // SEMPRE EXECUTAR O TIMER (independente de multiplayer)
