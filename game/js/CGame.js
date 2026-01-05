@@ -36,6 +36,10 @@ function CGame(oData){
     var _bPointBettingOpen = false;  // Flag: período de apostas no ponto está aberto
     var _iPointBettingTimer = null;  // Timer para fechar apostas após 7 segundos
     
+    // APOSTAS ESPECÍFICAS NO PONTO E NO 7
+    var _aPointBets = {};  // Objeto para armazenar apostas no ponto por jogador
+    var _aSevenBets = {};  // Objeto para armazenar apostas no 7 por jogador
+    
     
     this._init = function(){
         s_oTweenController = new CTweenController();
@@ -473,6 +477,9 @@ function CGame(oData){
                     _iPointBettingTimer = null;
                 }
                 
+                // OCULTAR BOTÕES
+                _oInterface.hidePointBettingButtons();
+                
                 this._setState(STATE_GAME_WAITING_FOR_BET);
                 
             }else if(iSumDices === 7){
@@ -485,6 +492,9 @@ function CGame(oData){
                     clearTimeout(_iPointBettingTimer);
                     _iPointBettingTimer = null;
                 }
+                
+                // OCULTAR BOTÕES
+                _oInterface.hidePointBettingButtons();
                 
                 this._setState(STATE_GAME_WAITING_FOR_BET);
             }
@@ -558,6 +568,9 @@ function CGame(oData){
             _oInterface.enableBetFiches();
             _oInterface.enableClearButton();
             
+            // MOSTRAR BOTÕES DE APOSTA NO PONTO E NO 7
+            _oInterface.showPointBettingButtons(iNumber);
+            
             console.log("📊 PONTO ESTABELECIDO EM " + iNumber + " - 7 SEGUNDOS PARA APOSTAR!");
             
             // Limpar timer anterior se existir
@@ -567,12 +580,12 @@ function CGame(oData){
             
             // CONTADOR VISUAL: Mostrar segundos restantes
             var secondsLeft = 7;
-            _oInterface.showMessage("PONTO: " + iNumber + " | APOSTE AGORA! ⏰ " + secondsLeft + "s");
+            _oInterface.showMessage("PONTO: " + iNumber + " | APOSTE NO PONTO OU NO 7! ⏰ " + secondsLeft + "s");
             
             var countdownInterval = setInterval(function() {
                 secondsLeft--;
                 if(secondsLeft > 0 && _bPointBettingOpen){
-                    _oInterface.showMessage("PONTO: " + iNumber + " | APOSTE AGORA! ⏰ " + secondsLeft + "s");
+                    _oInterface.showMessage("PONTO: " + iNumber + " | APOSTE NO PONTO OU NO 7! ⏰ " + secondsLeft + "s");
                 } else {
                     clearInterval(countdownInterval);
                 }
@@ -582,6 +595,9 @@ function CGame(oData){
             _iPointBettingTimer = setTimeout(function() {
                 _bPointBettingOpen = false;
                 clearInterval(countdownInterval);
+                
+                // OCULTAR BOTÕES DE APOSTA
+                _oInterface.hidePointBettingButtons();
                 
                 // Desabilitar fichas para jogadores que NÃO são o atirador
                 if(!_bIsMyTurn){
@@ -714,38 +730,67 @@ function CGame(oData){
         } else if(_iState === STATE_GAME_COME_POINT){
             // FASE DE PONTO - APOSTA CONTRA O 7
             if(iSumDices === 7){
-                // SAIU 7: PERDE TUDO
+                // SAIU 7: SHOOTER PERDE, mas quem apostou no 7 ganha!
                 var iTotalActiveBets = _oMySeat.getCurBet();
+                
+                // Se o shooter tinha apostas ativas, ele perde
                 if(iTotalActiveBets > 0){
                     _oMySeat.decreaseBet(iTotalActiveBets);
                     playSound("lose", 0.2, false);
-                    new CScoreText("7 PERDEU TUDO!", CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
                 }
-                // Remove todas as apostas ativas
+                
+                // PROCESSAR APOSTAS NO 7
+                if(_aSevenBets['seven'] && _aSevenBets['seven'] > 0){
+                    var iSevenWin = _aSevenBets['seven'] * 4; // Multiplicador 4x para quem apostou no 7
+                    _oMySeat.showWin(_aSevenBets['seven'] + iSevenWin); // Devolve aposta + ganho
+                    _oInterface.setMoney(_oMySeat.getCredit());
+                    
+                    new CScoreText("SAIU 7! VOCÊ GANHOU " + iSevenWin + TEXT_CURRENCY + "!", CANVAS_WIDTH/2, CANVAS_HEIGHT/2 - 50);
+                    playSound("win", 0.5, false);
+                } else if(iTotalActiveBets > 0) {
+                    new CScoreText("7 - SHOOTER PERDEU!", CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
+                }
+                
+                // PROCESSAR APOSTAS NO PONTO (perdem)
+                if(_aPointBets[_iNumberPoint] && _aPointBets[_iNumberPoint] > 0){
+                    console.log("❌ Apostas no ponto perderam:", _aPointBets[_iNumberPoint]);
+                }
+                
+                // Limpar apostas no ponto e no 7
+                _aPointBets = {};
+                _aSevenBets = {};
+                
+                // Remove todas as apostas ativas do shooter
                 _oMySeat.clearAllBets();
                 _aBetHistory = {};
                 _oInterface.setCurBet(_oMySeat.getCurBet());
+                
                 // Volta para o estado de espera
                 _iNumberPoint = -1;
                 this._setState(STATE_GAME_WAITING_FOR_BET);
                 
-                // PERDER também perde o saldo travado
+                // PERDER também perde o saldo travado do shooter
                 _iLockedBalance = 0;
                 _oInterface.setCurBet(0);
                 
                 // Reset flag de aposta obrigatória ao perder
                 _bMustBetFullWin = false;
                 _iLastWinAmount = 0;
+                
+                // OCULTAR BOTÕES
+                _oInterface.hidePointBettingButtons();
             } else if(iSumDices === _iNumberPoint){
-                // ACERTOU O PONTO: PAGA CONFORME A MESA
+                // ACERTOU O PONTO: SHOOTER GANHA, quem apostou no ponto também ganha!
                 var iTotalActiveBets = _oMySeat.getCurBet();
+                
+                // Determina o multiplicador baseado no número do ponto
+                var iMultiplier = 1;
+                if(_iNumberPoint === 4 || _iNumberPoint === 10) iMultiplier = 2; // Dobro
+                else if(_iNumberPoint === 5 || _iNumberPoint === 9) iMultiplier = 1.5; // 50%
+                else if(_iNumberPoint === 6 || _iNumberPoint === 8) iMultiplier = 1.25; // 25%
+                
+                // Se o SHOOTER tinha apostas ativas
                 if(iTotalActiveBets > 0){
-                    // Determina o multiplicador baseado no número do ponto
-                    var iMultiplier = 1;
-                    if(_iNumberPoint === 4 || _iNumberPoint === 10) iMultiplier = 2; // Dobro
-                    else if(_iNumberPoint === 5 || _iNumberPoint === 9) iMultiplier = 0.5; // 50%
-                    else if(_iNumberPoint === 6 || _iNumberPoint === 8) iMultiplier = 0.25; // 25%
-                    
                     var iAutoWin = iTotalActiveBets * iMultiplier;
                     
                     // NOVA LÓGICA: Saldo ganho fica TRAVADO até passar o dado
@@ -758,15 +803,40 @@ function CGame(oData){
                     // Atualizar interface - mostra valor ganho
                     _oInterface.setCurBet(_iLockedBalance);
                     
-                    new CScoreText("PONTO ACERTOU! +" + iAutoWin + TEXT_CURRENCY + "\n⚠️ PASSE O DADO PARA LIBERAR!", CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
                     playSound("win", 0.2, false);
                 }
-                // Remove as fichas visualmente
+                
+                // PROCESSAR APOSTAS NO PONTO (ganham)
+                if(_aPointBets[_iNumberPoint] && _aPointBets[_iNumberPoint] > 0){
+                    var iPointWin = _aPointBets[_iNumberPoint] * iMultiplier;
+                    _oMySeat.showWin(_aPointBets[_iNumberPoint] + iPointWin); // Devolve aposta + ganho
+                    _oInterface.setMoney(_oMySeat.getCredit());
+                    
+                    new CScoreText("PONTO " + _iNumberPoint + "! VOCÊ GANHOU " + iPointWin + TEXT_CURRENCY + "!", CANVAS_WIDTH/2, CANVAS_HEIGHT/2 - 50);
+                    playSound("win", 0.5, false);
+                } else if(iTotalActiveBets > 0) {
+                    new CScoreText("PONTO ACERTOU! +" + (iTotalActiveBets * iMultiplier).toFixed(2) + TEXT_CURRENCY + "\n⚠️ PASSE O DADO PARA LIBERAR!", CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
+                }
+                
+                // PROCESSAR APOSTAS NO 7 (perdem)
+                if(_aSevenBets['seven'] && _aSevenBets['seven'] > 0){
+                    console.log("❌ Apostas no 7 perderam:", _aSevenBets['seven']);
+                }
+                
+                // Limpar apostas no ponto e no 7
+                _aPointBets = {};
+                _aSevenBets = {};
+                
+                // Remove as fichas visualmente do shooter
                 _oMySeat.clearAllBetsVisualOnly();
                 _aBetHistory = {};
+                
                 // Volta para o estado de espera
                 _iNumberPoint = -1;
                 this._setState(STATE_GAME_WAITING_FOR_BET);
+                
+                // OCULTAR BOTÕES
+                _oInterface.hidePointBettingButtons();
             } else {
                 // QUALQUER OUTRO NÚMERO: CONTINUA JOGANDO
                 new CScoreText("CONTINUA... PONTO: " + _iNumberPoint, CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
@@ -1090,6 +1160,78 @@ function CGame(oData){
             _oTableController.enlightOff(szEnlight);
             _oInterface.clearMsgHelp();
         }
+    };
+    
+    this.onBetOnPoint = function(){
+        console.log('🎲 Jogador quer apostar no PONTO:', _iNumberPoint);
+        
+        // Verificar se o período de apostas está aberto
+        if(!_bPointBettingOpen){
+            _oMsgBox.show("PERÍODO DE APOSTAS ENCERRADO!");
+            return;
+        }
+        
+        // Verificar se há fichas selecionadas
+        var iIndexFicheSelected = _oInterface.getCurFicheSelected();
+        var iFicheValue = s_oGameSettings.getFicheValues(iIndexFicheSelected);
+        
+        // Verificar se jogador tem crédito
+        if(_oMySeat.getCredit() < iFicheValue){
+            _oMsgBox.show(TEXT_ERROR_NO_MONEY_MSG);
+            return;
+        }
+        
+        // Adicionar aposta ao ponto
+        if(!_aPointBets[_iNumberPoint]){
+            _aPointBets[_iNumberPoint] = 0;
+        }
+        _aPointBets[_iNumberPoint] += iFicheValue;
+        
+        // Descontar do crédito
+        _oMySeat.decreaseBet(iFicheValue);
+        _oInterface.setMoney(_oMySeat.getCredit());
+        
+        // Feedback visual
+        new CScoreText("APOSTOU " + iFicheValue + TEXT_CURRENCY + " NO PONTO " + _iNumberPoint, CANVAS_WIDTH/2, CANVAS_HEIGHT/2 + 30);
+        playSound("chip", 1, false);
+        
+        console.log("✅ Aposta no ponto registrada:", iFicheValue, "Total no ponto:", _aPointBets[_iNumberPoint]);
+    };
+    
+    this.onBetOnSeven = function(){
+        console.log('🎲 Jogador quer apostar no 7');
+        
+        // Verificar se o período de apostas está aberto
+        if(!_bPointBettingOpen){
+            _oMsgBox.show("PERÍODO DE APOSTAS ENCERRADO!");
+            return;
+        }
+        
+        // Verificar se há fichas selecionadas
+        var iIndexFicheSelected = _oInterface.getCurFicheSelected();
+        var iFicheValue = s_oGameSettings.getFicheValues(iIndexFicheSelected);
+        
+        // Verificar se jogador tem crédito
+        if(_oMySeat.getCredit() < iFicheValue){
+            _oMsgBox.show(TEXT_ERROR_NO_MONEY_MSG);
+            return;
+        }
+        
+        // Adicionar aposta no 7
+        if(!_aSevenBets['seven']){
+            _aSevenBets['seven'] = 0;
+        }
+        _aSevenBets['seven'] += iFicheValue;
+        
+        // Descontar do crédito
+        _oMySeat.decreaseBet(iFicheValue);
+        _oInterface.setMoney(_oMySeat.getCredit());
+        
+        // Feedback visual
+        new CScoreText("APOSTOU " + iFicheValue + TEXT_CURRENCY + " NO 7", CANVAS_WIDTH/2, CANVAS_HEIGHT/2 + 30);
+        playSound("chip", 1, false);
+        
+        console.log("✅ Aposta no 7 registrada:", iFicheValue, "Total no 7:", _aSevenBets['seven']);
     };
     
     this.onPassDice = function(){

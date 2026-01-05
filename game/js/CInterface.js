@@ -29,6 +29,11 @@ function CInterface(){
     
     var _oBlock;
     
+    // NOVOS BOTÕES PARA APOSTAS NO PONTO E NO 7
+    var _oButBetOnPoint;
+    var _oButBetOnSeven;
+    var _oPointBettingContainer;
+    
     this._init = function(){
         
         var oMoneyBg = createBitmap(s_oSpriteLibrary.getSprite('but_bg'));
@@ -160,6 +165,9 @@ function CInterface(){
         _oPassDiceBut = new CTextButton(900, 513, s_oSpriteLibrary.getSprite('but_bg'), "PASSAR", FONT1, "#fff", 16, "center", s_oStage);
         _oPassDiceBut.disable();
         _oPassDiceBut.addEventListener(ON_MOUSE_UP, this._onPassDice, this);
+        
+        // Inicializar botões de aposta no ponto e no 7 (ocultos inicialmente)
+        this._initPointBettingButtons();
        
         this._initFichesBut();
         // Trazer os botões de sala para frente, acima das fichas
@@ -221,6 +229,12 @@ function CInterface(){
         _oRollBut.unload();
         _oPassDiceBut.unload();
         _oClearAllBet.unload();
+        
+        // Limpar botões de aposta no ponto e no 7
+        if(_oButBetOnPoint) { _oButBetOnPoint.unload(); }
+        if(_oButBetOnSeven) { _oButBetOnSeven.unload(); }
+        if(_oPointBettingContainer) { s_oStage.removeChild(_oPointBettingContainer); }
+        
         s_oInterface = null;
     };
     
@@ -495,6 +509,70 @@ function CInterface(){
     this.hideMessage = function(){
         if(_oHelpText){
             _oHelpText.refreshText(_szLastMsgHelp || TEXT_WAITING_BET);
+        }
+    };
+    
+    // ==== SISTEMA DE APOSTAS NO PONTO E NO 7 ====
+    
+    this._initPointBettingButtons = function(){
+        // Container para os botões de aposta no ponto
+        _oPointBettingContainer = new createjs.Container();
+        _oPointBettingContainer.x = CANVAS_WIDTH / 2;
+        _oPointBettingContainer.y = CANVAS_HEIGHT / 2 + 80; // Abaixo da mesa
+        _oPointBettingContainer.visible = false;
+        s_oStage.addChild(_oPointBettingContainer);
+        
+        // Fundo semi-transparente
+        var oBackground = new createjs.Graphics().beginFill("rgba(0,0,0,0.7)").drawRoundRect(-250, -80, 500, 160, 10);
+        var oBgShape = new createjs.Shape(oBackground);
+        _oPointBettingContainer.addChild(oBgShape);
+        
+        // Texto de título
+        var oTitleText = new CTLText(_oPointBettingContainer, 
+                    -200, -60, 400, 30, 
+                    24, "center", "#ffde00", FONT2, 1,
+                    0, 0,
+                    "APOSTE NO PONTO OU NO 7!",
+                    true, true, false,
+                    false );
+        
+        // Botão para apostar no PONTO (esquerda)
+        _oButBetOnPoint = new CTextButton(-120, 0, s_oSpriteLibrary.getSprite('roll_but'), "PONTO: 4", FONT1, "#fff", 32, "center", _oPointBettingContainer);
+        _oButBetOnPoint.addEventListener(ON_MOUSE_UP, this._onBetOnPoint, this);
+        
+        // Botão para apostar no 7 (direita)
+        _oButBetOnSeven = new CTextButton(120, 0, s_oSpriteLibrary.getSprite('roll_but'), "7", FONT1, "#fff", 32, "center", _oPointBettingContainer);
+        _oButBetOnSeven.addEventListener(ON_MOUSE_UP, this._onBetOnSeven, this);
+    };
+    
+    this.showPointBettingButtons = function(iPointNumber){
+        if(_oPointBettingContainer){
+            _oPointBettingContainer.visible = true;
+            
+            // Atualizar texto do botão com o número do ponto
+            if(_oButBetOnPoint){
+                _oButBetOnPoint.changeText("PONTO: " + iPointNumber);
+            }
+        }
+    };
+    
+    this.hidePointBettingButtons = function(){
+        if(_oPointBettingContainer){
+            _oPointBettingContainer.visible = false;
+        }
+    };
+    
+    this._onBetOnPoint = function(){
+        // Jogador clicou para apostar no ponto
+        if(s_oGame && s_oGame.onBetOnPoint){
+            s_oGame.onBetOnPoint();
+        }
+    };
+    
+    this._onBetOnSeven = function(){
+        // Jogador clicou para apostar no 7
+        if(s_oGame && s_oGame.onBetOnSeven){
+            s_oGame.onBetOnSeven();
         }
     };
     

@@ -1,0 +1,65 @@
+╔═══════════════════════════════════════════════════════════════════════╗
+║                 SISTEMA DE APOSTAS NO PONTO E NO 7                    ║
+║                         ✅ IMPLEMENTADO!                               ║
+╚═══════════════════════════════════════════════════════════════════════╝
+
+📋 O QUE FOI IMPLEMENTADO:
+
+✅ Quando um jogador (shooter) não ganha na PRIMEIRA jogada e estabelece
+   um PONTO (4, 5, 6, 8, 9 ou 10), aparece na tela:
+
+   ┌─────────────────────────────────────────────────────┐
+   │                                                     │
+   │         APOSTE NO PONTO OU NO 7!                    │
+   │                                                     │
+   │    ┌──────────────┐      ┌──────────────┐          │
+   │    │  PONTO: 5    │      │      7       │          │
+   │    │              │      │              │          │
+   │    └──────────────┘      └──────────────┘          │
+   │                                                     │
+   │            ⏰ TEMPO RESTANTE: 7s                     │
+   │                                                     │
+   └─────────────────────────────────────────────────────┘
+
+✅ TODOS os jogadores têm 7 SEGUNDOS para clicar em um dos botões
+
+✅ Para apostar:
+   1. Selecione uma FICHA (valor)
+   2. Clique no botão "PONTO: X" ou "7"
+   3. Pode apostar várias vezes!
+
+✅ Após 7 segundos: Botões DESAPARECEM e não pode mais apostar
+
+✅ PAGAMENTOS:
+
+   🎲 Se sair o NÚMERO DO PONTO:
+      • Ponto 4 ou 10 → Paga 2x (DOBRO) ✨
+      • Ponto 5 ou 9 → Paga 1.5x (50% a mais) 💰
+      • Ponto 6 ou 8 → Paga 1.25x (25% a mais) 💵
+      • Quem apostou no 7 → PERDE ❌
+
+   🎲 Se sair o número 7:
+      • Quem apostou no 7 → Paga 4x (QUÁDRUPLO) 💎💎💎
+      • Quem apostou no ponto → PERDE ❌
+
+   🎲 Se sair OUTRO número:
+      • Ninguém ganha nem perde
+      • Jogo CONTINUA ⏳
+
+═══════════════════════════════════════════════════════════════════════
+
+📁 ARQUIVOS MODIFICADOS:
+   - game/js/CInterface.js (botões visuais)
+   - game/js/CGame.js (lógica de apostas e pagamentos)
+
+📖 DOCUMENTAÇÃO COMPLETA:
+   - SISTEMA_APOSTAS_PONTO_E_7.md
+
+═══════════════════════════════════════════════════════════════════════
+
+✅ Sistema testado e pronto para uso!
+✅ Sem erros de lint!
+✅ Funciona apenas em modo MULTIPLAYER!
+
+═══════════════════════════════════════════════════════════════════════
+
