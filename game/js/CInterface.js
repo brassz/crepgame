@@ -515,12 +515,16 @@ function CInterface(){
     // ==== SISTEMA DE APOSTAS NO PONTO E NO 7 ====
     
     this._initPointBettingButtons = function(){
+        console.log("🔧 Inicializando botões de aposta no ponto e no 7...");
+        
         // Container para os botões de aposta no ponto
         _oPointBettingContainer = new createjs.Container();
         _oPointBettingContainer.x = CANVAS_WIDTH / 2;
         _oPointBettingContainer.y = 100; // Mais para cima na tela
         _oPointBettingContainer.visible = false;
         s_oStage.addChild(_oPointBettingContainer);
+        
+        console.log("✅ Container criado em posição:", _oPointBettingContainer.x, _oPointBettingContainer.y);
         
         // Fundo semi-transparente
         var oBackground = new createjs.Graphics().beginFill("rgba(0,0,0,0.7)").drawRoundRect(-250, -50, 500, 120, 10);
@@ -543,22 +547,31 @@ function CInterface(){
         // Botão para apostar no 7 (direita) - usando but_bg
         _oButBetOnSeven = new CTextButton(120, 15, s_oSpriteLibrary.getSprite('but_bg'), "7", FONT1, "#fff", 24, "center", _oPointBettingContainer);
         _oButBetOnSeven.addEventListener(ON_MOUSE_UP, this._onBetOnSeven, this);
+        
+        console.log("✅ Botões de aposta no ponto e no 7 inicializados com sucesso!");
     };
     
     this.showPointBettingButtons = function(iPointNumber){
+        console.log("🎮 showPointBettingButtons chamado com ponto:", iPointNumber);
         if(_oPointBettingContainer){
             _oPointBettingContainer.visible = true;
+            console.log("✅ Container de botões agora está visível");
             
             // Atualizar texto do botão com o número do ponto
             if(_oButBetOnPoint){
                 _oButBetOnPoint.changeText("PONTO: " + iPointNumber);
+                console.log("✅ Texto do botão atualizado para: PONTO:", iPointNumber);
             }
+        } else {
+            console.error("❌ _oPointBettingContainer não existe!");
         }
     };
     
     this.hidePointBettingButtons = function(){
+        console.log("🔴 hidePointBettingButtons chamado");
         if(_oPointBettingContainer){
             _oPointBettingContainer.visible = false;
+            console.log("✅ Container de botões agora está oculto");
         }
     };
     

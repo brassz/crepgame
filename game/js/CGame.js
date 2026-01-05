@@ -40,6 +40,9 @@ function CGame(oData){
     var _aPointBets = {};  // Objeto para armazenar apostas no ponto por jogador
     var _aSevenBets = {};  // Objeto para armazenar apostas no 7 por jogador
     
+    // CONTROLE DO SHOOTER DA RODADA ATUAL
+    var _bIAmTheShooter = false;  // Flag: eu sou o shooter desta rodada de ponto?
+    
     
     this._init = function(){
         s_oTweenController = new CTweenController();
@@ -527,13 +530,23 @@ function CGame(oData){
         // SISTEMA DE RODADAS: Liberar turno após um delay (simula passar para próximo jogador)
         // Em modo single player, libera imediatamente
         // Em multiplayer, isso seria controlado pelo servidor
-        setTimeout(function(){
-            _bIsMyTurn = true;
-            if(_oMySeat.getCurBet() > 0){
-                _oInterface.enableRoll(true);
-            }
-            console.log("✅ Turno liberado! Você pode jogar novamente.");
-        }, 1000); // 1 segundo de delay para dar tempo de ver o resultado
+        // NÃO resetar o turno se estiver em multiplayer
+        var isMultiplayer = window.GameClientSocketIO && 
+                           window.GameClientSocketIO.isConnected && 
+                           window.GameClientSocketIO.isAuthenticated;
+        
+        if(!isMultiplayer){
+            // APENAS em single player: reseta o turno após 1 segundo
+            setTimeout(function(){
+                _bIsMyTurn = true;
+                if(_oMySeat.getCurBet() > 0){
+                    _oInterface.enableRoll(true);
+                }
+                console.log("✅ Turno liberado! Você pode jogar novamente.");
+            }, 1000);
+        } else {
+            console.log("🌐 Modo multiplayer - turno controlado pelo servidor");
+        }
         
         } catch(error) {
             console.error("Erro em dicesAnimEnded:", error);
@@ -569,9 +582,13 @@ function CGame(oData){
             // DESABILITAR BOTÃO "APOSTE AQUI" durante o período de apostas no ponto
             _oTableController.disableMainBetButton();
             
+            // DEBUG: Verificar estado do turno
+            console.log("🔍 DEBUG _assignNumber - _bIsMyTurn:", _bIsMyTurn, "| Ponto:", iNumber);
+            
             // MOSTRAR BOTÕES DE APOSTA NO PONTO E NO 7 - APENAS PARA OUTROS JOGADORES
             if(!_bIsMyTurn){
-                // Se NÃO é o shooter, mostra os botões
+                // Se NÃO é meu turno (não sou o shooter), mostra os botões
+                console.log("✅ Mostrando botões para OUTROS jogadores (não shooter)");
                 _oInterface.showPointBettingButtons(iNumber);
                 
                 // Habilitar fichas para OUTROS jogadores
@@ -580,7 +597,7 @@ function CGame(oData){
                 
                 console.log("💰 Fichas habilitadas para apostar no ponto ou no 7");
             } else {
-                // Se É o shooter, NÃO mostra os botões
+                // Se É meu turno (sou o shooter), NÃO mostra os botões
                 console.log("🎯 Você é o shooter - aguarde os outros jogadores apostarem");
             }
             
@@ -973,6 +990,10 @@ function CGame(oData){
         
         if(_iState === STATE_GAME_WAITING_FOR_BET){
             this._setState(STATE_GAME_COME_OUT);
+            
+            // Marcar que EU sou o shooter desta rodada
+            _bIAmTheShooter = true;
+            console.log("🎯 Você é o shooter desta rodada");
         }
         
         $(s_oMain).trigger("bet_placed",_oMySeat.getCurBet());
