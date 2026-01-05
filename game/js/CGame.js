@@ -571,7 +571,7 @@ function CGame(oData){
             // MOSTRAR BOTÕES DE APOSTA NO PONTO E NO 7
             _oInterface.showPointBettingButtons(iNumber);
             
-            console.log("📊 PONTO ESTABELECIDO EM " + iNumber + " - 7 SEGUNDOS PARA APOSTAR!");
+            console.log("📊 PONTO ESTABELECIDO EM " + iNumber + " - 7 SEGUNDOS PARA OUTROS JOGADORES APOSTAREM!");
             
             // Limpar timer anterior se existir
             if(_iPointBettingTimer){
@@ -580,12 +580,22 @@ function CGame(oData){
             
             // CONTADOR VISUAL: Mostrar segundos restantes
             var secondsLeft = 7;
-            _oInterface.showMessage("PONTO: " + iNumber + " | APOSTE NO PONTO OU NO 7! ⏰ " + secondsLeft + "s");
+            
+            // Mensagem diferente para o shooter e outros jogadores
+            if(_bIsMyTurn){
+                _oInterface.showMessage("PONTO: " + iNumber + " | AGUARDE OS OUTROS JOGADORES APOSTAREM ⏰ " + secondsLeft + "s");
+            } else {
+                _oInterface.showMessage("PONTO: " + iNumber + " | APOSTE AGORA! ⏰ " + secondsLeft + "s");
+            }
             
             var countdownInterval = setInterval(function() {
                 secondsLeft--;
                 if(secondsLeft > 0 && _bPointBettingOpen){
-                    _oInterface.showMessage("PONTO: " + iNumber + " | APOSTE NO PONTO OU NO 7! ⏰ " + secondsLeft + "s");
+                    if(_bIsMyTurn){
+                        _oInterface.showMessage("PONTO: " + iNumber + " | AGUARDE OS OUTROS JOGADORES ⏰ " + secondsLeft + "s");
+                    } else {
+                        _oInterface.showMessage("PONTO: " + iNumber + " | APOSTE AGORA! ⏰ " + secondsLeft + "s");
+                    }
                 } else {
                     clearInterval(countdownInterval);
                 }
@@ -604,7 +614,17 @@ function CGame(oData){
                     _oInterface.disableBetFiches();
                     _oInterface.disableClearButton();
                     console.log("⏰ TEMPO ESGOTADO - Apostas fechadas!");
-                    _oInterface.showMessage("APOSTAS FECHADAS! Aguarde o atirador jogar.");
+                    _oInterface.showMessage("APOSTAS FECHADAS! Aguarde o shooter jogar.");
+                    
+                    setTimeout(function() {
+                        if (_oInterface && _oInterface.hideMessage) {
+                            _oInterface.hideMessage();
+                        }
+                    }, 2000);
+                } else {
+                    // Mensagem para o shooter
+                    console.log("⏰ TEMPO ESGOTADO - Apostas dos outros jogadores fechadas!");
+                    _oInterface.showMessage("Agora você pode jogar!");
                     
                     setTimeout(function() {
                         if (_oInterface && _oInterface.hideMessage) {
@@ -1165,6 +1185,13 @@ function CGame(oData){
     this.onBetOnPoint = function(){
         console.log('🎲 Jogador quer apostar no PONTO:', _iNumberPoint);
         
+        // BLOQUEAR O SHOOTER - Apenas outros jogadores podem apostar
+        if(_bIsMyTurn){
+            _oMsgBox.show("VOCÊ É O SHOOTER!\nAPENAS OS OUTROS JOGADORES PODEM APOSTAR NO PONTO OU NO 7!");
+            playSound("lose", 0.3, false);
+            return;
+        }
+        
         // Verificar se o período de apostas está aberto
         if(!_bPointBettingOpen){
             _oMsgBox.show("PERÍODO DE APOSTAS ENCERRADO!");
@@ -1200,6 +1227,13 @@ function CGame(oData){
     
     this.onBetOnSeven = function(){
         console.log('🎲 Jogador quer apostar no 7');
+        
+        // BLOQUEAR O SHOOTER - Apenas outros jogadores podem apostar
+        if(_bIsMyTurn){
+            _oMsgBox.show("VOCÊ É O SHOOTER!\nAPENAS OS OUTROS JOGADORES PODEM APOSTAR NO PONTO OU NO 7!");
+            playSound("lose", 0.3, false);
+            return;
+        }
         
         // Verificar se o período de apostas está aberto
         if(!_bPointBettingOpen){

@@ -518,30 +518,30 @@ function CInterface(){
         // Container para os botões de aposta no ponto
         _oPointBettingContainer = new createjs.Container();
         _oPointBettingContainer.x = CANVAS_WIDTH / 2;
-        _oPointBettingContainer.y = CANVAS_HEIGHT / 2 + 80; // Abaixo da mesa
+        _oPointBettingContainer.y = 100; // Mais para cima na tela
         _oPointBettingContainer.visible = false;
         s_oStage.addChild(_oPointBettingContainer);
         
         // Fundo semi-transparente
-        var oBackground = new createjs.Graphics().beginFill("rgba(0,0,0,0.7)").drawRoundRect(-250, -80, 500, 160, 10);
+        var oBackground = new createjs.Graphics().beginFill("rgba(0,0,0,0.7)").drawRoundRect(-250, -50, 500, 120, 10);
         var oBgShape = new createjs.Shape(oBackground);
         _oPointBettingContainer.addChild(oBgShape);
         
         // Texto de título
         var oTitleText = new CTLText(_oPointBettingContainer, 
-                    -200, -60, 400, 30, 
-                    24, "center", "#ffde00", FONT2, 1,
+                    -200, -35, 400, 30, 
+                    22, "center", "#ffde00", FONT2, 1,
                     0, 0,
                     "APOSTE NO PONTO OU NO 7!",
                     true, true, false,
                     false );
         
-        // Botão para apostar no PONTO (esquerda)
-        _oButBetOnPoint = new CTextButton(-120, 0, s_oSpriteLibrary.getSprite('roll_but'), "PONTO: 4", FONT1, "#fff", 32, "center", _oPointBettingContainer);
+        // Botão para apostar no PONTO (esquerda) - usando but_bg
+        _oButBetOnPoint = new CTextButton(-120, 15, s_oSpriteLibrary.getSprite('but_bg'), "PONTO: 4", FONT1, "#fff", 24, "center", _oPointBettingContainer);
         _oButBetOnPoint.addEventListener(ON_MOUSE_UP, this._onBetOnPoint, this);
         
-        // Botão para apostar no 7 (direita)
-        _oButBetOnSeven = new CTextButton(120, 0, s_oSpriteLibrary.getSprite('roll_but'), "7", FONT1, "#fff", 32, "center", _oPointBettingContainer);
+        // Botão para apostar no 7 (direita) - usando but_bg
+        _oButBetOnSeven = new CTextButton(120, 15, s_oSpriteLibrary.getSprite('but_bg'), "7", FONT1, "#fff", 24, "center", _oPointBettingContainer);
         _oButBetOnSeven.addEventListener(ON_MOUSE_UP, this._onBetOnSeven, this);
     };
     

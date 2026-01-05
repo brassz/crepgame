@@ -26,13 +26,18 @@ Assim que o ponto é estabelecido:
 
 ### 3. Sistema de Apostas
 
-#### Como Apostar no Ponto:
+**⚠️ IMPORTANTE: APENAS OS OUTROS JOGADORES PODEM APOSTAR!**
+- O **SHOOTER** (jogador com os dados) **NÃO PODE** apostar no ponto ou no 7
+- Se o shooter tentar clicar nos botões, receberá uma mensagem de bloqueio
+- Apenas os **outros jogadores** na sala podem fazer essas apostas
+
+#### Como Apostar no Ponto (OUTROS JOGADORES):
 1. Selecione o valor da ficha que deseja apostar
 2. Clique no botão **"PONTO: X"**
 3. O valor será deduzido do seu saldo
 4. Aparecerá uma mensagem confirmando sua aposta
 
-#### Como Apostar no 7:
+#### Como Apostar no 7 (OUTROS JOGADORES):
 1. Selecione o valor da ficha que deseja apostar
 2. Clique no botão **"7"**
 3. O valor será deduzido do seu saldo
@@ -120,32 +125,36 @@ Após 7 segundos:
 
 1. **Modo Multiplayer:** Este sistema só funciona em modo multiplayer (quando conectado ao Socket.IO)
 
-2. **Período Limitado:** Os 7 segundos começam IMEDIATAMENTE após o ponto ser estabelecido
+2. **APENAS OUTROS JOGADORES:** O **shooter NÃO pode apostar** no ponto ou no 7. Apenas os outros jogadores na sala podem fazer essas apostas.
 
-3. **Uma Chance:** Se você perder o período de 7 segundos, não poderá mais apostar até o próximo ponto
+3. **Período Limitado:** Os 7 segundos começam IMEDIATAMENTE após o ponto ser estabelecido
 
-4. **Múltiplas Apostas:** Você pode apostar várias vezes (múltiplas fichas) no mesmo número durante os 7 segundos
+4. **Uma Chance:** Se você perder o período de 7 segundos, não poderá mais apostar até o próximo ponto
 
-5. **Sem Limite de Apostas:** Durante os 7 segundos, você pode apostar tanto no ponto quanto no 7, se desejar
+5. **Múltiplas Apostas:** Você pode apostar várias vezes (múltiplas fichas) no mesmo número durante os 7 segundos
 
-6. **Feedback Visual:** 
+6. **Sem Limite de Apostas:** Durante os 7 segundos, você pode apostar tanto no ponto quanto no 7, se desejar
+
+7. **Feedback Visual:** 
    - Mensagens na tela confirmam cada aposta
    - Sons de fichas são reproduzidos
    - Contador regressivo é sempre visível
+   - Mensagens diferentes para o shooter e outros jogadores
 
 ## Exemplo de Jogo
 
-1. **Shooter faz primeira jogada:** Tira 5 (estabelece ponto em 5)
-2. **Botões aparecem:** "PONTO: 5" e "7"
+1. **Shooter (Jogador 1) faz primeira jogada:** Tira 5 (estabelece ponto em 5)
+2. **Botões aparecem:** "PONTO: 5" e "7" (apenas para os outros jogadores)
 3. **Contador:** "⏰ 7s" começando a contar
-4. **Jogador A:** Aposta $10 no ponto 5
-5. **Jogador B:** Aposta $20 no 7
-6. **Após 7 segundos:** Botões desaparecem
-7. **Shooter rola:** Tira 5
-8. **Resultado:**
-   - Jogador A ganha: $10 + ($10 × 1.5) = $25
-   - Jogador B perde: $20
-   - Shooter ganha sua aposta também
+4. **Jogador 1 (shooter):** Vê mensagem "AGUARDE OS OUTROS JOGADORES" - NÃO pode apostar
+5. **Jogador 2:** Aposta $10 no ponto 5
+6. **Jogador 3:** Aposta $20 no 7
+7. **Após 7 segundos:** Botões desaparecem
+8. **Shooter (Jogador 1) rola:** Tira 5
+9. **Resultado:**
+   - Jogador 2 ganha: $10 + ($10 × 1.5) = $25
+   - Jogador 3 perde: $20
+   - Shooter (Jogador 1) ganha sua aposta original também
 
 ## Testando o Sistema
 

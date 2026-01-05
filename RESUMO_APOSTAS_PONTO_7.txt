@@ -21,12 +21,14 @@
    │                                                     │
    └─────────────────────────────────────────────────────┘
 
-✅ TODOS os jogadores têm 7 SEGUNDOS para clicar em um dos botões
+✅ APENAS OS OUTROS JOGADORES (não o shooter) têm 7 SEGUNDOS para apostar
 
-✅ Para apostar:
+✅ Para apostar (APENAS OUTROS JOGADORES):
    1. Selecione uma FICHA (valor)
    2. Clique no botão "PONTO: X" ou "7"
    3. Pode apostar várias vezes!
+   
+⚠️ O SHOOTER (jogador com os dados) NÃO PODE apostar!
 
 ✅ Após 7 segundos: Botões DESAPARECEM e não pode mais apostar
 
