@@ -10,16 +10,18 @@ Foi implementado um novo sistema que permite aos jogadores apostarem especificam
 
 Quando o shooter (jogador com os dados) faz a primeira jogada e NÃO tira 2, 3, 7, 11 ou 12, um PONTO é estabelecido (números 4, 5, 6, 8, 9 ou 10).
 
-### 2. Período de Apostas (7 segundos)
+### 2. Período de Apostas (10 segundos)
 
 Assim que o ponto é estabelecido:
-- **Aparecem dois botões grandes na tela:**
+- **Aparecem dois botões grandes na tela** (apenas para outros jogadores):
   - **"PONTO: X"** - Para apostar no número do ponto
   - **"7"** - Para apostar no número 7
 
-- **Todos os jogadores têm 7 SEGUNDOS para apostar**
+- **Os OUTROS jogadores têm 10 SEGUNDOS para apostar**
+- **O botão "APOSTE AQUI" fica DESABILITADO durante este período**
+- **As FICHAS ficam HABILITADAS para os outros jogadores**
 - **Um contador regressivo é exibido na tela**
-- Durante esses 7 segundos, qualquer jogador pode:
+- Durante esses 10 segundos, os outros jogadores podem:
   1. Selecionar uma ficha (valor da aposta)
   2. Clicar no botão "PONTO: X" ou "7"
   3. Repetir para apostar mais fichas
@@ -127,15 +129,19 @@ Após 7 segundos:
 
 2. **APENAS OUTROS JOGADORES:** O **shooter NÃO pode apostar** no ponto ou no 7. Apenas os outros jogadores na sala podem fazer essas apostas.
 
-3. **Período Limitado:** Os 7 segundos começam IMEDIATAMENTE após o ponto ser estabelecido
+3. **Período Limitado:** Os 10 segundos começam IMEDIATAMENTE após o ponto ser estabelecido
 
-4. **Uma Chance:** Se você perder o período de 7 segundos, não poderá mais apostar até o próximo ponto
+4. **Botão "APOSTE AQUI" Desabilitado:** Durante os 10 segundos de apostas no ponto/7, o botão principal fica desabilitado para evitar confusão
 
-5. **Múltiplas Apostas:** Você pode apostar várias vezes (múltiplas fichas) no mesmo número durante os 7 segundos
+5. **Fichas Habilitadas:** Os outros jogadores (não o shooter) podem selecionar fichas normalmente durante os 10 segundos
 
-6. **Sem Limite de Apostas:** Durante os 7 segundos, você pode apostar tanto no ponto quanto no 7, se desejar
+6. **Uma Chance:** Se você perder o período de 10 segundos, não poderá mais apostar até o próximo ponto
 
-7. **Feedback Visual:** 
+7. **Múltiplas Apostas:** Você pode apostar várias vezes (múltiplas fichas) no mesmo número durante os 10 segundos
+
+8. **Sem Limite de Apostas:** Durante os 10 segundos, você pode apostar tanto no ponto quanto no 7, se desejar
+
+9. **Feedback Visual:** 
    - Mensagens na tela confirmam cada aposta
    - Sons de fichas são reproduzidos
    - Contador regressivo é sempre visível

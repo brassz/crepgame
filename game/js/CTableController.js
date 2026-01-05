@@ -503,5 +503,20 @@ function CTableController(){
         return _oContainer.x;
     };
     
+    // Funções para controlar o botão "APOSTE AQUI"
+    this.disableMainBetButton = function(){
+        if(_aButs["main_bet"]){
+            _aButs["main_bet"].disable();
+            console.log("🚫 Botão 'APOSTE AQUI' desabilitado");
+        }
+    };
+    
+    this.enableMainBetButton = function(){
+        if(_aButs["main_bet"]){
+            _aButs["main_bet"].enable();
+            console.log("✅ Botão 'APOSTE AQUI' habilitado");
+        }
+    };
+    
     this._init();
 }

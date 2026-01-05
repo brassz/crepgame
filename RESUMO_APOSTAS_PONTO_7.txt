@@ -17,11 +17,16 @@
    │    │              │      │              │          │
    │    └──────────────┘      └──────────────┘          │
    │                                                     │
-   │            ⏰ TEMPO RESTANTE: 7s                     │
+   │            ⏰ TEMPO RESTANTE: 10s                    │
    │                                                     │
    └─────────────────────────────────────────────────────┘
 
-✅ APENAS OS OUTROS JOGADORES (não o shooter) têm 7 SEGUNDOS para apostar
+✅ APENAS OS OUTROS JOGADORES (não o shooter) têm 10 SEGUNDOS para apostar
+
+✅ Durante os 10 segundos:
+   • O botão "APOSTE AQUI" fica DESABILITADO 🚫
+   • As FICHAS ficam HABILITADAS para outros jogadores 💰
+   • Contador regressivo na tela ⏰
 
 ✅ Para apostar (APENAS OUTROS JOGADORES):
    1. Selecione uma FICHA (valor)
@@ -30,7 +35,10 @@
    
 ⚠️ O SHOOTER (jogador com os dados) NÃO PODE apostar!
 
-✅ Após 7 segundos: Botões DESAPARECEM e não pode mais apostar
+✅ Após 10 segundos: 
+   • Botões DESAPARECEM
+   • Botão "APOSTE AQUI" é REABILITADO ✅
+   • Não pode mais apostar nesta rodada
 
 ✅ PAGAMENTOS:
 

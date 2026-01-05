@@ -477,8 +477,9 @@ function CGame(oData){
                     _iPointBettingTimer = null;
                 }
                 
-                // OCULTAR BOTÕES
+                // OCULTAR BOTÕES E REABILITAR BOTÃO "APOSTE AQUI"
                 _oInterface.hidePointBettingButtons();
+                _oTableController.enableMainBetButton();
                 
                 this._setState(STATE_GAME_WAITING_FOR_BET);
                 
@@ -493,8 +494,9 @@ function CGame(oData){
                     _iPointBettingTimer = null;
                 }
                 
-                // OCULTAR BOTÕES
+                // OCULTAR BOTÕES E REABILITAR BOTÃO "APOSTE AQUI"
                 _oInterface.hidePointBettingButtons();
+                _oTableController.enableMainBetButton();
                 
                 this._setState(STATE_GAME_WAITING_FOR_BET);
             }
@@ -564,22 +566,33 @@ function CGame(oData){
             // ABRIR período de apostas
             _bPointBettingOpen = true;
             
-            // Habilitar fichas para TODOS os jogadores
-            _oInterface.enableBetFiches();
-            _oInterface.enableClearButton();
+            // DESABILITAR BOTÃO "APOSTE AQUI" durante o período de apostas no ponto
+            _oTableController.disableMainBetButton();
             
-            // MOSTRAR BOTÕES DE APOSTA NO PONTO E NO 7
-            _oInterface.showPointBettingButtons(iNumber);
+            // MOSTRAR BOTÕES DE APOSTA NO PONTO E NO 7 - APENAS PARA OUTROS JOGADORES
+            if(!_bIsMyTurn){
+                // Se NÃO é o shooter, mostra os botões
+                _oInterface.showPointBettingButtons(iNumber);
+                
+                // Habilitar fichas para OUTROS jogadores
+                _oInterface.enableBetFiches();
+                _oInterface.enableClearButton();
+                
+                console.log("💰 Fichas habilitadas para apostar no ponto ou no 7");
+            } else {
+                // Se É o shooter, NÃO mostra os botões
+                console.log("🎯 Você é o shooter - aguarde os outros jogadores apostarem");
+            }
             
-            console.log("📊 PONTO ESTABELECIDO EM " + iNumber + " - 7 SEGUNDOS PARA OUTROS JOGADORES APOSTAREM!");
+            console.log("📊 PONTO ESTABELECIDO EM " + iNumber + " - 10 SEGUNDOS PARA OUTROS JOGADORES APOSTAREM!");
             
             // Limpar timer anterior se existir
             if(_iPointBettingTimer){
                 clearTimeout(_iPointBettingTimer);
             }
             
-            // CONTADOR VISUAL: Mostrar segundos restantes
-            var secondsLeft = 7;
+            // CONTADOR VISUAL: Mostrar segundos restantes (10 segundos)
+            var secondsLeft = 10;
             
             // Mensagem diferente para o shooter e outros jogadores
             if(_bIsMyTurn){
@@ -601,13 +614,16 @@ function CGame(oData){
                 }
             }, 1000);
             
-            // TIMER DE 7 SEGUNDOS: Após isso, fecha as apostas
+            // TIMER DE 10 SEGUNDOS: Após isso, fecha as apostas
             _iPointBettingTimer = setTimeout(function() {
                 _bPointBettingOpen = false;
                 clearInterval(countdownInterval);
                 
-                // OCULTAR BOTÕES DE APOSTA
+                // OCULTAR BOTÕES DE APOSTA (apenas para quem os viu - outros jogadores)
                 _oInterface.hidePointBettingButtons();
+                
+                // REABILITAR BOTÃO "APOSTE AQUI"
+                _oTableController.enableMainBetButton();
                 
                 // Desabilitar fichas para jogadores que NÃO são o atirador
                 if(!_bIsMyTurn){
@@ -632,7 +648,7 @@ function CGame(oData){
                         }
                     }, 2000);
                 }
-            }, 7000); // 7 segundos
+            }, 10000); // 10 segundos
         }
     };
     
@@ -797,8 +813,9 @@ function CGame(oData){
                 _bMustBetFullWin = false;
                 _iLastWinAmount = 0;
                 
-                // OCULTAR BOTÕES
+                // OCULTAR BOTÕES E REABILITAR BOTÃO "APOSTE AQUI"
                 _oInterface.hidePointBettingButtons();
+                _oTableController.enableMainBetButton();
             } else if(iSumDices === _iNumberPoint){
                 // ACERTOU O PONTO: SHOOTER GANHA, quem apostou no ponto também ganha!
                 var iTotalActiveBets = _oMySeat.getCurBet();
@@ -855,8 +872,9 @@ function CGame(oData){
                 _iNumberPoint = -1;
                 this._setState(STATE_GAME_WAITING_FOR_BET);
                 
-                // OCULTAR BOTÕES
+                // OCULTAR BOTÕES E REABILITAR BOTÃO "APOSTE AQUI"
                 _oInterface.hidePointBettingButtons();
+                _oTableController.enableMainBetButton();
             } else {
                 // QUALQUER OUTRO NÚMERO: CONTINUA JOGANDO
                 new CScoreText("CONTINUA... PONTO: " + _iNumberPoint, CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
