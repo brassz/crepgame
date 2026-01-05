@@ -560,6 +560,11 @@ function CGame(oData){
     };
     
     this._assignNumber = function(iNumber){
+        console.log("");
+        console.log("🔥🔥🔥 _assignNumber CHAMADA - INÍCIO DA FUNÇÃO");
+        console.log("     VALOR ATUAL de _bIAmShooter:", _bIAmShooter);
+        console.log("");
+        
         _iNumberPoint = iNumber;
         
         //PLACE 'ON' PLACEHOLDER
@@ -1009,6 +1014,7 @@ function CGame(oData){
         // Isso DEVE acontecer ANTES de qualquer outra coisa
         _bIAmShooter = true;
         console.log("🎯🎯🎯 SETANDO _bIAmShooter = true (EU SOU O SHOOTER QUE ESTÁ LANÇANDO)");
+        console.log("     Verificação imediata: _bIAmShooter =", _bIAmShooter);
         
         // BLOQUEAR O TURNO: Após lançar, não é mais sua vez
         _bIsMyTurn = false;
@@ -1019,6 +1025,8 @@ function CGame(oData){
         if(_iState === STATE_GAME_WAITING_FOR_BET){
             this._setState(STATE_GAME_COME_OUT);
         }
+        
+        console.log("     Antes de prepareForRolling: _bIAmShooter =", _bIAmShooter);
         
         $(s_oMain).trigger("bet_placed",_oMySeat.getCurBet());
         this._prepareForRolling();
