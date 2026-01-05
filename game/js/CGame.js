@@ -40,8 +40,8 @@ function CGame(oData){
     var _aPointBets = {};  // Objeto para armazenar apostas no ponto por jogador
     var _aSevenBets = {};  // Objeto para armazenar apostas no 7 por jogador
     
-    // CONTROLE DO SHOOTER DA RODADA ATUAL
-    var _bIAmTheShooter = false;  // Flag: eu sou o shooter desta rodada de ponto?
+    // CONTROLE DE QUEM É O SHOOTER (quem lançou os dados e estabeleceu o ponto)
+    var _bIAmShooter = false;  // Flag: eu sou o shooter que lançou os dados?
     
     
     this._init = function(){
@@ -581,7 +581,8 @@ function CGame(oData){
         console.log("   📍 Ponto estabelecido:", iNumber);
         console.log("   🎮 isMultiplayer:", isMultiplayer);
         console.log("   🎯 _bIsMyTurn (É MEU turno?):", _bIsMyTurn);
-        console.log("   👤 Devo VER os botões?:", !_bIsMyTurn);
+        console.log("   🎲 _bIAmShooter (EU sou o shooter?):", _bIAmShooter);
+        console.log("   👤 Devo VER os botões?:", !_bIAmShooter);
         console.log("   🔌 Socket.IO exists:", !!window.GameClientSocketIO);
         if(window.GameClientSocketIO){
             console.log("   🔌 Socket.IO connected:", window.GameClientSocketIO.isConnected);
@@ -596,7 +597,8 @@ function CGame(oData){
         _oTableController.disableMainBetButton();
         
         // MOSTRAR BOTÕES DE APOSTA NO PONTO E NO 7 - APENAS PARA OUTROS JOGADORES
-        if(!_bIsMyTurn){
+        // USAR _bIAmShooter AO INVÉS DE _bIsMyTurn
+        if(!_bIAmShooter){
             console.log("✅✅✅ SIM! Mostrando botões - você NÃO é o shooter");
             _oInterface.showPointBettingButtons(iNumber);
             
@@ -607,7 +609,6 @@ function CGame(oData){
             console.log("💰 Fichas habilitadas para apostar no ponto ou no 7");
         } else {
             console.log("❌❌❌ NÃO! Você É o shooter - botões NÃO serão mostrados");
-            console.log("   (Se você está vendo isto e deveria ver os botões, o sistema de turnos não está sincronizado)");
         }
         
         // SEMPRE EXECUTAR O TIMER (independente de multiplayer)
@@ -839,6 +840,10 @@ function CGame(oData){
                 _bMustBetFullWin = false;
                 _iLastWinAmount = 0;
                 
+                // RESETAR FLAG DE SHOOTER (rodada terminou)
+                _bIAmShooter = false;
+                console.log("🔄 Rodada terminou (7) - _bIAmShooter = false");
+                
                 // OCULTAR BOTÕES E REABILITAR BOTÃO "APOSTE AQUI"
                 _oInterface.hidePointBettingButtons();
                 _oTableController.enableMainBetButton();
@@ -897,6 +902,10 @@ function CGame(oData){
                 // Volta para o estado de espera
                 _iNumberPoint = -1;
                 this._setState(STATE_GAME_WAITING_FOR_BET);
+                
+                // RESETAR FLAG DE SHOOTER (rodada terminou)
+                _bIAmShooter = false;
+                console.log("🔄 Rodada terminou (ponto acertado) - _bIAmShooter = false");
                 
                 // OCULTAR BOTÕES E REABILITAR BOTÃO "APOSTE AQUI"
                 _oInterface.hidePointBettingButtons();
@@ -1001,8 +1010,8 @@ function CGame(oData){
             this._setState(STATE_GAME_COME_OUT);
             
             // Marcar que EU sou o shooter desta rodada
-            _bIAmTheShooter = true;
-            console.log("🎯 Você é o shooter desta rodada");
+            _bIAmShooter = true;
+            console.log("🎯 Você é o shooter desta rodada - _bIAmShooter = true");
         }
         
         $(s_oMain).trigger("bet_placed",_oMySeat.getCurBet());
@@ -1234,7 +1243,7 @@ function CGame(oData){
         console.log('🎲 Jogador quer apostar no PONTO:', _iNumberPoint);
         
         // BLOQUEAR O SHOOTER - Apenas outros jogadores podem apostar
-        if(_bIsMyTurn){
+        if(_bIAmShooter){
             _oMsgBox.show("VOCÊ É O SHOOTER!\nAPENAS OS OUTROS JOGADORES PODEM APOSTAR NO PONTO OU NO 7!");
             playSound("lose", 0.3, false);
             return;
@@ -1277,7 +1286,7 @@ function CGame(oData){
         console.log('🎲 Jogador quer apostar no 7');
         
         // BLOQUEAR O SHOOTER - Apenas outros jogadores podem apostar
-        if(_bIsMyTurn){
+        if(_bIAmShooter){
             _oMsgBox.show("VOCÊ É O SHOOTER!\nAPENAS OS OUTROS JOGADORES PODEM APOSTAR NO PONTO OU NO 7!");
             playSound("lose", 0.3, false);
             return;
