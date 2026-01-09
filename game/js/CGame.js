@@ -618,6 +618,10 @@ function CGame(oData){
         } else {
             console.log("❌❌❌ DECISÃO: NÃO mostrar botões - você É o shooter (_bIAmShooter = true)");
             console.log("   Os botões NÃO serão exibidos para você.");
+            console.log("   MOTIVO: Apenas outros jogadores podem apostar no ponto ou no 7");
+            
+            // GARANTIR que os botões estão ocultos para o shooter
+            _oInterface.hidePointBettingButtons();
             console.log("");
         }
         
