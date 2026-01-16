@@ -1111,6 +1111,11 @@ function CGame(oData){
         // UPDATE TURN FLAG
         _bIsMyTurn = isMyTurn;
         
+        // CRITICAL FIX: Update _bIAmShooter when shooter changes
+        // If it's my turn, I'm the shooter; otherwise, I'm not
+        _bIAmShooter = isMyTurn;
+        console.log('🎯 _bIAmShooter atualizado para:', _bIAmShooter, '(isMyTurn:', isMyTurn + ')');
+        
         // Only allow rolling if it's my turn AND there's an active bet
         const canRoll = isMyTurn && _oMySeat.getCurBet() > 0;
         _oInterface.enableRoll(canRoll);

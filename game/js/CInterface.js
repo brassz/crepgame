@@ -520,7 +520,7 @@ function CInterface(){
         // Container para os botões de aposta no ponto
         _oPointBettingContainer = new createjs.Container();
         _oPointBettingContainer.x = CANVAS_WIDTH / 2;
-        _oPointBettingContainer.y = 100; // Mais para cima na tela
+        _oPointBettingContainer.y = 180; // Posição mais baixa na tela
         _oPointBettingContainer.visible = false;
         s_oStage.addChild(_oPointBettingContainer);
         
