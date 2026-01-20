@@ -554,24 +554,94 @@ function CInterface(){
     this.showPointBettingButtons = function(iPointNumber){
         console.log("🎮 showPointBettingButtons chamado com ponto:", iPointNumber);
         if(_oPointBettingContainer){
+            // IMPORTANTE: Garantir que o block está oculto para não bloquear os botões
+            if(_oBlock){
+                _oBlock.visible = false;
+                console.log("✅ Block oculto para não bloquear os botões");
+            }
+            
+            // Garantir que o container está visível
             _oPointBettingContainer.visible = true;
+            _oPointBettingContainer.alpha = 1.0;
+            
+            // Garantir que todos os elementos filhos estão visíveis
+            var iNumContainerChildren = _oPointBettingContainer.getNumChildren();
+            console.log("🔍 Container tem", iNumContainerChildren, "elementos filhos");
+            for(var i = 0; i < iNumContainerChildren; i++){
+                var oChild = _oPointBettingContainer.getChildAt(i);
+                if(oChild){
+                    oChild.visible = true;
+                    oChild.alpha = 1.0;
+                    console.log("   ✅ Elemento", i, "visível:", oChild.visible, "alpha:", oChild.alpha);
+                }
+            }
+            
+            // CRITICAL: Mover o container para o TOPO do stage para garantir que apareça acima de todos os outros elementos
+            var iNumChildren = s_oStage.getNumChildren();
+            if(iNumChildren > 0){
+                s_oStage.setChildIndex(_oPointBettingContainer, iNumChildren - 1);
+                console.log("✅ Container movido para o topo do stage (índice:", iNumChildren - 1, ")");
+            }
+            
             console.log("✅ Container de botões agora está visível");
+            console.log("   Posição do container: x=", _oPointBettingContainer.x, "y=", _oPointBettingContainer.y);
+            console.log("   Visible:", _oPointBettingContainer.visible);
+            console.log("   Alpha:", _oPointBettingContainer.alpha);
             
             // Atualizar texto do botão com o número do ponto
             if(_oButBetOnPoint){
                 _oButBetOnPoint.changeText("PONTO: " + iPointNumber);
+                _oButBetOnPoint.setVisible(true); // Garantir que o botão está visível
                 console.log("✅ Texto do botão atualizado para: PONTO:", iPointNumber);
+            }
+            
+            // Garantir que o botão do 7 também está visível
+            if(_oButBetOnSeven){
+                _oButBetOnSeven.setVisible(true); // Garantir que o botão está visível
+            }
+            
+            // Forçar atualização do stage
+            if(s_oStage && s_oStage.update){
+                s_oStage.update();
             }
         } else {
             console.error("❌ _oPointBettingContainer não existe!");
         }
     };
     
-    this.hidePointBettingButtons = function(){
+    this.hidePointBettingButtons = function(force){
         console.log("🔴 hidePointBettingButtons chamado");
+        console.log("   Timestamp:", Date.now());
+        console.log("   Force:", force);
+        
+        // CRITICAL: Verificar se estamos no período de apostas (8 segundos após estabelecer ponto)
+        // Só esconder se FORCE for true OU se não estiver mais no período de apostas
+        if(window.s_oGame && window.s_oGame._bPointBettingOpen && !force){
+            console.warn("⚠️ BLOQUEADO: Tentativa de esconder botões durante período de apostas ativo!");
+            console.warn("   Os botões devem permanecer visíveis por 8 segundos completos");
+            console.warn("   Use force=true para forçar esconder (apenas quando rodada terminar)");
+            // NÃO esconder - retornar imediatamente
+            return;
+        }
+        
         if(_oPointBettingContainer){
             _oPointBettingContainer.visible = false;
             console.log("✅ Container de botões agora está oculto");
+            
+            // Forçar atualização do stage
+            if(s_oStage && s_oStage.update){
+                s_oStage.update();
+            }
+        }
+    };
+    
+    // Função para garantir que os botões permaneçam visíveis (chamada periodicamente)
+    this.ensurePointBettingButtonsVisible = function(){
+        if(_oPointBettingContainer && window.s_oGame && window.s_oGame._bPointBettingOpen){
+            if(!_oPointBettingContainer.visible){
+                console.warn("⚠️ Botões de aposta foram escondidos prematuramente - restaurando visibilidade");
+                this.showPointBettingButtons(window.s_oGame._iNumberPoint || 0);
+            }
         }
     };
     

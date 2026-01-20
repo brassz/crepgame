@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Painel Administrativo</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 {
+            font-size: 24px;
+        }
+        .header-info {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        .btn-logout {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .btn-logout:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        .container {
+            max-width: 1400px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .tab {
+            padding: 12px 24px;
+            background: white;
+            border: none;
+            border-radius: 8px 8px 0 0;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.3s;
+        }
+        .tab.active {
+            background: white;
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+        }
+        .tab-content {
+            display: none;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .stat-card h3 {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 10px;
+        }
+        .stat-card .value {
+            font-size: 32px;
+            font-weight: bold;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .btn {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        }
+        .btn-success {
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        table th,
+        table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+        table tr:hover {
+            background: #f8f9fa;
+        }
+        .badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .badge-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .badge-approved {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .badge-rejected {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .badge-active {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        .dice-preview {
+            display: inline-flex;
+            gap: 10px;
+            align-items: center;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            font-size: 24px;
+        }
+        .message {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        .message.success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .message.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../game/js/auth-config.js"></script>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <h1>🎮 Painel Administrativo</h1>
+            <div class="header-info">
+                <span id="adminName"></span>
+                <button class="btn-logout" onclick="logout()">Sair</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('dashboard')">📊 Dashboard</button>
+            <button class="tab" onclick="showTab('dice')">🎲 Programar Dados</button>
+            <button class="tab" onclick="showTab('deposits')">💰 Depósitos</button>
+            <button class="tab" onclick="showTab('reports')">📈 Relatórios</button>
+            <button class="tab" onclick="showTab('rooms')">🏠 Mesas Online</button>
+            <button class="tab" onclick="showTab('bets')">💵 Saldo Total</button>
+        </div>
+
+        <!-- Dashboard Tab -->
+        <div id="dashboard" class="tab-content active">
+            <h2>Estatísticas Gerais</h2>
+            <div class="stats-grid" id="statsGrid">
+                <div class="loading">Carregando estatísticas...</div>
+            </div>
+        </div>
+
+        <!-- Programar Dados Tab -->
+        <div id="dice" class="tab-content">
+            <h2>Programar Resultado dos Dados</h2>
+            <div id="diceMessage"></div>
+            <form id="diceForm">
+                <div class="form-group">
+                    <label>Sala</label>
+                    <select id="diceRoom" required>
+                        <option value="">Todas as salas</option>
+                        <option value="bronze">Bronze</option>
+                        <option value="prata">Prata</option>
+                        <option value="ouro">Ouro</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Dado 1</label>
+                    <input type="number" id="dice1" min="1" max="6" required>
+                </div>
+                <div class="form-group">
+                    <label>Dado 2</label>
+                    <input type="number" id="dice2" min="1" max="6" required>
+                </div>
+                <div class="form-group">
+                    <label>Observações (opcional)</label>
+                    <input type="text" id="diceNotes" placeholder="Ex: Teste de resultado programado">
+                </div>
+                <button type="submit" class="btn">Programar Resultado</button>
+            </form>
+            <h3 style="margin-top: 30px;">Resultados Programados Ativos</h3>
+            <div id="activeDiceResults">
+                <div class="loading">Carregando...</div>
+            </div>
+        </div>
+
+        <!-- Depósitos Tab -->
+        <div id="deposits" class="tab-content">
+            <h2>Gerenciar Depósitos</h2>
+            <div id="depositsMessage"></div>
+            <div id="depositsList">
+                <div class="loading">Carregando depósitos...</div>
+            </div>
+        </div>
+
+        <!-- Relatórios Tab -->
+        <div id="reports" class="tab-content">
+            <h2>Relatórios e Logs</h2>
+            <div id="reportsList">
+                <div class="loading">Carregando relatórios...</div>
+            </div>
+        </div>
+
+        <!-- Mesas Online Tab -->
+        <div id="rooms" class="tab-content">
+            <h2>Mesas Online</h2>
+            <div id="roomsList">
+                <div class="loading">Carregando mesas...</div>
+            </div>
+        </div>
+
+        <!-- Saldo Total Tab -->
+        <div id="bets" class="tab-content">
+            <h2>Saldo Total de Apostas</h2>
+            <div id="betsStats">
+                <div class="loading">Carregando estatísticas de apostas...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = window.SUPABASE_URL;
+        const SUPABASE_KEY = window.SUPABASE_ANON_KEY;
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        let currentAdmin = null;
+
+        // Verificar autenticação
+        function checkAuth() {
+            const adminData = localStorage.getItem('admin_user');
+            if (!adminData) {
+                window.location.href = 'admin-login.html';
+                return;
+            }
+            currentAdmin = JSON.parse(adminData);
+            document.getElementById('adminName').textContent = currentAdmin.full_name;
+        }
+
+        function logout() {
+            localStorage.removeItem('admin_user');
+            window.location.href = 'admin-login.html';
+        }
+
+        function showTab(tabName) {
+            // Esconder todas as tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Mostrar tab selecionada
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+
+            // Carregar dados da tab
+            loadTabData(tabName);
+        }
+
+        async function loadTabData(tabName) {
+            switch(tabName) {
+                case 'dashboard':
+                    loadDashboard();
+                    break;
+                case 'dice':
+                    loadDiceResults();
+                    break;
+                case 'deposits':
+                    loadDeposits();
+                    break;
+                case 'reports':
+                    loadReports();
+                    break;
+                case 'rooms':
+                    loadRooms();
+                    break;
+                case 'bets':
+                    loadBetsStats();
+                    break;
+            }
+        }
+
+        async function loadDashboard() {
+            try {
+                const { data, error } = await supabase.rpc('get_admin_stats');
+                
+                if (error) throw error;
+
+                const stats = data;
+                document.getElementById('statsGrid').innerHTML = `
+                    <div class="stat-card">
+                        <h3>Usuários Ativos</h3>
+                        <div class="value">${stats.total_users || 0}</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Mesas Ativas</h3>
+                        <div class="value">${stats.total_rooms || 0}</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Total em Apostas</h3>
+                        <div class="value">R$ ${(stats.total_bets || 0).toFixed(2)}</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Depósitos Pendentes</h3>
+                        <div class="value">${stats.total_deposits_pending || 0}</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Total Depositado</h3>
+                        <div class="value">R$ ${(stats.total_deposits_amount || 0).toFixed(2)}</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Jogadores Online</h3>
+                        <div class="value">${stats.online_players || 0}</div>
+                    </div>
+                `;
+            } catch (error) {
+                document.getElementById('statsGrid').innerHTML = 
+                    '<div class="message error">Erro ao carregar estatísticas: ' + error.message + '</div>';
+            }
+        }
+
+        // Programar Dados
+        document.getElementById('diceForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const roomType = document.getElementById('diceRoom').value;
+            const dice1 = parseInt(document.getElementById('dice1').value);
+            const dice2 = parseInt(document.getElementById('dice2').value);
+            const notes = document.getElementById('diceNotes').value;
+            const total = dice1 + dice2;
+
+            try {
+                const { data, error } = await supabase
+                    .from('dice_results')
+                    .insert({
+                        room_type: roomType || null,
+                        dice1: dice1,
+                        dice2: dice2,
+                        total: total,
+                        is_active: true,
+                        created_by: currentAdmin.id,
+                        notes: notes
+                    })
+                    .select();
+
+                if (error) throw error;
+
+                showMessage('diceMessage', 'Resultado programado com sucesso!', 'success');
+                document.getElementById('diceForm').reset();
+                loadDiceResults();
+            } catch (error) {
+                showMessage('diceMessage', 'Erro ao programar resultado: ' + error.message, 'error');
+            }
+        });
+
+        async function loadDiceResults() {
+            try {
+                const { data, error } = await supabase
+                    .from('dice_results')
+                    .select('*')
+                    .eq('is_active', true)
+                    .order('created_at', { ascending: false })
+                    .limit(20);
+
+                if (error) throw error;
+
+                if (data.length === 0) {
+                    document.getElementById('activeDiceResults').innerHTML = 
+                        '<p>Nenhum resultado programado ativo.</p>';
+                    return;
+                }
+
+                let html = '<table><thead><tr><th>Sala</th><th>Dados</th><th>Total</th><th>Criado em</th><th>Observações</th><th>Ações</th></tr></thead><tbody>';
+                
+                data.forEach(result => {
+                    html += `
+                        <tr>
+                            <td>${result.room_type || 'Todas'}</td>
+                            <td><div class="dice-preview">🎲${result.dice1} 🎲${result.dice2}</div></td>
+                            <td><strong>${result.total}</strong></td>
+                            <td>${new Date(result.created_at).toLocaleString('pt-BR')}</td>
+                            <td>${result.notes || '-'}</td>
+                            <td>
+                                <button class="btn btn-danger" onclick="deactivateDiceResult('${result.id}')">Desativar</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                html += '</tbody></table>';
+                document.getElementById('activeDiceResults').innerHTML = html;
+            } catch (error) {
+                document.getElementById('activeDiceResults').innerHTML = 
+                    '<div class="message error">Erro ao carregar resultados: ' + error.message + '</div>';
+            }
+        }
+
+        async function deactivateDiceResult(id) {
+            if (!confirm('Deseja desativar este resultado programado?')) return;
+
+            try {
+                const { error } = await supabase
+                    .from('dice_results')
+                    .update({ is_active: false })
+                    .eq('id', id);
+
+                if (error) throw error;
+
+                showMessage('diceMessage', 'Resultado desativado com sucesso!', 'success');
+                loadDiceResults();
+            } catch (error) {
+                showMessage('diceMessage', 'Erro ao desativar: ' + error.message, 'error');
+            }
+        }
+
+        async function loadDeposits() {
+            try {
+                const { data, error } = await supabase
+                    .from('deposits')
+                    .select(`
+                        *,
+                        users:user_id (full_name, email)
+                    `)
+                    .order('created_at', { ascending: false })
+                    .limit(50);
+
+                if (error) throw error;
+
+                if (data.length === 0) {
+                    document.getElementById('depositsList').innerHTML = '<p>Nenhum depósito encontrado.</p>';
+                    return;
+                }
+
+                let html = '<table><thead><tr><th>Usuário</th><th>Valor</th><th>Status</th><th>Data</th><th>Ações</th></tr></thead><tbody>';
+                
+                data.forEach(deposit => {
+                    const user = deposit.users || {};
+                    const statusClass = deposit.status === 'approved' ? 'approved' : 
+                                      deposit.status === 'rejected' ? 'rejected' : 'pending';
+                    
+                    html += `
+                        <tr>
+                            <td>${user.full_name || user.email || 'N/A'}</td>
+                            <td>R$ ${parseFloat(deposit.amount).toFixed(2)}</td>
+                            <td><span class="badge badge-${statusClass}">${deposit.status}</span></td>
+                            <td>${new Date(deposit.created_at).toLocaleString('pt-BR')}</td>
+                            <td>
+                                ${deposit.status === 'pending' ? `
+                                    <button class="btn btn-success" onclick="approveDeposit('${deposit.id}')">Aprovar</button>
+                                    <button class="btn btn-danger" onclick="rejectDeposit('${deposit.id}')">Rejeitar</button>
+                                ` : '-'}
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                html += '</tbody></table>';
+                document.getElementById('depositsList').innerHTML = html;
+            } catch (error) {
+                document.getElementById('depositsList').innerHTML = 
+                    '<div class="message error">Erro ao carregar depósitos: ' + error.message + '</div>';
+            }
+        }
+
+        async function approveDeposit(id) {
+            if (!confirm('Deseja aprovar este depósito?')) return;
+
+            try {
+                const { error } = await supabase
+                    .from('deposits')
+                    .update({
+                        status: 'approved',
+                        admin_id: currentAdmin.id,
+                        approved_at: new Date().toISOString()
+                    })
+                    .eq('id', id);
+
+                if (error) throw error;
+
+                showMessage('depositsMessage', 'Depósito aprovado com sucesso!', 'success');
+                loadDeposits();
+            } catch (error) {
+                showMessage('depositsMessage', 'Erro ao aprovar: ' + error.message, 'error');
+            }
+        }
+
+        async function rejectDeposit(id) {
+            if (!confirm('Deseja rejeitar este depósito?')) return;
+
+            try {
+                const { error } = await supabase
+                    .from('deposits')
+                    .update({
+                        status: 'rejected',
+                        admin_id: currentAdmin.id
+                    })
+                    .eq('id', id);
+
+                if (error) throw error;
+
+                showMessage('depositsMessage', 'Depósito rejeitado.', 'success');
+                loadDeposits();
+            } catch (error) {
+                showMessage('depositsMessage', 'Erro ao rejeitar: ' + error.message, 'error');
+            }
+        }
+
+        async function loadReports() {
+            try {
+                const { data, error } = await supabase
+                    .from('admin_logs')
+                    .select(`
+                        *,
+                        admin:admin_id (full_name)
+                    `)
+                    .order('created_at', { ascending: false })
+                    .limit(100);
+
+                if (error) throw error;
+
+                if (data.length === 0) {
+                    document.getElementById('reportsList').innerHTML = '<p>Nenhum log encontrado.</p>';
+                    return;
+                }
+
+                let html = '<table><thead><tr><th>Admin</th><th>Ação</th><th>Descrição</th><th>Data</th></tr></thead><tbody>';
+                
+                data.forEach(log => {
+                    const admin = log.admin || {};
+                    html += `
+                        <tr>
+                            <td>${admin.full_name || 'N/A'}</td>
+                            <td><strong>${log.action_type}</strong></td>
+                            <td>${log.description || '-'}</td>
+                            <td>${new Date(log.created_at).toLocaleString('pt-BR')}</td>
+                        </tr>
+                    `;
+                });
+
+                html += '</tbody></table>';
+                document.getElementById('reportsList').innerHTML = html;
+            } catch (error) {
+                document.getElementById('reportsList').innerHTML = 
+                    '<div class="message error">Erro ao carregar relatórios: ' + error.message + '</div>';
+            }
+        }
+
+        async function loadRooms() {
+            try {
+                const { data, error } = await supabase
+                    .from('game_rooms')
+                    .select('*')
+                    .eq('is_active', true)
+                    .order('room_type');
+
+                if (error) throw error;
+
+                if (data.length === 0) {
+                    document.getElementById('roomsList').innerHTML = '<p>Nenhuma mesa encontrada.</p>';
+                    return;
+                }
+
+                let html = '<table><thead><tr><th>Tipo</th><th>Nome</th><th>Jogadores</th><th>Aposta Mín</th><th>Aposta Máx</th><th>Status</th></tr></thead><tbody>';
+                
+                data.forEach(room => {
+                    html += `
+                        <tr>
+                            <td><strong>${room.room_type.toUpperCase()}</strong></td>
+                            <td>${room.room_name}</td>
+                            <td>${room.current_players || 0} / ${room.max_players || 8}</td>
+                            <td>R$ ${parseFloat(room.min_bet || 0).toFixed(2)}</td>
+                            <td>R$ ${parseFloat(room.max_bet || 0).toFixed(2)}</td>
+                            <td><span class="badge badge-active">Ativa</span></td>
+                        </tr>
+                    `;
+                });
+
+                html += '</tbody></table>';
+                document.getElementById('roomsList').innerHTML = html;
+            } catch (error) {
+                document.getElementById('roomsList').innerHTML = 
+                    '<div class="message error">Erro ao carregar mesas: ' + error.message + '</div>';
+            }
+        }
+
+        async function loadBetsStats() {
+            try {
+                // Buscar todas as apostas ativas
+                const { data: bets, error: betsError } = await supabase
+                    .from('bets')
+                    .select('amount, status')
+                    .eq('status', 'active');
+
+                if (betsError) throw betsError;
+
+                const totalActive = bets.reduce((sum, bet) => sum + parseFloat(bet.amount || 0), 0);
+
+                // Buscar histórico de apostas
+                const { data: allBets, error: allBetsError } = await supabase
+                    .from('bets')
+                    .select('amount, status, created_at');
+
+                if (allBetsError) throw allBetsError;
+
+                const totalAll = allBets.reduce((sum, bet) => sum + parseFloat(bet.amount || 0), 0);
+                const totalWon = allBets.filter(b => b.status === 'won')
+                    .reduce((sum, bet) => sum + parseFloat(bet.amount || 0), 0);
+                const totalLost = allBets.filter(b => b.status === 'lost')
+                    .reduce((sum, bet) => sum + parseFloat(bet.amount || 0), 0);
+
+                document.getElementById('betsStats').innerHTML = `
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <h3>Total em Apostas Ativas</h3>
+                            <div class="value">R$ ${totalActive.toFixed(2)}</div>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Total Histórico de Apostas</h3>
+                            <div class="value">R$ ${totalAll.toFixed(2)}</div>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Total Ganho pelos Jogadores</h3>
+                            <div class="value">R$ ${totalWon.toFixed(2)}</div>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Total Perdido pelos Jogadores</h3>
+                            <div class="value">R$ ${totalLost.toFixed(2)}</div>
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                document.getElementById('betsStats').innerHTML = 
+                    '<div class="message error">Erro ao carregar estatísticas: ' + error.message + '</div>';
+            }
+        }
+
+        function showMessage(elementId, text, type) {
+            const el = document.getElementById(elementId);
+            el.innerHTML = `<div class="message ${type}">${text}</div>`;
+            setTimeout(() => {
+                el.innerHTML = '';
+            }, 5000);
+        }
+
+        // Inicializar
+        checkAuth();
+        loadDashboard();
+    </script>
+</body>
+</html>
+

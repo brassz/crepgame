@@ -141,12 +141,11 @@
             <h1>Criar Conta</h1>
             <form id="register-form">
                 <input id="full-name" type="text" placeholder="Nome Completo" required>
-                <input id="email" type="email" placeholder="Email" required>
-                <input id="password" type="password" placeholder="Senha (mínimo 6 caracteres)" required minlength="6">
-                <input id="confirm-password" type="password" placeholder="Confirmar Senha" required minlength="6">
-                <div class="info-box">
-                    💰 Você começará com um saldo de R$ 1.000,00
-                </div>
+                <input id="username" type="text" placeholder="Nome de Jogador (username)" required>
+                <input id="email" type="email" placeholder="Email" required autocomplete="email">
+                <input id="cpf" type="text" placeholder="CPF (apenas números)" required maxlength="11">
+                <input id="password" type="password" placeholder="Senha (mínimo 6 caracteres)" required minlength="6" autocomplete="new-password">
+                <input id="confirm-password" type="password" placeholder="Confirmar Senha" required minlength="6" autocomplete="new-password">
                 <button type="submit">Criar Conta</button>
             </form>
             
@@ -173,12 +172,44 @@
                     }
                 }, 100);
 
+                // Máscara para CPF (apenas números)
+                document.getElementById('cpf').addEventListener('input', function(e){
+                    e.target.value = e.target.value.replace(/\D/g, '');
+                });
+
+                // Validação de CPF
+                function validateCPF(cpf) {
+                    cpf = cpf.replace(/\D/g, '');
+                    if (cpf.length !== 11) return false;
+                    if (/^(\d)\1+$/.test(cpf)) return false;
+                    
+                    let sum = 0;
+                    for (let i = 0; i < 9; i++) {
+                        sum += parseInt(cpf.charAt(i)) * (10 - i);
+                    }
+                    let digit = 11 - (sum % 11);
+                    if (digit >= 10) digit = 0;
+                    if (digit !== parseInt(cpf.charAt(9))) return false;
+                    
+                    sum = 0;
+                    for (let i = 0; i < 10; i++) {
+                        sum += parseInt(cpf.charAt(i)) * (11 - i);
+                    }
+                    digit = 11 - (sum % 11);
+                    if (digit >= 10) digit = 0;
+                    if (digit !== parseInt(cpf.charAt(10))) return false;
+                    
+                    return true;
+                }
+
                 var form = document.getElementById('register-form');
                 form.addEventListener('submit', async function(e){
                     e.preventDefault();
                     
                     var fullName = document.getElementById('full-name').value.trim();
+                    var username = document.getElementById('username').value.trim();
                     var email = document.getElementById('email').value.trim();
+                    var cpf = document.getElementById('cpf').value.replace(/\D/g, '');
                     var password = document.getElementById('password').value;
                     var confirmPassword = document.getElementById('confirm-password').value;
                     
@@ -188,8 +219,29 @@
                         return;
                     }
                     
+                    if(!username || username.length < 3){
+                        showError('O nome de jogador deve ter no mínimo 3 caracteres');
+                        return;
+                    }
+                    
+                    // Validar username (apenas letras, números e underscore)
+                    if(!/^[a-zA-Z0-9_]+$/.test(username)){
+                        showError('O nome de jogador deve conter apenas letras, números e underscore (_)');
+                        return;
+                    }
+                    
                     if(!email || !email.includes('@')){
                         showError('Por favor, insira um email válido');
+                        return;
+                    }
+                    
+                    if(cpf.length !== 11){
+                        showError('CPF deve ter 11 dígitos');
+                        return;
+                    }
+                    
+                    if(!validateCPF(cpf)){
+                        showError('CPF inválido');
                         return;
                     }
                     
@@ -203,9 +255,6 @@
                         return;
                     }
                     
-                    // Criar username a partir do email
-                    var username = email.split('@')[0].replace(/[^a-zA-Z0-9]/g, '');
-                    
                     // Desabilitar botão durante o processo
                     var submitBtn = form.querySelector('button[type="submit"]');
                     submitBtn.disabled = true;
@@ -213,7 +262,7 @@
                     
                     try {
                         // Registrar usuário usando sistema customizado
-                        const result = await window.customAuth.register(email, username, password, fullName);
+                        const result = await window.customAuth.register(email, username, password, fullName, cpf);
                         
                         if(!result.success){
                             showError(result.error || 'Erro ao criar conta');

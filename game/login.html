@@ -153,7 +153,7 @@
                 function redirectIfLogged(){
                     var user = window.customAuth.getCurrentUser();
                     if(user){
-                        window.location.href = "index.html";
+                        window.location.replace("index.html");
                     }
                 }
                 
@@ -193,11 +193,11 @@
                             submitBtn.textContent = 'Entrar';
                         } else {
                             hideError();
-                            showSuccess('✅ Login realizado com sucesso! Redirecionando...');
+                            showSuccess('✅ Login realizado com sucesso! Redirecionando para o jogo...');
                             
                             // Pequeno delay para o usuário ver a mensagem
                             setTimeout(function(){
-                                window.location.href = "index.html";
+                                window.location.replace("index.html");
                             }, 800);
                         }
                     } catch(error) {

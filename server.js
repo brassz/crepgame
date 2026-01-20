@@ -273,7 +273,8 @@ io.on('connection', (socket) => {
               gameState.point = total;
               io.to(`room_${roomId}`).emit('point_established', {
                 point: total,
-                message: `Ponto é ${total}`
+                message: `Ponto é ${total}`,
+                shooter: gameState.currentShooter // Incluir quem é o shooter
               });
             }
           } else {

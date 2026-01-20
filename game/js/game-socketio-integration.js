@@ -378,16 +378,62 @@
         // Handle point established
         gameClient.onPointEstablished((data) => {
             console.log('📍 Ponto estabelecido:', data.point);
+            console.log('📍 Shooter que estabeleceu o ponto:', data.shooter);
+            console.log('📍 Meu ID:', gameClient.currentUserId);
             
-            // Update puck position
-            if (window.s_oGame._oPuck && window.s_oGameSettings) {
-                const iNewX = window.s_oGameSettings.getPuckXByNumber(data.point);
-                window.s_oGame._oPuck.switchOn(iNewX);
-            }
+            // CRITICAL: Verificar se EU sou o shooter
+            const iAmShooter = (data.shooter === gameClient.currentUserId);
+            console.log('📍 Eu sou o shooter?', iAmShooter);
             
-            // Update number point
-            if (window.s_oGame._iNumberPoint !== undefined) {
-                window.s_oGame._iNumberPoint = data.point;
+            // Atualizar flag _bIAmShooter
+            if (window.s_oGame) {
+                // Verificar se o ponto já foi estabelecido localmente (evitar duplicação)
+                const pointAlreadySet = (window.s_oGame._iNumberPoint === data.point);
+                const shooterAlreadySet = (window.s_oGame._bIAmShooter === iAmShooter);
+                
+                if (pointAlreadySet && shooterAlreadySet) {
+                    console.log('📍 Ponto já foi estabelecido localmente com o mesmo shooter, ignorando evento socket');
+                    // Apenas atualizar o puck se necessário (pode ter sido atualizado localmente)
+                    if (window.s_oGame._oPuck && window.s_oGameSettings) {
+                        const iNewX = window.s_oGameSettings.getPuckXByNumber(data.point);
+                        window.s_oGame._oPuck.switchOn(iNewX);
+                    }
+                    return;
+                }
+                
+                window.s_oGame._bIAmShooter = iAmShooter;
+                console.log('📍 Flag _bIAmShooter atualizada para:', iAmShooter);
+                
+                // Chamar _assignNumber que já tem toda a lógica para mostrar/ocultar botões
+                if (window.s_oGame._assignNumber) {
+                    console.log('📍 Chamando _assignNumber com ponto:', data.point);
+                    window.s_oGame._assignNumber(data.point);
+                } else {
+                    console.warn('⚠️ _assignNumber não encontrado, fazendo fallback manual');
+                    
+                    // Fallback: atualizar puck e verificar se deve mostrar botões
+                    if (window.s_oGame._oPuck && window.s_oGameSettings) {
+                        const iNewX = window.s_oGameSettings.getPuckXByNumber(data.point);
+                        window.s_oGame._oPuck.switchOn(iNewX);
+                    }
+                    
+                    if (window.s_oGame._iNumberPoint !== undefined) {
+                        window.s_oGame._iNumberPoint = data.point;
+                    }
+                    
+                    // Se não sou o shooter, mostrar botões. Se sou, ocultar.
+                    // IMPORTANTE: Não usar force aqui - deixar a lógica normal decidir
+                    // porque _assignNumber já vai ser chamado e vai gerenciar corretamente
+                    if (!iAmShooter && window.s_oInterface) {
+                        window.s_oInterface.showPointBettingButtons(data.point);
+                        window.s_oInterface.enableBetFiches();
+                        window.s_oInterface.enableClearButton();
+                    } else {
+                        // Não esconder aqui - deixar _assignNumber gerenciar
+                        // Se já foram mostrados por engano, eles serão escondidos sem force
+                        // window.s_oInterface.hidePointBettingButtons(false);
+                    }
+                }
             }
             
             // Show message

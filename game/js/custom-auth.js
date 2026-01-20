@@ -63,7 +63,7 @@
     }
     
     // Registrar novo usuário
-    async function register(email, username, password, fullName) {
+    async function register(email, username, password, fullName, cpf) {
         try {
             const passwordHash = await hashPassword(password);
             
@@ -71,7 +71,8 @@
                 p_email: email,
                 p_username: username,
                 p_password_hash: passwordHash,
-                p_full_name: fullName
+                p_full_name: fullName,
+                p_cpf: cpf || null
             });
             
             if (error) {
@@ -142,13 +143,31 @@
         localStorage.setItem('game_user', JSON.stringify(userData));
     }
     
-    // Redirecionar para login
+    // Redirecionar para login (FORÇAR redirecionamento imediato)
     function redirectToLogin() {
         const currentPath = window.location.pathname;
-        if (!currentPath.includes('login.html') && !currentPath.includes('register.html')) {
-            const base = currentPath.replace('index.html', '');
-            window.location.href = base + 'login.html';
+        const currentFile = window.location.pathname.split('/').pop();
+        
+        // Não redirecionar se já estiver nas páginas de auth
+        if (currentPath.includes('login.html') || currentPath.includes('register.html')) {
+            return;
         }
+        
+        // Determinar o caminho base
+        let base = currentPath.replace(/index\.html$/, '').replace(/\/$/, '');
+        if (!base || base === currentPath) {
+            base = currentPath.substring(0, currentPath.lastIndexOf('/') + 1);
+        }
+        if (!base) {
+            base = './';
+        }
+        if (!base.endsWith('/')) {
+            base += '/';
+        }
+        
+        // Redirecionar IMEDIATAMENTE
+        console.log('🔄 Redirecionando para:', base + 'login.html');
+        window.location.replace(base + 'login.html');
     }
     
     // Gerar token aleatório
@@ -194,13 +213,57 @@
         hashPassword: hashPassword
     };
     
-    // Verificar autenticação automaticamente ao carregar a página do jogo
-    const currentPath = window.location.pathname;
-    if (currentPath.includes('index.html') || currentPath.endsWith('/game/') || currentPath.endsWith('/game')) {
-        console.log('🔒 Verificando autenticação...');
-        const user = checkAuth();
-        if (user) {
-            console.log('✅ Usuário autenticado:', user.username);
+    // CRITICAL: Verificar autenticação IMEDIATAMENTE ao carregar qualquer página
+    // Isso garante que o login apareça ANTES de qualquer coisa
+    (function checkAuthOnLoad() {
+        const currentPath = window.location.pathname;
+        const currentFile = window.location.pathname.split('/').pop();
+        
+        // Se estiver na página de login ou registro, não fazer nada
+        if (currentPath.includes('login.html') || currentPath.includes('register.html')) {
+            return;
         }
-    }
+        
+        // Se estiver tentando acessar o jogo (index.html ou raiz)
+        if (currentPath.includes('index.html') || 
+            currentPath.endsWith('/game/') || 
+            currentPath.endsWith('/game') ||
+            currentFile === '' ||
+            currentFile === 'index.html') {
+            
+            console.log('🔒 Verificando autenticação ANTES de carregar o jogo...');
+            
+            // Verificar se usuário está logado IMEDIATAMENTE
+            const userDataStr = localStorage.getItem('game_user');
+            const sessionToken = localStorage.getItem('game_session_token');
+            
+            if (!userDataStr || !sessionToken) {
+                console.log('❌ Usuário não autenticado - redirecionando para login');
+                redirectToLogin();
+                return;
+            }
+            
+            // Verificar se sessão expirou
+            try {
+                const sessionTime = localStorage.getItem('game_session_time');
+                if (sessionTime) {
+                    const elapsed = Date.now() - parseInt(sessionTime);
+                    const hoursElapsed = elapsed / (1000 * 60 * 60);
+                    
+                    if (hoursElapsed > 24) {
+                        console.log('❌ Sessão expirada - redirecionando para login');
+                        logout();
+                        return;
+                    }
+                }
+                
+                const userData = JSON.parse(userDataStr);
+                console.log('✅ Usuário autenticado:', userData.username);
+            } catch (e) {
+                console.error('❌ Erro ao verificar sessão - redirecionando para login');
+                redirectToLogin();
+                return;
+            }
+        }
+    })();
 })();

@@ -19,6 +19,77 @@
         <script type="text/javascript" src="js/custom-auth.js"></script>
         <script type="text/javascript" src="js/cgame-custom-auth-adapter.js"></script>
         
+        <!-- CRITICAL: Verificar autenticação IMEDIATAMENTE antes de qualquer coisa -->
+        <script>
+            // Aguardar custom-auth carregar e verificar autenticação IMEDIATAMENTE
+            (function() {
+                var checkCount = 0;
+                var maxChecks = 100; // 10 segundos máximo para aguardar carregamento
+                
+                function checkAuthNow() {
+                    checkCount++;
+                    
+                    // Se custom-auth ainda não carregou
+                    if (!window.customAuth) {
+                        if (checkCount < maxChecks) {
+                            setTimeout(checkAuthNow, 100);
+                            return;
+                        }
+                        // Se não carregou, apenas logar erro mas não bloquear
+                        console.warn('⚠️ Sistema de autenticação ainda não carregou, mas continuando...');
+                        return;
+                    }
+                    
+                    // Verificar se está em página de auth
+                    var currentPath = window.location.pathname;
+                    if (currentPath.includes('login.html') || currentPath.includes('register.html')) {
+                        return; // Deixar carregar normalmente
+                    }
+                    
+                    // Verificar autenticação - mas não bloquear se ainda estiver carregando
+                    try {
+                        var userDataStr = localStorage.getItem('game_user');
+                        var sessionToken = localStorage.getItem('game_session_token');
+                        
+                        if (!userDataStr || !sessionToken) {
+                            // Aguardar um pouco antes de redirecionar (pode estar carregando)
+                            if (checkCount < 20) {
+                                setTimeout(checkAuthNow, 100);
+                                return;
+                            }
+                            console.log('❌ Usuário não autenticado - redirecionando para login');
+                            window.location.replace('login.html');
+                            return;
+                        }
+                        
+                        // Verificar expiração de sessão
+                        var sessionTime = localStorage.getItem('game_session_time');
+                        if (sessionTime) {
+                            var elapsed = Date.now() - parseInt(sessionTime);
+                            var hoursElapsed = elapsed / (1000 * 60 * 60);
+                            if (hoursElapsed > 24) {
+                                console.log('❌ Sessão expirada - redirecionando para login');
+                                localStorage.removeItem('game_user');
+                                localStorage.removeItem('game_session_token');
+                                localStorage.removeItem('game_session_time');
+                                window.location.replace('login.html');
+                                return;
+                            }
+                        }
+                        
+                        var userData = JSON.parse(userDataStr);
+                        console.log('✅ Usuário autenticado:', userData.username || userData.email);
+                    } catch (e) {
+                        console.error('❌ Erro ao verificar sessão:', e);
+                        // Não bloquear o jogo por erro de parsing, deixar o $(document).ready tratar
+                    }
+                }
+                
+                // Iniciar verificação após um pequeno delay para permitir scripts carregarem
+                setTimeout(checkAuthNow, 100);
+            })();
+        </script>
+        
         <script type="text/javascript" src="js/jquery-3.2.1.min.js"></script>
         <script type="text/javascript" src="js/createjs-2015.11.26.min.js"></script>
         <script type="text/javascript" src="js/screenfull.min.js"></script>
@@ -75,6 +146,22 @@
             <div class="canvas-container">
           <script>
             $(document).ready(function(){
+                     // CRITICAL: Verificar autenticação novamente antes de iniciar
+                     if (!window.customAuth) {
+                         console.error('❌ Sistema de autenticação não disponível');
+                         window.location.replace('login.html');
+                         return;
+                     }
+                     
+                     const currentUser = window.customAuth.getCurrentUser();
+                     if (!currentUser) {
+                         console.log('❌ Usuário não autenticado - redirecionando para login');
+                         window.location.replace('login.html');
+                         return;
+                     }
+                     
+                     console.log('✅ Usuário autenticado, iniciando jogo para:', currentUser.username || currentUser.email);
+                     
                      function startWithBalance(balance){
                          var oMain = new CMain({
                                            money: balance,        //STARTING CREDIT FROM PROFILE
@@ -158,13 +245,13 @@
                      }else{
                          sizeHandler();
                      }
-           }
-
-           // Socket.IO Pure System - No Supabase authentication
-           // Balance is managed by Socket.IO server
-           console.log('🎮 Iniciando jogo com Sistema Socket.IO Puro');
-           startWithBalance(1000); // Default starting balance
-           
+                     
+                     console.log('✅ Jogo inicializado com sucesso!');
+                     }
+                     
+                     // Iniciar o jogo após todas as configurações
+                     console.log('🎮 Sistema Socket.IO Puro - Iniciando com saldo do usuário');
+                     startWithBalance(currentUser.balance || 1000);
            });
 
         </script>
