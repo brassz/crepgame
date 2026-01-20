@@ -130,7 +130,17 @@
             
             // Add to visual history panel
             if (window.s_oGame.addRollToHistory) {
-                const username = localStorage.getItem('playerName') || 'Você';
+                // Obter username do cadastro (armazenado em game_user)
+                let username = 'Você';
+                try {
+                    const userDataStr = localStorage.getItem('game_user');
+                    if (userDataStr) {
+                        const userData = JSON.parse(userDataStr);
+                        username = userData.username || userData.email || 'Você';
+                    }
+                } catch (e) {
+                    console.warn('Erro ao obter username do cadastro:', e);
+                }
                 window.s_oGame.addRollToHistory(dice1, dice2, username);
             }
             
@@ -581,15 +591,29 @@
         });
         
         // Handle players updated
-        gameClient.onPlayersUpdated((players) => {
-            console.log('👥 Jogadores na sala:', players.length, players);
+        gameClient.onPlayersUpdated((data) => {
+            const players = data.players || data;
+            console.log('👥 Jogadores na sala:', Array.isArray(players) ? players.length : 'N/A', players);
             
             // Update player count in UI
             if (window.s_oInterface && window.s_oInterface.updateRoomInfo) {
                 const currentRoom = gameClient.currentRoomId || 'table1';
                 const roomType = 'bronze'; // Default room type, adjust if you have room selection
-                window.s_oInterface.updateRoomInfo(roomType, players.length);
-                console.log('✅ Contagem de jogadores atualizada na UI:', players.length);
+                const playerCount = Array.isArray(players) ? players.length : 0;
+                window.s_oInterface.updateRoomInfo(roomType, playerCount);
+                console.log('✅ Contagem de jogadores atualizada na UI:', playerCount);
+            }
+            
+            // Update players list with detailed info
+            if (window.s_oInterface && window.s_oInterface.updatePlayersList) {
+                const currentShooter = data.currentShooter || (window.s_oGame ? window.s_oGame._bIAmShooter ? gameClient.currentUserId : null : null);
+                const gameState = {
+                    point: data.point || (window.s_oGame ? window.s_oGame._iNumberPoint : null)
+                };
+                
+                if(Array.isArray(players)){
+                    window.s_oInterface.updatePlayersList(players, currentShooter, gameState);
+                }
             }
         });
         
@@ -603,6 +627,18 @@
                 const roomType = 'bronze'; // Default room type
                 window.s_oInterface.updateRoomInfo(roomType, playerCount);
                 console.log('✅ Contagem de jogadores atualizada do estado do jogo:', playerCount);
+            }
+            
+            // Update players list from initial state
+            if (state.players && window.s_oInterface && window.s_oInterface.updatePlayersList) {
+                const players = Array.isArray(state.players) ? state.players : [];
+                const currentShooter = state.currentShooter || null;
+                const gameState = {
+                    point: state.point || null
+                };
+                
+                window.s_oInterface.updatePlayersList(players, currentShooter, gameState);
+                console.log('✅ Lista de jogadores atualizada do estado inicial do jogo');
             }
             
             // CRITICAL: Check if I'm the current shooter when joining
@@ -675,22 +711,41 @@
         
         // Auto-connect on game start
         function autoConnect() {
-            // Get user info from localStorage or generate
-            const userId = localStorage.getItem('playerId') || 'player_' + Math.random().toString(36).substr(2, 9);
-            const username = localStorage.getItem('playerName') || 'Jogador ' + Math.floor(Math.random() * 1000);
-            const roomId = 'table1'; // Default room
-            const credit = 1000; // Starting credit
+            // Obter informações do usuário do cadastro (game_user)
+            let userId = null;
+            let username = null;
+            let credit = 1000;
             
-            // Save for next time
-            localStorage.setItem('playerId', userId);
-            if (!localStorage.getItem('playerName')) {
+            try {
+                const userDataStr = localStorage.getItem('game_user');
+                if (userDataStr) {
+                    const userData = JSON.parse(userDataStr);
+                    userId = userData.id || userData.userId || localStorage.getItem('playerId') || 'player_' + Math.random().toString(36).substr(2, 9);
+                    username = userData.username || userData.email || 'Jogador ' + Math.floor(Math.random() * 1000);
+                    credit = userData.balance || 1000;
+                }
+            } catch (e) {
+                console.warn('Erro ao obter dados do usuário do cadastro:', e);
+            }
+            
+            // Fallback se não houver dados do cadastro
+            if (!userId) {
+                userId = localStorage.getItem('playerId') || 'player_' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem('playerId', userId);
+            }
+            
+            if (!username) {
+                username = localStorage.getItem('playerName') || 'Jogador ' + Math.floor(Math.random() * 1000);
                 localStorage.setItem('playerName', username);
             }
             
+            const roomId = 'table1'; // Default room
+            
             console.log('🔌 Conectando automaticamente ao Socket.IO...');
             console.log('   ID do Usuário:', userId);
-            console.log('   Nome de Usuário:', username);
+            console.log('   Nome de Usuário:', username, '(do cadastro)');
             console.log('   ID da Sala:', roomId);
+            console.log('   Crédito:', credit);
             
             // Initialize and authenticate
             gameClient.init()

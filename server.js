@@ -150,9 +150,11 @@ io.on('connection', (socket) => {
         const recentMessages = roomChats.get(roomId) || [];
         socket.emit('chat_history', recentMessages.slice(-20)); // Last 20 messages
         
-        // Notify others about updated player list
+        // Notify others about updated player list (including current user)
         io.to(`room_${roomId}`).emit('players_updated', {
-          players: Array.from(gameState.players.values())
+          players: Array.from(gameState.players.values()),
+          currentShooter: gameState.currentShooter,
+          point: gameState.point
         });
       }
       
@@ -720,7 +722,9 @@ io.on('connection', (socket) => {
           } else {
             // Notify others about updated player list
             io.to(`room_${user.roomId}`).emit('players_updated', {
-              players: Array.from(gameState.players.values())
+              players: Array.from(gameState.players.values()),
+              currentShooter: gameState.currentShooter,
+              point: gameState.point
             });
           }
         }

@@ -34,6 +34,10 @@ function CInterface(){
     var _oButBetOnSeven;
     var _oPointBettingContainer;
     
+    // LISTA DE JOGADORES CONECTADOS
+    var _oPlayersListContainer;
+    var _aPlayerTexts = [];
+    
     this._init = function(){
         
         var oMoneyBg = createBitmap(s_oSpriteLibrary.getSprite('but_bg'));
@@ -170,6 +174,9 @@ function CInterface(){
         this._initPointBettingButtons();
        
         this._initFichesBut();
+        
+        // Inicializar lista de jogadores
+        this._initPlayersList();
         // Trazer os botões de sala para frente, acima das fichas
         if (_oButRoomBronze) { s_oStage.addChild(_oButRoomBronze.getSprite()); }
         if (_oButRoomPrata) { s_oStage.addChild(_oButRoomPrata.getSprite()); }
@@ -657,6 +664,146 @@ function CInterface(){
         if(s_oGame && s_oGame.onBetOnSeven){
             s_oGame.onBetOnSeven();
         }
+    };
+    
+    // ============================================
+    // LISTA DE JOGADORES CONECTADOS
+    // ============================================
+    
+    this._initPlayersList = function(){
+        // Criar container para a lista de jogadores
+        // Posicionar ao lado direito da tabela de últimas jogadas
+        // A tabela está em: x = CANVAS_WIDTH / 2 - 400, largura = 800
+        // Então termina em: CANVAS_WIDTH / 2 + 400
+        // Posicionar 20px à direita da tabela
+        _oPlayersListContainer = new createjs.Container();
+        _oPlayersListContainer.x = CANVAS_WIDTH / 2 + 420; // Ao lado direito da tabela
+        _oPlayersListContainer.y = CANVAS_HEIGHT - 200; // Mesma altura da tabela de últimas jogadas
+        _oPlayersListContainer.visible = true;
+        s_oStage.addChild(_oPlayersListContainer);
+        
+        // Fundo semi-transparente para melhor legibilidade
+        var oBackground = new createjs.Graphics()
+            .beginFill("rgba(0, 0, 0, 0.7)")
+            .drawRoundRect(0, 0, 280, 95, 10);
+        var oBgShape = new createjs.Shape(oBackground);
+        _oPlayersListContainer.addChild(oBgShape);
+        
+        // Borda dourada (igual à tabela de últimas jogadas)
+        var oBorderGraphics = new createjs.Graphics()
+            .setStrokeStyle(2)
+            .beginStroke("#FFD700")
+            .drawRoundRect(0, 0, 280, 95, 10);
+        var oBorder = new createjs.Shape(oBorderGraphics);
+        _oPlayersListContainer.addChild(oBorder);
+        
+        // Título da lista
+        var oTitle = new CTLText(_oPlayersListContainer, 
+                    5, 5, 270, 18, 
+                    12, "center", "#FFD700", FONT1, 1,
+                    0, 0,
+                    "👥 JOGADORES NA SALA",
+                    true, true, false,
+                    false);
+        
+        console.log("✅ Lista de jogadores inicializada ao lado direito da tabela");
+    };
+    
+    this.updatePlayersList = function(players, currentShooter, gameState){
+        console.log("📋 Atualizando lista de jogadores:", players);
+        
+        if(!_oPlayersListContainer){
+            this._initPlayersList();
+        }
+        
+        // Limpar textos anteriores
+        for(var i = 0; i < _aPlayerTexts.length; i++){
+            _oPlayersListContainer.removeChild(_aPlayerTexts[i]);
+        }
+        _aPlayerTexts = [];
+        
+        if(!players || players.length === 0){
+            console.log("⚠️ Nenhum jogador encontrado");
+            return;
+        }
+        
+        var yOffset = 25; // Começar abaixo do título (espaço para título + espaçamento)
+        var pointValue = gameState && gameState.point ? gameState.point : null;
+        
+        // Limitar largura e altura para caber ao lado da tabela
+        var maxWidth = 270; // Largura disponível (280px - 10px de margem)
+        var maxHeight = 65; // Altura disponível (95px - 25px do título - 5px de margem)
+        
+        // Obter informações de apostas do servidor/estado do jogo
+        var gameBets = {};
+        if(window.s_oGame && window.s_oGame._aPointBets){
+            gameBets = window.s_oGame._aPointBets;
+        }
+        
+        for(var i = 0; i < players.length; i++){
+            var player = players[i];
+            var isShooter = player.userId === currentShooter;
+            var playerBet = player.currentBet || 0;
+            
+            // Verificar se apostou no ponto
+            var pointBet = gameBets[player.userId] || 0;
+            var sevenBet = (window.s_oGame && window.s_oGame._aSevenBets && window.s_oGame._aSevenBets[player.userId]) || 0;
+            
+            // Montar texto do jogador
+            var playerText = "• " + (player.username || "Jogador " + i);
+            
+            // Adicionar indicador de shooter
+            if(isShooter){
+                playerText += " 🎲 [SHOOTER]";
+            }
+            
+            // Adicionar informações de apostas
+            if(playerBet > 0){
+                playerText += " | Aposta: R$ " + playerBet.toFixed(2);
+            }
+            
+            if(pointBet > 0 && pointValue){
+                playerText += " | Ponto " + pointValue + ": R$ " + pointBet.toFixed(2);
+            }
+            
+            if(sevenBet > 0){
+                playerText += " | 7: R$ " + sevenBet.toFixed(2);
+            }
+            
+            // Cor diferente para o shooter
+            var textColor = isShooter ? "#ffff00" : "#ffffff";
+            
+            // Verificar se há espaço vertical disponível
+            if(yOffset + 18 > maxHeight){
+                console.log("⚠️ Lista de jogadores muito longa, truncando...");
+                break; // Não adicionar mais jogadores se não houver espaço
+            }
+            
+            // Criar texto do jogador (largura reduzida para caber ao lado da tabela)
+            var oPlayerText = new CTLText(_oPlayersListContainer, 
+                        5, yOffset, maxWidth, 16, 
+                        11, "left", textColor, FONT1, 0.85,
+                        0, 0,
+                        playerText,
+                        true, true, false,
+                        false);
+            
+            _aPlayerTexts.push(oPlayerText);
+            yOffset += 16; // Espaçamento reduzido
+        }
+        
+        // Garantir que o container está no topo
+        var iNumChildren = s_oStage.getNumChildren();
+        if(iNumChildren > 0){
+            s_oStage.setChildIndex(_oPlayersListContainer, iNumChildren - 1);
+        }
+        
+        // Forçar atualização
+        if(s_oStage && s_oStage.update){
+            s_oStage.update();
+        }
+        
+        console.log("✅ Lista de jogadores atualizada com", players.length, "jogadores");
     };
     
     s_oInterface = this;
