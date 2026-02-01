@@ -26,21 +26,65 @@ function CSeat(){
     };
     
     this.setFicheBetted = function(iFicheValue,aFichesMc,iNumFiches){
-        _iCurBet+= (iFicheValue * iNumFiches);
-        _iCredit -= (iFicheValue * iNumFiches);
+        var iTotalAmount = iFicheValue * iNumFiches;
+        
+        // VALIDAÇÃO: Não permitir saldo negativo
+        if(_iCredit < iTotalAmount){
+            console.warn("⚠️ Tentativa de apostar com saldo insuficiente. Saldo:", _iCredit, "Necessário:", iTotalAmount);
+            return false; // Retornar false para indicar falha
+        }
+        
+        _iCurBet+= iTotalAmount;
+        _iCredit -= iTotalAmount;
         _iCredit = roundDecimal(_iCredit, 1);
+        
+        // GARANTIR que o saldo nunca fique negativo (proteção extra)
+        if(_iCredit < 0){
+            console.error("❌ ERRO: Saldo ficou negativo! Corrigindo para 0");
+            _iCredit = 0;
+        }
+        
+        return true; // Retornar true para indicar sucesso
     };
 		
     this.addFicheOnTable = function(iFicheValue,iIndexFicheSelected,szNameAttach){
+        // Verificar saldo antes de criar fichas visuais
+        if(_iCredit < iFicheValue){
+            console.warn("⚠️ Saldo insuficiente para apostar:", _iCredit, "Necessário:", iFicheValue);
+            return false; // Retornar false se não tiver saldo
+        }
+        
         var aFichesMc=new Array();
         _oFicheController.setFicheOnTable(iIndexFicheSelected,szNameAttach,aFichesMc);
-        this.setFicheBetted(iFicheValue,aFichesMc,1);
+        var bSuccess = this.setFicheBetted(iFicheValue,aFichesMc,1);
+        
+        if(!bSuccess){
+            // Se falhou, remover fichas visuais
+            _oFicheController.removeBet(szNameAttach);
+            return false;
+        }
+        
+        return true; // Retornar true se sucesso
     };
     
     this.addFicheOnButton = function(iFicheValue,iIndexFicheSelected,szNameAttach){
+        // Verificar saldo antes de criar fichas visuais
+        if(_iCredit < iFicheValue){
+            console.warn("⚠️ Saldo insuficiente para apostar:", _iCredit, "Necessário:", iFicheValue);
+            return false; // Retornar false se não tiver saldo
+        }
+        
         var aFichesMc=new Array();
         _oFicheController.setFicheOnButton(iIndexFicheSelected,szNameAttach,aFichesMc);
-        this.setFicheBetted(iFicheValue,aFichesMc,1);
+        var bSuccess = this.setFicheBetted(iFicheValue,aFichesMc,1);
+        
+        if(!bSuccess){
+            // Se falhou, remover fichas visuais
+            _oFicheController.removeBet(szNameAttach);
+            return false;
+        }
+        
+        return true; // Retornar true se sucesso
     };
     
     this.decreaseBet = function(iAmount){
@@ -74,11 +118,23 @@ function CSeat(){
         _iCurBet -= iBetToSubtract;
         _iCredit += iBetToSubtract;
         _iCredit = roundDecimal(_iCredit, 1);
+        
+        // GARANTIR que o saldo nunca fique negativo
+        if(_iCredit < 0){
+            console.error("❌ ERRO: Saldo ficou negativo ao limpar apostas no come point! Corrigindo para 0");
+            _iCredit = 0;
+        }
     };
     
     this.showWin = function(iWin){
         _iCredit += iWin;
         _iCredit = roundDecimal(_iCredit, 1);
+        
+        // GARANTIR que o saldo nunca fique negativo (mesmo ao ganhar, por segurança)
+        if(_iCredit < 0){
+            console.error("❌ ERRO: Saldo ficou negativo ao ganhar! Corrigindo para 0");
+            _iCredit = 0;
+        }
     };
     
     this.recharge = function(iMoney) {

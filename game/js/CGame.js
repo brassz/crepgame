@@ -42,6 +42,21 @@ function CGame(oData){
     var _aPointBets = {};  // Objeto para armazenar apostas no ponto por jogador
     var _aSevenBets = {};  // Objeto para armazenar apostas no 7 por jogador
     
+    // SISTEMA DE PARADAS - Até 10 paradas por ponto
+    var _aParadas = {};  // Objeto para armazenar número de paradas por ponto: {4: 3, 5: 2, ...}
+    var _iParadaBaseValue = 100;  // Valor base de cada parada (1 parada = 100, 2 paradas = 200, etc)
+    
+    // TABELA DE PAGAMENTOS POR PONTO
+    // Formato: {ponto: {ganha: valor, perde: valor}}
+    var _aPayoutTable = {
+        4: {ganha: 100, perde: 200},   // Se ganhar (4 antes de 7): paga 100, se perder (7 antes de 4): paga 200
+        5: {ganha: 100, perde: 150},   // Se ganhar (5 antes de 7): paga 100, se perder (7 antes de 5): paga 150
+        6: {ganha: 200, perde: 250},   // Se ganhar (6 antes de 7): paga 200, se perder (7 antes de 6): paga 250
+        8: {ganha: 200, perde: 250},   // Se ganhar (8 antes de 7): paga 200, se perder (7 antes de 8): paga 250
+        9: {ganha: 100, perde: 150},   // Se ganhar (9 antes de 7): paga 100, se perder (7 antes de 9): paga 150
+        10: {ganha: 100, perde: 200}   // Se ganhar (10 antes de 7): paga 100, se perder (7 antes de 10): paga 200
+    };
+    
     // CONTROLE DE QUEM É O SHOOTER (quem lançou os dados e estabeleceu o ponto)
     var _bIAmShooter = false;  // Flag: eu sou o shooter que lançou os dados?
     
@@ -103,6 +118,44 @@ function CGame(oData){
     };
 
     this._setState = function(iState){
+        // CRÍTICO: Proteção contra mudança de estado prematura
+        // Se estamos tentando mudar para WAITING_FOR_BET mas o período de apostas ainda não foi iniciado,
+        // NÃO mudar o estado ainda
+        if(iState === STATE_GAME_WAITING_FOR_BET){
+            var bTimerStillActive = _iPointBettingTimer !== null;
+            var bPeriodoAindaAberto = _bPointBettingOpen === true || bTimerStillActive;
+            var bPeriodoAindaNaoIniciado = _iNumberPoint !== -1 && !_bPointBettingOpen && !bTimerStillActive;
+            
+            console.log("🔍 _setState tentando mudar para WAITING_FOR_BET:");
+            console.log("   Estado atual:", _iState);
+            console.log("   _iNumberPoint:", _iNumberPoint);
+            console.log("   _bPointBettingOpen:", _bPointBettingOpen);
+            console.log("   _iPointBettingTimer:", _iPointBettingTimer);
+            console.log("   bTimerStillActive:", bTimerStillActive);
+            console.log("   bPeriodoAindaAberto:", bPeriodoAindaAberto);
+            console.log("   bPeriodoAindaNaoIniciado:", bPeriodoAindaNaoIniciado);
+            console.log("   Stack trace:", new Error().stack);
+            
+            // Se o período ainda não foi iniciado, NÃO mudar para WAITING_FOR_BET ainda
+            if(bPeriodoAindaNaoIniciado){
+                console.warn("⚠️⚠️⚠️ BLOQUEADO: Tentativa de mudar para WAITING_FOR_BET mas período de apostas ainda não foi iniciado!");
+                console.warn("   _iNumberPoint:", _iNumberPoint);
+                console.warn("   _bPointBettingOpen:", _bPointBettingOpen);
+                console.warn("   _iPointBettingTimer:", _iPointBettingTimer);
+                console.warn("   Mantendo estado atual:", _iState);
+                return; // Não mudar o estado
+            }
+            
+            // Se o período ainda está aberto, NÃO mudar para WAITING_FOR_BET ainda
+            if(bPeriodoAindaAberto){
+                console.warn("⚠️⚠️⚠️ BLOQUEADO: Tentativa de mudar para WAITING_FOR_BET mas período de apostas ainda está aberto!");
+                console.warn("   _bPointBettingOpen:", _bPointBettingOpen);
+                console.warn("   _iPointBettingTimer:", _iPointBettingTimer);
+                console.warn("   Mantendo estado atual:", _iState);
+                return; // Não mudar o estado
+            }
+        }
+        
         _iState=iState;
 
         switch(iState){
@@ -129,19 +182,38 @@ function CGame(oData){
                                    window.GameClientSocketIO.isAuthenticated;
                 
                 // Em single player, sempre habilita fichas
-                // Em multiplayer, só habilita se for o turno do jogador
+                // Em multiplayer, só habilita se for o turno do jogador OU se período de apostas no ponto estiver aberto
                 if (!isMultiplayer) {
                     _oInterface.enableBetFiches();
                     _bIsMyTurn = true; // Single player sempre é seu turno
                 } else {
                     // Em multiplayer, resetar controle de fichas baseado no turno
-                    if(_bIsMyTurn){
+                    // IMPORTANTE: Se período de apostas no ponto estiver aberto, habilitar fichas mesmo sem ser o turno
+                    // CRÍTICO: Também verificar se o timer ainda está ativo
+                    var bTimerStillActive = _iPointBettingTimer !== null;
+                    var bPeriodoAindaAberto = _bPointBettingOpen === true || bTimerStillActive;
+                    
+                    console.log("🔍 _setState(STATE_GAME_WAITING_FOR_BET) - Verificando período de apostas:");
+                    console.log("   _bPointBettingOpen:", _bPointBettingOpen);
+                    console.log("   _iPointBettingTimer:", _iPointBettingTimer);
+                    console.log("   bTimerStillActive:", bTimerStillActive);
+                    console.log("   bPeriodoAindaAberto:", bPeriodoAindaAberto);
+                    console.log("   _bIsMyTurn:", _bIsMyTurn);
+                    
+                    if(_bIsMyTurn || bPeriodoAindaAberto){
                         _oInterface.enableBetFiches();
                         _oInterface.enableClearButton();
+                        if(bPeriodoAindaAberto && !_bIsMyTurn){
+                            console.log("📊 Fichas HABILITADAS - Período de apostas no ponto ainda ativo!");
+                            console.log("   _bPointBettingOpen:", _bPointBettingOpen);
+                            console.log("   Timer ativo:", bTimerStillActive);
+                        }
                     } else {
                         _oInterface.disableBetFiches();
                         _oInterface.disableClearButton();
                         console.log("🔒 Fase POINT terminou - Aguarde sua vez para apostar");
+                        console.log("   _bPointBettingOpen:", _bPointBettingOpen);
+                        console.log("   _iPointBettingTimer:", _iPointBettingTimer);
                     }
                 }
                 
@@ -446,16 +518,51 @@ function CGame(oData){
             }
             
             if(_iNumberPoint !== -1){
+                // IMPORTANTE: Agora vamos abrir o período de apostas APÓS a animação terminar
+                // CRÍTICO: Chamar _startPointBettingPeriod ANTES de _setState
+                // Isso garante que _bPointBettingOpen = true antes de _setState verificar
+                if(!_bPointBettingOpen || _iPointBettingTimer === null){
+                    console.log("📊 Iniciando período de apostas após animação terminar");
+                    this._startPointBettingPeriod(_iNumberPoint);
+                } else {
+                    console.log("⚠️ Período de apostas já está aberto - não chamando _startPointBettingPeriod novamente");
+                }
+                
+                // IMPORTANTE: Mudar estado DEPOIS de iniciar o período de apostas
+                // Isso garante que _setState veja _bPointBettingOpen = true
                 this._setState(STATE_GAME_COME_POINT);
             }
         }else{
             this._checkWinForBet();
             
             // Verificar se ainda há apostas ativas na fase de ponto
-            if(_iState === STATE_GAME_COME_POINT && Object.keys(_aBetHistory).length === 0){
-                // Se não há apostas, volta para o estado de espera
+            // IMPORTANTE: Não mudar estado se período de apostas no ponto ainda estiver aberto
+            // CRÍTICO: Também verificar se o timer ainda está ativo
+            var bTimerStillActive = _iPointBettingTimer !== null;
+            // CRÍTICO: Verificar se o ponto foi estabelecido mas o período ainda não foi iniciado
+            // Isso pode acontecer se dicesAnimEnded for chamado antes de _startPointBettingPeriod
+            var bPeriodoAindaNaoIniciado = _iNumberPoint !== -1 && !_bPointBettingOpen && !bTimerStillActive;
+            
+            console.log("🔍 dicesAnimEnded (STATE_GAME_COME_POINT) - Verificando se deve mudar para WAITING_FOR_BET:");
+            console.log("   _iState:", _iState);
+            console.log("   _iNumberPoint:", _iNumberPoint);
+            console.log("   _bPointBettingOpen:", _bPointBettingOpen);
+            console.log("   _iPointBettingTimer:", _iPointBettingTimer);
+            console.log("   bTimerStillActive:", bTimerStillActive);
+            console.log("   bPeriodoAindaNaoIniciado:", bPeriodoAindaNaoIniciado);
+            console.log("   Object.keys(_aBetHistory).length:", Object.keys(_aBetHistory).length);
+            
+            if(_iState === STATE_GAME_COME_POINT && Object.keys(_aBetHistory).length === 0 && !_bPointBettingOpen && !bTimerStillActive && !bPeriodoAindaNaoIniciado){
+                // Se não há apostas E período de apostas terminou E timer não está mais ativo E período já foi iniciado, volta para o estado de espera
+                console.log("✅ Mudando para WAITING_FOR_BET - todas as condições atendidas");
                 _iNumberPoint = -1;
                 this._setState(STATE_GAME_WAITING_FOR_BET);
+            } else if(_bPointBettingOpen || bTimerStillActive || bPeriodoAindaNaoIniciado){
+                // Período de apostas ainda está aberto OU timer ainda está ativo OU período ainda não foi iniciado - NÃO mudar estado
+                console.log("🔒 Bloqueando mudança de estado - período de apostas ainda ativo ou timer ainda rodando ou período ainda não iniciado");
+                console.log("   _bPointBettingOpen:", _bPointBettingOpen);
+                console.log("   Timer ativo:", bTimerStillActive);
+                console.log("   Período ainda não iniciado:", bPeriodoAindaNaoIniciado);
             }
             
             if(_aFichesToMove && _aFichesToMove.length > 0){
@@ -522,6 +629,12 @@ function CGame(oData){
                     var elapsed = Date.now() - _assignNumberStartTime;
                     var remaining = Math.max(0, Math.ceil((8000 - elapsed) / 1000));
                     console.log("🔄 Rodada continua - botões de aposta permanecem visíveis por mais " + remaining + " segundos");
+                    
+                    // GARANTIR que os botões permaneçam visíveis para outros jogadores
+                    // MAS: Só se período de apostas ainda estiver aberto
+                    if(_bPointBettingOpen && !_bIAmShooter && _oInterface && _oInterface.ensurePointBettingButtonsVisible){
+                        _oInterface.ensurePointBettingButtonsVisible();
+                    }
                 }
             }
         }
@@ -540,12 +653,50 @@ function CGame(oData){
             _oInterface.enableClearButton();
         }
         
-        _oInterface.hideBlock();
-        
         // IMPORTANTE: NÃO esconder botões de aposta no ponto durante o período de 8 segundos
         // Os botões só devem ser escondidos quando:
         // 1. O timer de 8 segundos expirar (feito no setTimeout dentro de _assignNumber)
         // 2. A rodada terminar (ponto acertado ou 7 out) - já está sendo feito acima
+        
+        // CRÍTICO: NÃO esconder o block se estiver no período de apostas no ponto
+        // O block pode interferir com os botões de aposta, mas não devemos fechá-lo
+        // se o período de apostas ainda estiver aberto para outros jogadores
+        if(_bPointBettingOpen && !_bIAmShooter){
+            // Período de apostas aberto E não é o shooter
+            // NÃO esconder block e GARANTIR que botões estão visíveis
+            console.log("🔒🔒🔒 MANTENDO MODAL DE APOSTAS ABERTO - Período de apostas ativo");
+            console.log("   _bPointBettingOpen:", _bPointBettingOpen);
+            console.log("   _bIAmShooter:", _bIAmShooter);
+            console.log("   _iNumberPoint:", _iNumberPoint);
+            
+            // NÃO chamar hideBlock() aqui - deixar o block como está
+            // Garantir que os botões estão visíveis e no topo
+            if(_oInterface && _iNumberPoint > 0){
+                // Forçar mostrar os botões se estiverem ocultos
+                _oInterface.showPointBettingButtons(_iNumberPoint);
+                // Garantir que estão visíveis
+                if(_oInterface.ensurePointBettingButtonsVisible){
+                    _oInterface.ensurePointBettingButtonsVisible();
+                }
+            }
+        } else {
+            // Período de apostas fechado OU é o shooter - esconder block normalmente
+            // CRÍTICO: NÃO fechar o modal aqui em dicesAnimEnded!
+            // O modal só deve ser fechado pelo timer de 8 segundos ou quando a rodada terminar
+            // Se fecharmos aqui, pode fechar antes do timer expirar
+            // Deixar o timer gerenciar o fechamento do modal
+            if(_bPointBettingOpen === undefined){
+                // Se ainda não foi inicializado, não fazer nada com o modal
+                // (pode estar em uma transição de estado)
+                console.log("⚠️ _bPointBettingOpen é undefined - não fechando modal ainda");
+            } else if(_bPointBettingOpen === false){
+                // Período fechou - mas NÃO fechar modal aqui
+                // O timer já vai fechar quando necessário
+                // OU a rodada terminou e já foi fechado em outro lugar
+                console.log("ℹ️ Período de apostas fechou, mas não fechando modal aqui (deixar timer gerenciar)");
+            }
+            _oInterface.hideBlock();
+        }
         
         // Só habilita fichas se for single player OU se for o turno do jogador
         // MAS: Se estiver no período de apostas no ponto e NÃO for o shooter, já habilitamos as fichas em _assignNumber
@@ -608,9 +759,24 @@ function CGame(oData){
         console.log("🔥🔥🔥 _assignNumber CHAMADA - INÍCIO DA FUNÇÃO");
         console.log("     VALOR ATUAL de _bIAmShooter:", _bIAmShooter);
         console.log("     TIMESTAMP:", _assignNumberStartTime);
+        console.log("     Ponto:", iNumber);
+        console.log("     _bPointBettingOpen:", _bPointBettingOpen);
+        console.log("     _iPointBettingTimer:", _iPointBettingTimer);
         console.log("");
         
+        // CRÍTICO: Se já existe um período de apostas ativo para o mesmo ponto, não fazer nada
+        if(_bPointBettingOpen && _iNumberPoint === iNumber && _iPointBettingTimer !== null){
+            console.warn("⚠️⚠️⚠️ _assignNumber chamado para o mesmo ponto enquanto período ainda está aberto!");
+            console.warn("   Ignorando chamada para evitar resetar o timer");
+            return; // Sair imediatamente
+        }
+        
         _iNumberPoint = iNumber;
+        
+        // Resetar paradas para o novo ponto
+        if(!_aParadas[iNumber]){
+            _aParadas[iNumber] = 0;
+        }
         
         //PLACE 'ON' PLACEHOLDER
         var iNewX = s_oGameSettings.getPuckXByNumber(_iNumberPoint);
@@ -642,16 +808,56 @@ function CGame(oData){
         console.log("🔍 ============================================================");
         console.log("");
         
-        // SEMPRE ABRIR PERÍODO DE APOSTAS (mesmo em single player para teste)
+        // IMPORTANTE: NÃO abrir o período de apostas aqui ainda
+        // O período só deve abrir quando a animação dos dados terminar (em dicesAnimEnded)
+        // Por enquanto, apenas definir o ponto e preparar para abrir depois
+        console.log("📊 PONTO ESTABELECIDO EM " + iNumber + " - Período de apostas será aberto após animação dos dados terminar");
+        
+        // NÃO definir _bPointBettingOpen = true aqui
+        // NÃO mostrar botões aqui
+        // NÃO criar timer aqui
+        // Tudo isso será feito em dicesAnimEnded após a animação terminar
+        
+        // Esta função não deve mais criar o timer aqui
+        // O timer será criado em _startPointBettingPeriod que será chamado após a animação terminar
+    };
+    
+    // NOVA FUNÇÃO: Iniciar período de apostas APÓS a animação dos dados terminar
+    this._startPointBettingPeriod = function(iNumber){
+        console.log("");
+        console.log("🎯🎯🎯 _startPointBettingPeriod CHAMADA - INICIANDO PERÍODO DE APOSTAS");
+        console.log("     Ponto:", iNumber);
+        console.log("     _bIAmShooter:", _bIAmShooter);
+        console.log("     _bPointBettingOpen ANTES:", _bPointBettingOpen);
+        console.log("     _iPointBettingTimer ANTES:", _iPointBettingTimer);
+        console.log("");
+        
+        // CRÍTICO: Se período já está aberto e timer ainda está ativo, não fazer nada
+        if(_bPointBettingOpen && _iPointBettingTimer !== null){
+            console.warn("⚠️⚠️⚠️ ATENÇÃO: Período de apostas já está aberto e timer ainda está ativo!");
+            console.warn("   Ignorando chamada para evitar resetar o timer");
+            return; // Sair imediatamente
+        }
+        
+        // Limpar timer anterior se existir (IMPORTANTE: evitar múltiplos timers)
+        if(_iPointBettingTimer){
+            console.log("⚠️ Limpando timer anterior antes de criar novo");
+            clearTimeout(_iPointBettingTimer);
+            _iPointBettingTimer = null;
+        }
+        
+        // AGORA SIM: Abrir período de apostas
         _bPointBettingOpen = true;
+        console.log("✅ _bPointBettingOpen definido como TRUE");
+        console.log("   Verificação imediata: _bPointBettingOpen =", _bPointBettingOpen);
         
         // DESABILITAR BOTÃO "APOSTE AQUI" durante o período de apostas no ponto
         _oTableController.disableMainBetButton();
+        console.log("✅ Botão 'APOSTE AQUI' desabilitado");
         
         // MOSTRAR BOTÕES DE APOSTA NO PONTO E NO 7 - APENAS PARA OUTROS JOGADORES
-        // USAR _bIAmShooter AO INVÉS DE _bIsMyTurn
         if(!_bIAmShooter){
-            console.log("✅✅✅ DECISÃO: Mostrando botões - você NÃO é o shooter (_bIAmShooter = false)");
+            console.log("✅✅✅ Mostrando botões - você NÃO é o shooter");
             _oInterface.showPointBettingButtons(iNumber);
             
             // Habilitar fichas para OUTROS jogadores
@@ -659,35 +865,19 @@ function CGame(oData){
             _oInterface.enableClearButton();
             
             console.log("💰 Fichas habilitadas para apostar no ponto ou no 7");
-            console.log("");
         } else {
-            console.log("❌❌❌ DECISÃO: NÃO mostrar botões - você É o shooter (_bIAmShooter = true)");
-            console.log("   Os botões NÃO serão exibidos para você.");
-            console.log("   MOTIVO: Apenas outros jogadores podem apostar no ponto ou no 7");
-            
-            // GARANTIR que os botões estão ocultos para o shooter
-            // NÃO usar force aqui - se estiver no período de apostas, os botões já não devem aparecer para o shooter
-            // Mas se já apareceram por algum motivo, esconder sem forçar (para não bloquear)
-            _oInterface.hidePointBettingButtons(false);
-            console.log("");
+            console.log("❌❌❌ NÃO mostrar botões - você É o shooter");
         }
         
-        // SEMPRE EXECUTAR O TIMER (independente de multiplayer)
-        console.log("📊 PONTO ESTABELECIDO EM " + iNumber + " - 8 SEGUNDOS PARA OUTROS JOGADORES APOSTAREM!");
-        
-        // Limpar timer anterior se existir
-        if(_iPointBettingTimer){
-            clearTimeout(_iPointBettingTimer);
-        }
-        
-        // IMPORTANTE: Desabilitar botão de rolar para o SHOOTER durante os 8 segundos
+        // IMPORTANTE: Desabilitar botão de rolar para o SHOOTER durante os 10 segundos
         if(_bIAmShooter){
             _oInterface.enableRoll(false);
-            console.log("🔒 Botão de rolar DESABILITADO para o shooter durante os 8 segundos de apostas");
+            console.log("🔒 Botão de rolar DESABILITADO para o shooter durante os 10 segundos de apostas");
         }
         
-        // CONTADOR VISUAL: Mostrar segundos restantes (8 segundos)
-        var secondsLeft = 8;
+        // CONTADOR VISUAL: Mostrar segundos restantes (10 segundos)
+        var iBettingTimeSeconds = 10;
+        var secondsLeft = iBettingTimeSeconds;
         
         // Mensagem diferente para o shooter e outros jogadores
         if(_bIAmShooter){
@@ -716,19 +906,53 @@ function CGame(oData){
         }
         
         // Verificação periódica para garantir que os botões permaneçam visíveis
+        var iCurrentPoint = iNumber;
         _iVisibilityCheckInterval = setInterval(function() {
-            if(_bPointBettingOpen && !_bIAmShooter && _oInterface && _oInterface.ensurePointBettingButtonsVisible){
-                _oInterface.ensurePointBettingButtonsVisible();
+            var bPointBettingOpen = _bPointBettingOpen;
+            var bIAmShooter = _bIAmShooter;
+            var iNumberPoint = _iNumberPoint;
+            
+            if(!bPointBettingOpen){
+                console.log("⏰ Período de apostas fechou - limpando intervalo de verificação");
+                if(_iVisibilityCheckInterval){
+                    clearInterval(_iVisibilityCheckInterval);
+                    _iVisibilityCheckInterval = null;
+                }
+                return;
+            }
+            
+            if(bPointBettingOpen && !bIAmShooter && iNumberPoint > 0){
+                if(_oInterface){
+                    if(_oInterface.ensurePointBettingButtonsVisible){
+                        _oInterface.ensurePointBettingButtonsVisible();
+                    }
+                    
+                    var oContainer = window.s_oInterface && window.s_oInterface._oPointBettingContainer;
+                    if(!oContainer || !oContainer.visible){
+                        console.warn("⚠️⚠️⚠️ Container de botões foi escondido durante período de apostas - FORÇANDO RESTAURAÇÃO!");
+                        _oInterface.showPointBettingButtons(iNumberPoint);
+                    }
+                }
             } else {
                 if(_iVisibilityCheckInterval){
                     clearInterval(_iVisibilityCheckInterval);
                     _iVisibilityCheckInterval = null;
                 }
             }
-        }, 500); // Verificar a cada 500ms
+        }, 100);
         
-        // TIMER DE 8 SEGUNDOS: Após isso, fecha as apostas e libera o shooter
+        // TIMER DE 10 SEGUNDOS: Após isso, fecha as apostas e libera o shooter
+        // IMPORTANTE: Este timer começa AGORA, quando o modal é aberto (após animação terminar)
+        var iTimerStartTime = Date.now();
+        console.log("⏰ Criando timer de " + iBettingTimeSeconds + " segundos...");
+        console.log("   Timestamp de início:", iTimerStartTime);
         _iPointBettingTimer = setTimeout(function() {
+            var iTimerEndTime = Date.now();
+            var iElapsedTime = (iTimerEndTime - iTimerStartTime) / 1000;
+            console.log("⏰⏰⏰ TIMER DE " + iBettingTimeSeconds + " SEGUNDOS EXPIROU - FECHANDO PERÍODO DE APOSTAS");
+            console.log("   Timestamp de início:", iTimerStartTime);
+            console.log("   Timestamp de fim:", iTimerEndTime);
+            console.log("   Tempo decorrido:", iElapsedTime.toFixed(2), "segundos");
             _bPointBettingOpen = false;
             clearInterval(countdownInterval);
             if(_iVisibilityCheckInterval){
@@ -736,14 +960,14 @@ function CGame(oData){
                 _iVisibilityCheckInterval = null;
             }
             
-            // OCULTAR BOTÕES DE APOSTA (apenas para quem os viu - outros jogadores)
-            // FORÇAR esconder porque o timer de 8 segundos expirou
-            _oInterface.hidePointBettingButtons(true);
+            if(_oInterface && _oInterface.hidePointBettingButtons){
+                _oInterface.hidePointBettingButtons(true);
+            }
             
-            // REABILITAR BOTÃO "APOSTE AQUI"
+            _iPointBettingTimer = null;
+            
             _oTableController.enableMainBetButton();
             
-            // Desabilitar fichas para jogadores que NÃO são o atirador
             if(!_bIAmShooter){
                 _oInterface.disableBetFiches();
                 _oInterface.disableClearButton();
@@ -754,25 +978,25 @@ function CGame(oData){
                     if (_oInterface && _oInterface.hideMessage) {
                         _oInterface.hideMessage();
                     }
-                }, 2000);
+                }, 3000);
             } else {
-                // CRITICAL: Reabilitar botão de rolar para o SHOOTER após os 8 segundos
-                if(_oMySeat.getCurBet() >= MIN_BET){
-                    _oInterface.enableRoll(true);
-                    console.log("✅ Botão de rolar HABILITADO para o shooter após os 8 segundos");
-                }
-                
-                // Mensagem para o shooter
+                _oInterface.enableRoll(true);
+                console.log("✅ Botão de rolar HABILITADO para o shooter");
                 console.log("⏰ TEMPO ESGOTADO - Apostas dos outros jogadores fechadas!");
                 _oInterface.showMessage("Agora você pode jogar!");
-                
+
                 setTimeout(function() {
                     if (_oInterface && _oInterface.hideMessage) {
                         _oInterface.hideMessage();
                     }
                 }, 2000);
             }
-        }, 8000); // 8 segundos
+        }, iBettingTimeSeconds * 1000); // 10 segundos - começa AGORA quando modal abre
+        
+        console.log("✅ Período de apostas iniciado - 10 segundos começando AGORA");
+        console.log("   _iPointBettingTimer criado:", _iPointBettingTimer);
+        console.log("   _bPointBettingOpen:", _bPointBettingOpen);
+        console.log("   Timer deve expirar em:", iBettingTimeSeconds, "segundos");
     };
     
     // FUNÇÕES REMOVIDAS - Não são mais necessárias porque a aposta contra o 7 é automática
@@ -898,10 +1122,17 @@ function CGame(oData){
                     playSound("lose", 0.2, false);
                 }
                 
-                // PROCESSAR APOSTAS NO 7
+                // PROCESSAR APOSTAS NO 7 - SISTEMA DE PARADAS
+                // Quando sai 7, quem apostou no 7 ganha baseado na aposta e no valor de "perde" da tabela
                 if(_aSevenBets['seven'] && _aSevenBets['seven'] > 0){
-                    var iSevenWin = _aSevenBets['seven'] * 4; // Multiplicador 4x para quem apostou no 7
-                    _oMySeat.showWin(_aSevenBets['seven'] + iSevenWin); // Devolve aposta + ganho
+                    var iSevenBet = _aSevenBets['seven'];
+                    // Calcular ganho: para cada unidade de 100 apostada, ganha o valor "perde" da tabela
+                    // Exemplo: Ponto 4, aposta 100 no 7, ganha 200 (além da aposta)
+                    var iGanhoPorUnidade = _aPayoutTable[_iNumberPoint].perde;
+                    var iUnidades = Math.floor(iSevenBet / _iParadaBaseValue);
+                    var iSevenWin = iUnidades * iGanhoPorUnidade;
+                    
+                    _oMySeat.showWin(iSevenBet + iSevenWin); // Devolve aposta + ganho
                     _oInterface.setMoney(_oMySeat.getCredit());
                     
                     new CScoreText("SAIU 7! VOCÊ GANHOU " + iSevenWin + TEXT_CURRENCY + "!", CANVAS_WIDTH/2, CANVAS_HEIGHT/2 - 50);
@@ -910,14 +1141,31 @@ function CGame(oData){
                     new CScoreText("7 - SHOOTER PERDEU!", CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
                 }
                 
-                // PROCESSAR APOSTAS NO PONTO (perdem)
-                if(_aPointBets[_iNumberPoint] && _aPointBets[_iNumberPoint] > 0){
-                    console.log("❌ Apostas no ponto perderam:", _aPointBets[_iNumberPoint]);
+                // PROCESSAR APOSTAS NO PONTO (perdem quando sai 7)
+                // O débito já foi feito quando o jogador apostou, então não precisa debitar novamente
+                // Apenas registrar que perdeu
+                if(_aParadas[_iNumberPoint] && _aParadas[_iNumberPoint] > 0){
+                    var iNumParadas = _aParadas[_iNumberPoint];
+                    var iTotalPerdido = 0;
+                    
+                    // Calcular total perdido (já foi debitado quando apostou)
+                    for(var i = 1; i <= iNumParadas; i++){
+                        iTotalPerdido += i * _iParadaBaseValue;
+                    }
+                    
+                    console.log("❌ Paradas no ponto " + _iNumberPoint + " perderam:", iNumParadas + " paradas, total perdido: " + iTotalPerdido);
+                    
+                    // Mostrar mensagem de perda
+                    if(iNumParadas > 0){
+                        new CScoreText("SAIU 7! VOCÊ PERDEU " + iTotalPerdido + TEXT_CURRENCY + "\n(" + iNumParadas + " PARADA(S))", CANVAS_WIDTH/2, CANVAS_HEIGHT/2 - 30);
+                        playSound("lose", 0.3, false);
+                    }
                 }
                 
                 // Limpar apostas no ponto e no 7
                 _aPointBets = {};
                 _aSevenBets = {};
+                _aParadas = {}; // Limpar paradas também
                 
                 // Remove todas as apostas ativas do shooter
                 _oMySeat.clearAllBets();
@@ -971,13 +1219,22 @@ function CGame(oData){
                     playSound("win", 0.2, false);
                 }
                 
-                // PROCESSAR APOSTAS NO PONTO (ganham)
-                if(_aPointBets[_iNumberPoint] && _aPointBets[_iNumberPoint] > 0){
-                    var iPointWin = _aPointBets[_iNumberPoint] * iMultiplier;
-                    _oMySeat.showWin(_aPointBets[_iNumberPoint] + iPointWin); // Devolve aposta + ganho
+                // PROCESSAR APOSTAS NO PONTO (ganham) - SISTEMA DE PARADAS
+                if(_aParadas[_iNumberPoint] && _aParadas[_iNumberPoint] > 0){
+                    var iNumParadas = _aParadas[_iNumberPoint];
+                    var iTotalGanho = 0;
+                    
+                    // Calcular ganho para cada parada
+                    for(var i = 1; i <= iNumParadas; i++){
+                        var iParadaValue = i * _iParadaBaseValue;
+                        var iGanhoPorParada = _aPayoutTable[_iNumberPoint].ganha;
+                        iTotalGanho += iParadaValue + iGanhoPorParada; // Devolve aposta + ganho
+                    }
+                    
+                    _oMySeat.showWin(iTotalGanho);
                     _oInterface.setMoney(_oMySeat.getCredit());
                     
-                    new CScoreText("PONTO " + _iNumberPoint + "! VOCÊ GANHOU " + iPointWin + TEXT_CURRENCY + "!", CANVAS_WIDTH/2, CANVAS_HEIGHT/2 - 50);
+                    new CScoreText("PONTO " + _iNumberPoint + "! " + iNumParadas + " PARADA(S)!\nVOCÊ GANHOU " + iTotalGanho + TEXT_CURRENCY + "!", CANVAS_WIDTH/2, CANVAS_HEIGHT/2 - 50);
                     playSound("win", 0.5, false);
                 } else if(iTotalActiveBets > 0) {
                     new CScoreText("PONTO ACERTOU! +" + (iTotalActiveBets * iMultiplier).toFixed(2) + TEXT_CURRENCY + "\n⚠️ PASSE O DADO PARA LIBERAR!", CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
@@ -991,6 +1248,7 @@ function CGame(oData){
                 // Limpar apostas no ponto e no 7
                 _aPointBets = {};
                 _aSevenBets = {};
+                _aParadas = {}; // Limpar paradas também
                 
                 // Remove as fichas visualmente do shooter
                 _oMySeat.clearAllBetsVisualOnly();
@@ -1326,10 +1584,35 @@ function CGame(oData){
         }
         
         // Coloca a ficha diretamente no botão "APOSTE AQUI"
-        _oMySeat.addFicheOnButton(iFicheValue,iIndexFicheSelected,szBut);
+        var bBetSuccess = _oMySeat.addFicheOnButton(iFicheValue,iIndexFicheSelected,szBut);
         
-        _oInterface.setMoney(_oMySeat.getCredit());
+        // Verificar se a aposta foi bem-sucedida
+        if(!bBetSuccess){
+            // Reverter histórico de aposta se falhou
+            if(_aBetHistory[oParams.button] !== undefined){
+                _aBetHistory[oParams.button] -= iFicheValue;
+                if(_aBetHistory[oParams.button] <= 0){
+                    delete _aBetHistory[oParams.button];
+                }
+            }
+            _oMsgBox.show("SALDO INSUFICIENTE!\nNÃO FOI POSSÍVEL COMPLETAR A APOSTA.");
+            playSound("lose", 0.3, false);
+            return;
+        }
+        
+        var iCurrentCredit = _oMySeat.getCredit();
+        _oInterface.setMoney(iCurrentCredit);
         _oInterface.setCurBet(_oMySeat.getCurBet());
+        
+        // Verificar saldo e habilitar/desabilitar fichas
+        var iMinFicheValue = s_oGameSettings.getFicheValues(0);
+        if(iCurrentCredit < iMinFicheValue){
+            _oInterface.disableBetFiches();
+        } else if(!_bPointBettingOpen || _bIsMyTurn){
+            // Só habilitar fichas se não estiver no período de apostas OU se for o turno do jogador
+            _oInterface.enableBetFiches();
+        }
+        
         // Só habilitar rolar se NÃO estiver no período de apostas OU se não for o shooter
         // O shooter não pode jogar durante os 8 segundos de apostas
         if(!_bPointBettingOpen || !_bIAmShooter){
@@ -1383,31 +1666,66 @@ function CGame(oData){
             return;
         }
         
-        // Verificar se há fichas selecionadas
-        var iIndexFicheSelected = _oInterface.getCurFicheSelected();
-        var iFicheValue = s_oGameSettings.getFicheValues(iIndexFicheSelected);
-        
-        // Verificar se jogador tem crédito
-        if(_oMySeat.getCredit() < iFicheValue){
-            _oMsgBox.show(TEXT_ERROR_NO_MONEY_MSG);
+        // Verificar limite de paradas (máximo 10 por ponto)
+        if(!_aParadas[_iNumberPoint]){
+            _aParadas[_iNumberPoint] = 0;
+        }
+        if(_aParadas[_iNumberPoint] >= 10){
+            _oMsgBox.show("LIMITE DE 10 PARADAS ATINGIDO PARA ESTE PONTO!");
+            playSound("lose", 0.3, false);
             return;
         }
         
-        // Adicionar aposta ao ponto
+        // Calcular valor da próxima parada
+        var iParadaNumber = _aParadas[_iNumberPoint] + 1;
+        var iParadaValue = iParadaNumber * _iParadaBaseValue; // 1 parada = 100, 2 paradas = 200, etc
+        
+        // Verificar se jogador tem crédito
+        if(_oMySeat.getCredit() < iParadaValue){
+            _oMsgBox.show("SALDO INSUFICIENTE!\nPARADA " + iParadaNumber + " REQUER " + iParadaValue + TEXT_CURRENCY);
+            return;
+        }
+        
+        // Incrementar número de paradas
+        _aParadas[_iNumberPoint] = iParadaNumber;
+        
+        // Adicionar aposta ao ponto (manter compatibilidade com sistema antigo)
         if(!_aPointBets[_iNumberPoint]){
             _aPointBets[_iNumberPoint] = 0;
         }
-        _aPointBets[_iNumberPoint] += iFicheValue;
+        _aPointBets[_iNumberPoint] += iParadaValue;
         
-        // Descontar do crédito
-        _oMySeat.decreaseBet(iFicheValue);
+        // Descontar do crédito e da aposta atual
+        // IMPORTANTE: decreaseBet apenas altera _iCurBet, precisamos também debitar o crédito
+        // Usar setFicheBetted que faz ambos: debita crédito e aumenta aposta atual
+        var aFichesMc = []; // Array vazio - não precisamos fichas visuais para apostas no ponto
+        var bBetSuccess = _oMySeat.setFicheBetted(iParadaValue, aFichesMc, 1);
+        
+        // Verificar se a aposta foi bem-sucedida
+        if(!bBetSuccess){
+            // Reverter incremento de paradas se a aposta falhou
+            _aParadas[_iNumberPoint] = iParadaNumber - 1;
+            _aPointBets[_iNumberPoint] -= iParadaValue;
+            _oMsgBox.show("SALDO INSUFICIENTE!\nNÃO FOI POSSÍVEL COMPLETAR A APOSTA.");
+            playSound("lose", 0.3, false);
+            return;
+        }
+        
         _oInterface.setMoney(_oMySeat.getCredit());
         
+        // Calcular ganho potencial
+        var iGanhoPotencial = iParadaValue + _aPayoutTable[_iNumberPoint].ganha;
+        
+        // Atualizar texto do botão para mostrar número de paradas
+        if(_oInterface && _oInterface.updatePointButtonText){
+            _oInterface.updatePointButtonText(_iNumberPoint, iParadaNumber);
+        }
+        
         // Feedback visual
-        new CScoreText("APOSTOU " + iFicheValue + TEXT_CURRENCY + " NO PONTO " + _iNumberPoint, CANVAS_WIDTH/2, CANVAS_HEIGHT/2 + 30);
+        new CScoreText("PARADA " + iParadaNumber + " NO PONTO " + _iNumberPoint + "\n" + iParadaValue + "x" + iGanhoPotencial, CANVAS_WIDTH/2, CANVAS_HEIGHT/2 + 30);
         playSound("chip", 1, false);
         
-        console.log("✅ Aposta no ponto registrada:", iFicheValue, "Total no ponto:", _aPointBets[_iNumberPoint]);
+        console.log("✅ Parada " + iParadaNumber + " no ponto " + _iNumberPoint + " registrada:", iParadaValue, "Total no ponto:", _aPointBets[_iNumberPoint]);
     };
     
     this.onBetOnSeven = function(){
@@ -1440,10 +1758,19 @@ function CGame(oData){
         if(!_aSevenBets['seven']){
             _aSevenBets['seven'] = 0;
         }
-        _aSevenBets['seven'] += iFicheValue;
         
-        // Descontar do crédito
-        _oMySeat.decreaseBet(iFicheValue);
+        // Descontar do crédito usando setFicheBetted (que valida saldo)
+        var aFichesMc = []; // Array vazio - não precisamos fichas visuais para apostas no 7
+        var bBetSuccess = _oMySeat.setFicheBetted(iFicheValue, aFichesMc, 1);
+        
+        // Verificar se a aposta foi bem-sucedida
+        if(!bBetSuccess){
+            _oMsgBox.show("SALDO INSUFICIENTE!\nNÃO FOI POSSÍVEL COMPLETAR A APOSTA NO 7.");
+            playSound("lose", 0.3, false);
+            return;
+        }
+        
+        _aSevenBets['seven'] += iFicheValue;
         _oInterface.setMoney(_oMySeat.getCredit());
         
         // Feedback visual

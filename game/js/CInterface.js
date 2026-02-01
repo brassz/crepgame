@@ -33,6 +33,8 @@ function CInterface(){
     var _oButBetOnPoint;
     var _oButBetOnSeven;
     var _oPointBettingContainer;
+    var _iParadasCount = 0; // Contador de paradas feitas
+    var _iLocalPointBettingTimer = null; // Timer local para garantir que modal permaneça aberto por 8 segundos
     
     // LISTA DE JOGADORES CONECTADOS
     var _oPlayersListContainer;
@@ -240,6 +242,12 @@ function CInterface(){
         // Limpar botões de aposta no ponto e no 7
         if(_oButBetOnPoint) { _oButBetOnPoint.unload(); }
         if(_oButBetOnSeven) { _oButBetOnSeven.unload(); }
+        
+        // Limpar timer local se existir
+        if(_iLocalPointBettingTimer){
+            clearTimeout(_iLocalPointBettingTimer);
+            _iLocalPointBettingTimer = null;
+        }
         if(_oPointBettingContainer) { s_oStage.removeChild(_oPointBettingContainer); }
         
         s_oInterface = null;
@@ -369,6 +377,12 @@ function CInterface(){
     
     this.setMoney = function(iMoney){
         _oMoneyAmountText.refreshText(iMoney.toFixed(2)+TEXT_CURRENCY);
+        
+        // Desabilitar fichas se saldo for zero ou negativo
+        if(iMoney <= 0){
+            this.disableBetFiches();
+            console.log("🔒 Fichas desabilitadas - saldo zero ou negativo:", iMoney);
+        }
     };
 
     this.refreshMoney = function(iStartMoney, iMoney){
@@ -560,6 +574,13 @@ function CInterface(){
     
     this.showPointBettingButtons = function(iPointNumber){
         console.log("🎮 showPointBettingButtons chamado com ponto:", iPointNumber);
+        
+        // Verificar se container existe, se não existir, criar
+        if(!_oPointBettingContainer){
+            console.warn("⚠️ Container não existe - criando agora");
+            this._initPointBettingButtons();
+        }
+        
         if(_oPointBettingContainer){
             // IMPORTANTE: Garantir que o block está oculto para não bloquear os botões
             if(_oBlock){
@@ -583,11 +604,43 @@ function CInterface(){
                 }
             }
             
+            // CRITICAL: Garantir que container está no stage antes de mover
+            if(!s_oStage.contains(_oPointBettingContainer)){
+                console.warn("⚠️ Container não está no stage - adicionando agora");
+                s_oStage.addChild(_oPointBettingContainer);
+            }
+            
             // CRITICAL: Mover o container para o TOPO do stage para garantir que apareça acima de todos os outros elementos
+            // Fazer isso de forma mais robusta
             var iNumChildren = s_oStage.getNumChildren();
             if(iNumChildren > 0){
-                s_oStage.setChildIndex(_oPointBettingContainer, iNumChildren - 1);
-                console.log("✅ Container movido para o topo do stage (índice:", iNumChildren - 1, ")");
+                try {
+                    // Verificar índice atual
+                    var iCurrentIndex = s_oStage.getChildIndex(_oPointBettingContainer);
+                    var iTargetIndex = iNumChildren - 1;
+                    
+                    // Só mover se não estiver no topo
+                    if(iCurrentIndex !== iTargetIndex){
+                        s_oStage.setChildIndex(_oPointBettingContainer, iTargetIndex);
+                        console.log("✅ Container movido para o topo do stage (de", iCurrentIndex, "para", iTargetIndex, ")");
+                    }
+                } catch(e) {
+                    console.error("❌ Erro ao mover container para o topo:", e);
+                    // Se falhar, tentar adicionar novamente
+                    if(!s_oStage.contains(_oPointBettingContainer)){
+                        console.warn("⚠️ Tentando adicionar container novamente ao stage");
+                        s_oStage.addChild(_oPointBettingContainer);
+                        // Tentar mover novamente após adicionar
+                        try {
+                            var iNumChildren2 = s_oStage.getNumChildren();
+                            if(iNumChildren2 > 0){
+                                s_oStage.setChildIndex(_oPointBettingContainer, iNumChildren2 - 1);
+                            }
+                        } catch(e2) {
+                            console.error("❌ Erro ao mover container após adicionar:", e2);
+                        }
+                    }
+                }
             }
             
             console.log("✅ Container de botões agora está visível");
@@ -602,6 +655,9 @@ function CInterface(){
                 console.log("✅ Texto do botão atualizado para: PONTO:", iPointNumber);
             }
             
+            // Resetar contador de paradas quando mostrar botões
+            _iParadasCount = 0;
+            
             // Garantir que o botão do 7 também está visível
             if(_oButBetOnSeven){
                 _oButBetOnSeven.setVisible(true); // Garantir que o botão está visível
@@ -611,6 +667,25 @@ function CInterface(){
             if(s_oStage && s_oStage.update){
                 s_oStage.update();
             }
+            
+            // TIMER LOCAL: Garantir que o modal permaneça aberto por 10 segundos
+            // Limpar timer anterior se existir
+            if(_iLocalPointBettingTimer){
+                console.log("⚠️ Limpando timer local anterior antes de criar novo");
+                clearTimeout(_iLocalPointBettingTimer);
+                _iLocalPointBettingTimer = null;
+            }
+            
+            // Criar novo timer local de 10 segundos
+            // Este timer garante que o modal não seja fechado antes dos 10 segundos
+            _iLocalPointBettingTimer = setTimeout(function() {
+                console.log("⏰⏰⏰ TIMER LOCAL DE 10 SEGUNDOS EXPIROU - Permitindo fechar modal");
+                // Não fechar o modal aqui - apenas permitir que seja fechado
+                // O timer principal em CGame.js vai fechar quando necessário
+                _iLocalPointBettingTimer = null;
+            }, 10000); // 10 segundos (aumentado de 8 para 10)
+            
+            console.log("✅ Timer local de 10 segundos criado para garantir que modal permaneça aberto");
         } else {
             console.error("❌ _oPointBettingContainer não existe!");
         }
@@ -620,15 +695,112 @@ function CInterface(){
         console.log("🔴 hidePointBettingButtons chamado");
         console.log("   Timestamp:", Date.now());
         console.log("   Force:", force);
+        console.log("   Stack trace:", new Error().stack);
+        console.log("   window.s_oGame existe:", !!window.s_oGame);
+        console.log("   Timer local existe:", !!_iLocalPointBettingTimer);
+        if(window.s_oGame){
+            console.log("   _bPointBettingOpen:", window.s_oGame._bPointBettingOpen);
+            console.log("   _bPointBettingOpen type:", typeof window.s_oGame._bPointBettingOpen);
+            console.log("   _bIAmShooter:", window.s_oGame._bIAmShooter);
+            console.log("   _iNumberPoint:", window.s_oGame._iNumberPoint);
+            console.log("   _iPointBettingTimer existe:", !!window.s_oGame._iPointBettingTimer);
+        } else {
+            console.log("   _bPointBettingOpen: N/A (window.s_oGame não existe)");
+            console.log("   _bIAmShooter: N/A");
+        }
+        
+        // CRITICAL: Verificar timer local primeiro
+        // Se o timer local ainda está ativo, NÃO fechar o modal (a menos que force seja true)
+        if(_iLocalPointBettingTimer && !force){
+            console.warn("⚠️⚠️⚠️ BLOQUEADO: Timer local ainda está ativo - modal deve permanecer aberto!");
+            console.warn("   Timer local foi criado há menos de 8 segundos");
+            console.warn("   Use force=true para forçar esconder (apenas quando rodada terminar)");
+            console.warn("   Stack trace da tentativa de fechar:", new Error().stack);
+            // NÃO esconder - retornar imediatamente
+            // Além disso, FORÇAR mostrar novamente para garantir
+            if(window.s_oGame && window.s_oGame._iNumberPoint > 0 && !window.s_oGame._bIAmShooter){
+                console.log("🔄 Forçando mostrar botões novamente após tentativa de esconder");
+                this.showPointBettingButtons(window.s_oGame._iNumberPoint);
+            }
+            return;
+        }
+        
+        // CRITICAL: Verificar também o timer principal em CGame.js
+        // Se o timer principal ainda está ativo, NÃO fechar o modal (a menos que force seja true)
+        // IMPORTANTE: Mesmo com force=true, se o timer principal ainda está ativo, NÃO fechar
+        // (exceto se a rodada terminou - ponto acertado ou 7 out)
+        var bTimerPrincipalAtivo = window.s_oGame && window.s_oGame._iPointBettingTimer !== null;
+        var bPeriodoAindaAberto = window.s_oGame && window.s_oGame._bPointBettingOpen === true;
+        
+        if(bTimerPrincipalAtivo && !force){
+            console.warn("⚠️⚠️⚠️ BLOQUEADO: Timer principal ainda está ativo - modal deve permanecer aberto!");
+            console.warn("   Timer principal foi criado há menos de 8 segundos");
+            console.warn("   Use force=true para forçar esconder (apenas quando rodada terminar)");
+            // NÃO esconder - retornar imediatamente
+            // Além disso, FORÇAR mostrar novamente para garantir
+            if(window.s_oGame._iNumberPoint > 0 && !window.s_oGame._bIAmShooter){
+                console.log("🔄 Forçando mostrar botões novamente após tentativa de esconder (timer principal ativo)");
+                this.showPointBettingButtons(window.s_oGame._iNumberPoint);
+            }
+            return;
+        }
+        
+        // Se force=true mas timer ainda está ativo, verificar se realmente deve fechar
+        // (só fechar se a rodada terminou - ponto acertado ou 7 out)
+        if(bTimerPrincipalAtivo && force){
+            console.warn("⚠️⚠️⚠️ ATENÇÃO: Tentativa de fechar modal com force=true mas timer ainda está ativo!");
+            console.warn("   Verificando se rodada terminou...");
+            // Verificar se o ponto foi acertado ou 7 foi tirado (rodada terminou)
+            // Se não terminou, não fechar ainda
+            var bRodadaTerminou = false;
+            if(window.s_oGame && window.s_oGame._iNumberPoint === -1){
+                // Ponto foi resetado - rodada terminou
+                bRodadaTerminou = true;
+            }
+            if(!bRodadaTerminou){
+                console.warn("   Rodada NÃO terminou - bloqueando fechamento do modal");
+                // NÃO fechar - retornar imediatamente
+                if(window.s_oGame._iNumberPoint > 0 && !window.s_oGame._bIAmShooter){
+                    console.log("🔄 Forçando mostrar botões novamente (rodada não terminou)");
+                    this.showPointBettingButtons(window.s_oGame._iNumberPoint);
+                }
+                return;
+            }
+        }
         
         // CRITICAL: Verificar se estamos no período de apostas (8 segundos após estabelecer ponto)
         // Só esconder se FORCE for true OU se não estiver mais no período de apostas
-        if(window.s_oGame && window.s_oGame._bPointBettingOpen && !force){
+        // IMPORTANTE: Verificar se window.s_oGame existe e se _bPointBettingOpen existe
+        // Se _bPointBettingOpen for undefined, tratar como false (período não está aberto)
+        // MAS: Se force for false e _bPointBettingOpen for undefined, não fechar ainda
+        // (pode estar em uma transição de estado)
+        var bPointBettingOpen = false;
+        if(window.s_oGame && window.s_oGame._bPointBettingOpen !== undefined){
+            bPointBettingOpen = window.s_oGame._bPointBettingOpen;
+        } else if(window.s_oGame && window.s_oGame._bPointBettingOpen === undefined && !force){
+            // Se for undefined e force for false, não fechar ainda (pode estar em transição)
+            console.log("⚠️ _bPointBettingOpen é undefined e force=false - não fechando modal ainda");
+            return;
+        }
+        
+        if(bPointBettingOpen && !force){
             console.warn("⚠️ BLOQUEADO: Tentativa de esconder botões durante período de apostas ativo!");
             console.warn("   Os botões devem permanecer visíveis por 8 segundos completos");
             console.warn("   Use force=true para forçar esconder (apenas quando rodada terminar)");
             // NÃO esconder - retornar imediatamente
+            // Além disso, FORÇAR mostrar novamente para garantir
+            if(window.s_oGame && window.s_oGame._iNumberPoint > 0 && !window.s_oGame._bIAmShooter){
+                console.log("🔄 Forçando mostrar botões novamente após tentativa de esconder");
+                this.showPointBettingButtons(window.s_oGame._iNumberPoint);
+            }
             return;
+        }
+        
+        // Limpar timer local quando fechar o modal
+        if(_iLocalPointBettingTimer){
+            console.log("🧹 Limpando timer local ao fechar modal");
+            clearTimeout(_iLocalPointBettingTimer);
+            _iLocalPointBettingTimer = null;
         }
         
         if(_oPointBettingContainer){
@@ -644,10 +816,89 @@ function CInterface(){
     
     // Função para garantir que os botões permaneçam visíveis (chamada periodicamente)
     this.ensurePointBettingButtonsVisible = function(){
-        if(_oPointBettingContainer && window.s_oGame && window.s_oGame._bPointBettingOpen){
+        if(!window.s_oGame){
+            return; // Se o jogo não existe, não fazer nada
+        }
+        
+        // Verificar se as propriedades existem antes de acessá-las
+        var bPointBettingOpen = window.s_oGame._bPointBettingOpen !== undefined ? window.s_oGame._bPointBettingOpen : false;
+        var bIAmShooter = window.s_oGame._bIAmShooter !== undefined ? window.s_oGame._bIAmShooter : false;
+        var iPointNumber = window.s_oGame._iNumberPoint || 0;
+        
+        // CRÍTICO: Se período de apostas NÃO está mais aberto, NÃO restaurar botões
+        // IMPORTANTE: Não fechar o modal aqui - apenas não restaurar
+        // O timer ou outras funções específicas devem fechar o modal
+        if(!bPointBettingOpen){
+            // Período fechou - apenas não restaurar, mas não forçar fechar
+            // (o timer já vai fechar quando necessário)
+            return; // Sair imediatamente - não restaurar
+        }
+        
+        // Só garantir visibilidade se período de apostas está aberto e não é o shooter
+        if(bPointBettingOpen && !bIAmShooter && iPointNumber > 0){
+            // Verificar se container existe e está no stage
+            if(!_oPointBettingContainer){
+                console.warn("⚠️ Container de botões não existe - criando novamente");
+                this.showPointBettingButtons(iPointNumber);
+                return;
+            }
+            
+            // Verificar se container está no stage
+            if(!s_oStage.contains(_oPointBettingContainer)){
+                console.warn("⚠️ Container foi removido do stage - adicionando novamente");
+                s_oStage.addChild(_oPointBettingContainer);
+            }
+            
+            // Verificar visibilidade
             if(!_oPointBettingContainer.visible){
                 console.warn("⚠️ Botões de aposta foram escondidos prematuramente - restaurando visibilidade");
-                this.showPointBettingButtons(window.s_oGame._iNumberPoint || 0);
+                this.showPointBettingButtons(iPointNumber);
+                return;
+            }
+            
+            // Garantir que está no topo do stage (z-index mais alto)
+            if(s_oStage && _oPointBettingContainer){
+                var iNumChildren = s_oStage.getNumChildren();
+                if(iNumChildren > 0){
+                    var iCurrentIndex = s_oStage.getChildIndex(_oPointBettingContainer);
+                    // Se não está no topo, mover para o topo
+                    if(iCurrentIndex < iNumChildren - 1){
+                        console.log("🔄 Movendo container para o topo do stage (índice:", iNumChildren - 1, ")");
+                        s_oStage.setChildIndex(_oPointBettingContainer, iNumChildren - 1);
+                    }
+                }
+            }
+            
+            // Garantir que alpha está em 1.0
+            if(_oPointBettingContainer.alpha < 1.0){
+                _oPointBettingContainer.alpha = 1.0;
+            }
+            
+            // Garantir que todos os filhos estão visíveis
+            var iNumChildren = _oPointBettingContainer.getNumChildren();
+            for(var i = 0; i < iNumChildren; i++){
+                var oChild = _oPointBettingContainer.getChildAt(i);
+                if(oChild){
+                    if(!oChild.visible){
+                        oChild.visible = true;
+                        console.log("🔄 Filho", i, "foi tornado visível");
+                    }
+                    if(oChild.alpha < 1.0){
+                        oChild.alpha = 1.0;
+                    }
+                }
+            }
+            
+            // Forçar atualização do stage para garantir que mudanças sejam renderizadas
+            if(s_oStage && s_oStage.update){
+                s_oStage.update();
+            }
+        } else {
+            // Container não existe e período de apostas está aberto - criar imediatamente
+            console.error("❌❌❌ Container não existe durante período de apostas! Criando agora...");
+            this._initPointBettingButtons();
+            if(_oPointBettingContainer && iPointNumber > 0){
+                this.showPointBettingButtons(iPointNumber);
             }
         }
     };
@@ -663,6 +914,14 @@ function CInterface(){
         // Jogador clicou para apostar no 7
         if(s_oGame && s_oGame.onBetOnSeven){
             s_oGame.onBetOnSeven();
+        }
+    };
+    
+    // Função para atualizar o texto do botão mostrando número de paradas
+    this.updatePointButtonText = function(iPointNumber, iParadasCount){
+        if(_oButBetOnPoint && iParadasCount > 0){
+            _oButBetOnPoint.changeText("PONTO: " + iPointNumber + " (" + iParadasCount + "/10)");
+            console.log("✅ Texto do botão atualizado: PONTO " + iPointNumber + " com " + iParadasCount + " paradas");
         }
     };
     
