@@ -8,16 +8,22 @@
     "build": "echo 'No build step required'",
     "start": "node server.js"
   },
-  "keywords": ["craps", "game", "casino", "dice"],
+  "keywords": [
+    "craps",
+    "game",
+    "casino",
+    "dice"
+  ],
   "author": "Seu Nome",
   "license": "MIT",
   "devDependencies": {
     "vercel": "^32.0.0"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.74.0",
+    "cors": "^2.8.5",
     "express": "^4.19.2",
     "socket.io": "^4.7.5",
-    "socket.io-client": "^4.7.5",
-    "cors": "^2.8.5"
+    "socket.io-client": "^4.7.5"
   }
 }
