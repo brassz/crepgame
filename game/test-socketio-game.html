@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Test Socket.IO Pure Game Client</title>
+    <title>Teste do Cliente de Jogo Socket.IO (Puro)</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -140,79 +140,79 @@
     </style>
 </head>
 <body>
-    <h1>🎲 Socket.IO Pure Game Client Test</h1>
+    <h1>🎲 Teste do Cliente de Jogo Socket.IO (Puro)</h1>
     
     <div class="container">
         <!-- Left Panel: Connection & Controls -->
         <div class="panel">
-            <h2>Connection & Controls</h2>
+            <h2>Conexão e Controles</h2>
             
             <div class="status disconnected" id="status">
-                ⚪ Disconnected
+                ⚪ Desconectado
             </div>
             
             <div class="input-group">
-                <label>User ID:</label>
+                <label>ID do Usuário:</label>
                 <input type="text" id="userId" value="player1" />
             </div>
             
             <div class="input-group">
-                <label>Username:</label>
-                <input type="text" id="username" value="Player 1" />
+                <label>Nome de usuário:</label>
+                <input type="text" id="username" value="Jogador 1" />
             </div>
             
             <div class="input-group">
-                <label>Room ID:</label>
+                <label>ID da Sala:</label>
                 <input type="text" id="roomId" value="table1" />
             </div>
             
             <div class="input-group">
-                <label>Starting Credit:</label>
+                <label>Crédito Inicial:</label>
                 <input type="number" id="credit" value="1000" />
             </div>
             
-            <button onclick="connect()">Connect</button>
-            <button onclick="disconnect()">Disconnect</button>
+            <button onclick="connect()">Conectar</button>
+            <button onclick="disconnect()">Desconectar</button>
             
             <hr style="margin: 20px 0; border-color: #444;">
             
-            <h3>Game Actions</h3>
+            <h3>Ações do Jogo</h3>
             
             <div class="input-group">
-                <label>Bet Amount:</label>
+                <label>Valor da Aposta:</label>
                 <input type="number" id="betAmount" value="10" />
             </div>
             
             <div class="input-group">
-                <label>Bet Type:</label>
+                <label>Tipo de Aposta:</label>
                 <input type="text" id="betType" value="pass_line" />
             </div>
             
-            <button onclick="placeBet()" id="btnBet" disabled>Place Bet</button>
-            <button onclick="clearBets()" id="btnClear" disabled>Clear Bets</button>
-            <button onclick="rollDice()" id="btnRoll" disabled>Roll Dice</button>
-            <button onclick="getState()" id="btnState" disabled>Get State</button>
+            <button onclick="placeBet()" id="btnBet" disabled>Fazer Aposta</button>
+            <button onclick="clearBets()" id="btnClear" disabled>Limpar Apostas</button>
+            <button onclick="rollDice()" id="btnRoll" disabled>Lançar Dados</button>
+            <button onclick="getState()" id="btnState" disabled>Obter Estado</button>
         </div>
         
         <!-- Right Panel: Game State -->
         <div class="panel">
-            <h2>Game State</h2>
+            <h2>Estado do Jogo</h2>
             
             <div class="game-info">
                 <div class="info-box">
-                    <div class="info-label">Your Credit</div>
+                    <div class="info-label">Seu Crédito</div>
                     <div class="info-value" id="playerCredit">0</div>
                 </div>
                 <div class="info-box">
-                    <div class="info-label">Point</div>
+                    <div class="info-label">Ponto</div>
                     <div class="info-value" id="gamePoint">-</div>
                 </div>
                 <div class="info-box">
-                    <div class="info-label">Shooter</div>
+                    <div class="info-label">Atirador</div>
                     <div class="info-value" id="currentShooter" style="font-size: 16px;">-</div>
                 </div>
                 <div class="info-box">
-                    <div class="info-label">Players</div>
+                    <div class="info-label">Jogadores</div>
                     <div class="info-value" id="playerCount">0</div>
                 </div>
             </div>
@@ -222,16 +222,16 @@
             </div>
             
             <div style="text-align: center; color: #FFD700; font-size: 18px;" id="gameMessage">
-                Waiting for connection...
+                Aguardando conexão...
             </div>
         </div>
     </div>
     
     <!-- Full Width: Event Log -->
     <div class="panel" style="margin-top: 20px;">
-        <h2>Event Log</h2>
+        <h2>Registro de Eventos</h2>
         <div class="log" id="log"></div>
-        <button onclick="clearLog()">Clear Log</button>
+        <button onclick="clearLog()">Limpar Registro</button>
     </div>
     
     <!-- Load Socket.IO -->
@@ -256,14 +256,14 @@
             const statusDiv = document.getElementById('status');
             if (connected) {
                 statusDiv.className = 'status connected';
-                statusDiv.textContent = '🟢 Connected';
+                statusDiv.textContent = '🟢 Conectado';
                 document.getElementById('btnBet').disabled = false;
                 document.getElementById('btnClear').disabled = false;
                 document.getElementById('btnRoll').disabled = false;
                 document.getElementById('btnState').disabled = false;
             } else {
                 statusDiv.className = 'status disconnected';
-                statusDiv.textContent = '🔴 Disconnected';
+                statusDiv.textContent = '🔴 Desconectado';
                 document.getElementById('btnBet').disabled = true;
                 document.getElementById('btnClear').disabled = true;
                 document.getElementById('btnRoll').disabled = true;
@@ -277,43 +277,43 @@
             const roomId = document.getElementById('roomId').value;
             const credit = parseInt(document.getElementById('credit').value);
             
-            log(`Connecting as ${username}...`, 'info');
+            log(`Conectando como ${username}...`, 'info');
             
             gameClient.init()
                 .then(() => {
-                    log('Socket.IO initialized', 'info');
+                    log('Socket.IO inicializado', 'info');
                     gameClient.authenticate(userId, username, roomId, credit);
                 })
                 .catch(error => {
-                    log(`Connection error: ${error.message}`, 'error');
+                    log(`Erro de conexão: ${error.message}`, 'error');
                 });
         }
         
         function disconnect() {
             gameClient.disconnect();
-            log('Disconnected', 'info');
+            log('Desconectado', 'info');
         }
         
         function placeBet() {
             const betType = document.getElementById('betType').value;
             const amount = parseInt(document.getElementById('betAmount').value);
             
-            log(`Placing bet: ${betType} for ${amount}`, 'game');
+            log(`Fazendo aposta: ${betType} por ${amount}`, 'game');
             gameClient.placeBet(betType, amount);
         }
         
         function clearBets() {
-            log('Clearing bets...', 'game');
+            log('Limpando apostas...', 'game');
             gameClient.clearBets();
         }
         
         function rollDice() {
-            log('Rolling dice...', 'dice');
+            log('Lançando dados...', 'dice');
             gameClient.rollDice();
         }
         
         function getState() {
-            log('Requesting game state...', 'info');
+            log('Solicitando estado do jogo...', 'info');
             gameClient.requestGameState();
         }
         
@@ -334,75 +334,75 @@
         
         // Setup event handlers
         gameClient.onConnected(() => {
-            log('✅ Connected to server', 'info');
+            log('✅ Conectado ao servidor', 'info');
             updateStatus(true);
         });
         
         gameClient.onDisconnected((reason) => {
-            log(`❌ Disconnected: ${reason}`, 'error');
+            log(`❌ Desconectado: ${reason}`, 'error');
             updateStatus(false);
         });
         
         gameClient.onAuthenticated(() => {
-            log('✅ Authenticated successfully', 'info');
-            document.getElementById('gameMessage').textContent = 'Ready to play!';
+            log('✅ Autenticado com sucesso', 'info');
+            document.getElementById('gameMessage').textContent = 'Pronto para jogar!';
         });
         
         gameClient.onGameState((state) => {
-            log(`📊 Game state received`, 'game');
+            log(`📊 Estado do jogo recebido`, 'game');
             updateGameUI(state);
         });
         
         gameClient.onDiceRolled((rollData) => {
-            log(`🎲 Dice rolled: ${rollData.dice1} + ${rollData.dice2} = ${rollData.total}`, 'dice');
+            log(`🎲 Dados lançados: ${rollData.dice1} + ${rollData.dice2} = ${rollData.total}`, 'dice');
             document.getElementById('diceResult').textContent = `🎲 ${rollData.dice1}  🎲 ${rollData.dice2}  = ${rollData.total}`;
-            document.getElementById('gameMessage').textContent = `Rolled ${rollData.total}`;
+            document.getElementById('gameMessage').textContent = `Resultado: ${rollData.total}`;
         });
         
         gameClient.onBetConfirmed((confirmation) => {
-            log(`✅ Bet confirmed: ${confirmation.betType} for ${confirmation.amount}`, 'game');
+            log(`✅ Aposta confirmada: ${confirmation.betType} por ${confirmation.amount}`, 'game');
             document.getElementById('playerCredit').textContent = confirmation.remainingCredit;
         });
         
         gameClient.onBetsCleared((data) => {
-            log(`🧹 Bets cleared. Refund: ${data.refundAmount}`, 'game');
+            log(`🧹 Apostas limpas. Reembolso: ${data.refundAmount}`, 'game');
             document.getElementById('playerCredit').textContent = data.remainingCredit;
         });
         
         gameClient.onGameResult((result) => {
-            log(`🎯 Game result: ${result.type} - ${result.message}`, 'dice');
+            log(`🎯 Resultado do jogo: ${result.type} - ${result.message}`, 'dice');
             document.getElementById('gameMessage').textContent = result.message;
         });
         
         gameClient.onPointEstablished((data) => {
-            log(`📍 Point established: ${data.point}`, 'game');
+            log(`📍 Ponto estabelecido: ${data.point}`, 'game');
             document.getElementById('gamePoint').textContent = data.point;
             document.getElementById('gameMessage').textContent = data.message;
         });
         
         gameClient.onShooterChanged((data) => {
-            log(`🔄 Shooter changed to: ${data.shooterName}`, 'game');
+            log(`🔄 Atirador mudou para: ${data.shooterName}`, 'game');
             document.getElementById('currentShooter').textContent = data.shooterName;
         });
         
         gameClient.onPlayersUpdated((players) => {
-            log(`👥 Players updated: ${players.length} player(s)`, 'info');
+            log(`👥 Jogadores atualizados: ${players.length} jogador(es)`, 'info');
             document.getElementById('playerCount').textContent = players.length;
         });
         
         gameClient.onError((error) => {
-            log(`❌ Error: ${error.message}`, 'error');
+            log(`❌ Erro: ${error.message}`, 'error');
         });
         
         gameClient.onUserJoined((userData) => {
-            log(`👤 ${userData.username} joined the room`, 'info');
+            log(`👤 ${userData.username} entrou na sala`, 'info');
         });
         
         gameClient.onUserLeft((userData) => {
-            log(`👤 ${userData.username} left the room`, 'info');
+            log(`👤 ${userData.username} saiu da sala`, 'info');
         });
         
-        log('Test page loaded. Click Connect to start.', 'info');
+        log('Página de teste carregada. Clique em Conectar para iniciar.', 'info');
     </script>
 </body>
 </html>
