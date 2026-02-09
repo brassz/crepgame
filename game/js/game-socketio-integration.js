@@ -27,6 +27,20 @@
         
         console.log('🎮 Configurando integração Socket.IO com o jogo...');
         
+        function showBlockedRollMessage(message, timeoutMs) {
+            const safeTimeout = timeoutMs || 2200;
+            if (window.s_oGame && window.s_oGame._oInterface && window.s_oGame._oInterface.showMessage) {
+                window.s_oGame._oInterface.showMessage(message);
+                setTimeout(function() {
+                    if (window.s_oGame && window.s_oGame._oInterface && window.s_oGame._oInterface.hideMessage) {
+                        window.s_oGame._oInterface.hideMessage();
+                    }
+                }, safeTimeout);
+            } else {
+                alert(message);
+            }
+        }
+        
         // Override the roll button handler
         const originalOnRoll = window.s_oGame.onRoll;
         window.s_oGame.onRoll = function() {
@@ -44,10 +58,25 @@
             
             console.log('✅ Socket.IO conectado - usando modo multiplayer');
             
+            // Keep multiplayer roll rules consistent with CGame:
+            // 1) only current shooter can roll
+            // 2) shooter cannot roll while 10s point-betting window is open
+            if (window.s_oGame._bIsMyTurn === false) {
+                console.warn('⛔ Rolagem bloqueada: não é o turno do jogador');
+                showBlockedRollMessage('AGUARDE SUA VEZ! O BOTÃO SERÁ LIBERADO QUANDO FOR SEU TURNO.');
+                return;
+            }
+            
+            if (window.s_oGame._bIAmShooter && window.s_oGame._bPointBettingOpen) {
+                console.warn('⛔ Rolagem bloqueada: janela de apostas no ponto/7 ainda ativa');
+                showBlockedRollMessage('AGUARDE OS 10 SEGUNDOS! OUTROS JOGADORES ESTÃO APOSTANDO NO PONTO OU NO 7.');
+                return;
+            }
+            
             // Check if player has bets
             if (window.s_oGame._oMySeat && window.s_oGame._oMySeat.getCurBet() <= 0) {
                 console.log('❌ Nenhuma aposta feita');
-                alert('Você precisa fazer uma aposta primeiro!');
+                showBlockedRollMessage('Você precisa fazer uma aposta primeiro!');
                 return;
             }
             
@@ -60,9 +89,15 @@
             console.log('✅ Definindo _isRolling como true em:', new Date().toISOString());
             window.s_oGame._isRolling = true;
             
+            // Match CGame behavior: player that clicked roll becomes shooter
+            // and is locally blocked from rolling again until server updates turn.
+            window.s_oGame._bIAmShooter = true;
+            window.s_oGame._bIsMyTurn = false;
+            
             // Set game state and UI (from original onRoll logic)
             if (window.s_oGame._oInterface) {
                 window.s_oGame._oInterface.showBlock();
+                window.s_oGame._oInterface.enableRoll(false);
             }
             
             // Set state to COME_OUT if waiting for bet (accessing private variables)
@@ -559,9 +594,10 @@
                 window.s_oGame._oMySeat.setCredit(confirmation.remainingCredit);
             }
             
-            // Enable roll button if has bets
+            // Enable roll button only when it is actually allowed
             if (confirmation.totalBet > 0 && window.s_oGame._oInterface) {
-                window.s_oGame._oInterface.enableRoll(true);
+                const canRoll = !!window.s_oGame._bIsMyTurn && !window.s_oGame._bPointBettingOpen;
+                window.s_oGame._oInterface.enableRoll(canRoll);
             }
         });
         

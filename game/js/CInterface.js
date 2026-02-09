@@ -34,7 +34,7 @@ function CInterface(){
     var _oButBetOnSeven;
     var _oPointBettingContainer;
     var _iParadasCount = 0; // Contador de paradas feitas
-    var _iLocalPointBettingTimer = null; // Timer local para garantir que modal permaneça aberto por 8 segundos
+    var _iLocalPointBettingTimer = null; // Timer local para garantir que modal permaneça aberto por 10 segundos
     
     // LISTA DE JOGADORES CONECTADOS
     var _oPlayersListContainer;
@@ -709,11 +709,28 @@ function CInterface(){
             console.log("   _bIAmShooter: N/A");
         }
         
+        // Se for fechamento forçado (timer de 10s expirou ou rodada terminou),
+        // sempre fechar imediatamente para evitar bloqueios por verificações de estado.
+        if(force){
+            if(_iLocalPointBettingTimer){
+                clearTimeout(_iLocalPointBettingTimer);
+                _iLocalPointBettingTimer = null;
+            }
+            
+            if(_oPointBettingContainer){
+                _oPointBettingContainer.visible = false;
+                if(s_oStage && s_oStage.update){
+                    s_oStage.update();
+                }
+            }
+            return;
+        }
+        
         // CRITICAL: Verificar timer local primeiro
         // Se o timer local ainda está ativo, NÃO fechar o modal (a menos que force seja true)
         if(_iLocalPointBettingTimer && !force){
             console.warn("⚠️⚠️⚠️ BLOQUEADO: Timer local ainda está ativo - modal deve permanecer aberto!");
-            console.warn("   Timer local foi criado há menos de 8 segundos");
+            console.warn("   Timer local foi criado há menos de 10 segundos");
             console.warn("   Use force=true para forçar esconder (apenas quando rodada terminar)");
             console.warn("   Stack trace da tentativa de fechar:", new Error().stack);
             // NÃO esconder - retornar imediatamente
@@ -734,7 +751,7 @@ function CInterface(){
         
         if(bTimerPrincipalAtivo && !force){
             console.warn("⚠️⚠️⚠️ BLOQUEADO: Timer principal ainda está ativo - modal deve permanecer aberto!");
-            console.warn("   Timer principal foi criado há menos de 8 segundos");
+            console.warn("   Timer principal foi criado há menos de 10 segundos");
             console.warn("   Use force=true para forçar esconder (apenas quando rodada terminar)");
             // NÃO esconder - retornar imediatamente
             // Além disso, FORÇAR mostrar novamente para garantir
@@ -768,7 +785,7 @@ function CInterface(){
             }
         }
         
-        // CRITICAL: Verificar se estamos no período de apostas (8 segundos após estabelecer ponto)
+        // CRITICAL: Verificar se estamos no período de apostas (10 segundos após estabelecer ponto)
         // Só esconder se FORCE for true OU se não estiver mais no período de apostas
         // IMPORTANTE: Verificar se window.s_oGame existe e se _bPointBettingOpen existe
         // Se _bPointBettingOpen for undefined, tratar como false (período não está aberto)
@@ -785,7 +802,7 @@ function CInterface(){
         
         if(bPointBettingOpen && !force){
             console.warn("⚠️ BLOQUEADO: Tentativa de esconder botões durante período de apostas ativo!");
-            console.warn("   Os botões devem permanecer visíveis por 8 segundos completos");
+            console.warn("   Os botões devem permanecer visíveis por 10 segundos completos");
             console.warn("   Use force=true para forçar esconder (apenas quando rodada terminar)");
             // NÃO esconder - retornar imediatamente
             // Além disso, FORÇAR mostrar novamente para garantir
