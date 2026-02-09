@@ -41,6 +41,43 @@
             }
         }
         
+        function ensurePointBettingWindowAfterPointEstablished(pointNumber, iAmShooter) {
+            if (iAmShooter || !window.s_oGame || !window.s_oGame._startPointBettingPeriod) {
+                return;
+            }
+            
+            const startedAt = Date.now();
+            const maxWaitMs = 6000;
+            
+            const tryOpenWindow = function() {
+                if (!window.s_oGame) {
+                    return;
+                }
+                
+                // If already opened by normal flow, do nothing.
+                if (window.s_oGame._bPointBettingOpen === true) {
+                    return;
+                }
+                
+                const animVisible = !!(
+                    window.s_oGame._oDicesAnim &&
+                    window.s_oGame._oDicesAnim.isVisible &&
+                    window.s_oGame._oDicesAnim.isVisible()
+                );
+                
+                // Prefer opening after dice animation; force open after timeout as fallback.
+                if (!animVisible || (Date.now() - startedAt) >= maxWaitMs) {
+                    console.log('🛟 Garantindo abertura da janela de apostas no ponto/7');
+                    window.s_oGame._startPointBettingPeriod(pointNumber);
+                    return;
+                }
+                
+                setTimeout(tryOpenWindow, 100);
+            };
+            
+            setTimeout(tryOpenWindow, 120);
+        }
+        
         // Override the roll button handler
         const originalOnRoll = window.s_oGame.onRoll;
         window.s_oGame.onRoll = function() {
@@ -237,6 +274,21 @@
                 }
                 
                 console.log('👀 Outro jogador lançando - INICIAR ANIMAÇÃO INSTANTANEAMENTE');
+                
+                // CRITICAL: Keep observer game state in sync before dice result is finalized.
+                // If observer remains in WAITING state, the same roll can be misinterpreted as
+                // an immediate point/seven resolution and skip the point betting modal.
+                if (window.s_oGame && window.s_oGame._setState) {
+                    const STATE_GAME_COME_OUT = 1;
+                    const STATE_GAME_COME_POINT = 2;
+                    const hasActivePoint = typeof window.s_oGame._iNumberPoint === 'number' && window.s_oGame._iNumberPoint > 0;
+                    const nextState = hasActivePoint ? STATE_GAME_COME_POINT : STATE_GAME_COME_OUT;
+                    
+                    if (window.s_oGame._iState !== nextState) {
+                        console.log('🧭 Sincronizando estado do observador para:', nextState === STATE_GAME_COME_POINT ? 'COME_POINT' : 'COME_OUT');
+                        window.s_oGame._setState(nextState);
+                    }
+                }
                 
                 // Prevent starting new animation if already rolling
                 if (window.s_oGame._isRolling) {
@@ -443,6 +495,9 @@
                         const iNewX = window.s_oGameSettings.getPuckXByNumber(data.point);
                         window.s_oGame._oPuck.switchOn(iNewX);
                     }
+                    
+                    // Safety: ensure non-shooters still get the betting modal if it did not open.
+                    ensurePointBettingWindowAfterPointEstablished(data.point, iAmShooter);
                     return;
                 }
                 
@@ -453,6 +508,7 @@
                 if (window.s_oGame._assignNumber) {
                     console.log('📍 Chamando _assignNumber com ponto:', data.point);
                     window.s_oGame._assignNumber(data.point);
+                    ensurePointBettingWindowAfterPointEstablished(data.point, iAmShooter);
                 } else {
                     console.warn('⚠️ _assignNumber não encontrado, fazendo fallback manual');
                     
@@ -478,6 +534,8 @@
                         // Se já foram mostrados por engano, eles serão escondidos sem force
                         // window.s_oInterface.hidePointBettingButtons(false);
                     }
+                    
+                    ensurePointBettingWindowAfterPointEstablished(data.point, iAmShooter);
                 }
             }
             
