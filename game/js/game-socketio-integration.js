@@ -27,6 +27,57 @@
         
         console.log('🎮 Configurando integração Socket.IO com o jogo...');
         
+        function showBlockedRollMessage(message, timeoutMs) {
+            const safeTimeout = timeoutMs || 2200;
+            if (window.s_oGame && window.s_oGame._oInterface && window.s_oGame._oInterface.showMessage) {
+                window.s_oGame._oInterface.showMessage(message);
+                setTimeout(function() {
+                    if (window.s_oGame && window.s_oGame._oInterface && window.s_oGame._oInterface.hideMessage) {
+                        window.s_oGame._oInterface.hideMessage();
+                    }
+                }, safeTimeout);
+            } else {
+                alert(message);
+            }
+        }
+        
+        function ensurePointBettingWindowAfterPointEstablished(pointNumber, iAmShooter) {
+            if (iAmShooter || !window.s_oGame || !window.s_oGame._startPointBettingPeriod) {
+                return;
+            }
+            
+            const startedAt = Date.now();
+            const maxWaitMs = 6000;
+            
+            const tryOpenWindow = function() {
+                if (!window.s_oGame) {
+                    return;
+                }
+                
+                // If already opened by normal flow, do nothing.
+                if (window.s_oGame._bPointBettingOpen === true) {
+                    return;
+                }
+                
+                const animVisible = !!(
+                    window.s_oGame._oDicesAnim &&
+                    window.s_oGame._oDicesAnim.isVisible &&
+                    window.s_oGame._oDicesAnim.isVisible()
+                );
+                
+                // Prefer opening after dice animation; force open after timeout as fallback.
+                if (!animVisible || (Date.now() - startedAt) >= maxWaitMs) {
+                    console.log('🛟 Garantindo abertura da janela de apostas no ponto/7');
+                    window.s_oGame._startPointBettingPeriod(pointNumber);
+                    return;
+                }
+                
+                setTimeout(tryOpenWindow, 100);
+            };
+            
+            setTimeout(tryOpenWindow, 120);
+        }
+        
         // Override the roll button handler
         const originalOnRoll = window.s_oGame.onRoll;
         window.s_oGame.onRoll = function() {
@@ -44,10 +95,25 @@
             
             console.log('✅ Socket.IO conectado - usando modo multiplayer');
             
+            // Keep multiplayer roll rules consistent with CGame:
+            // 1) only current shooter can roll
+            // 2) shooter cannot roll while 10s point-betting window is open
+            if (window.s_oGame._bIsMyTurn === false) {
+                console.warn('⛔ Rolagem bloqueada: não é o turno do jogador');
+                showBlockedRollMessage('AGUARDE SUA VEZ! O BOTÃO SERÁ LIBERADO QUANDO FOR SEU TURNO.');
+                return;
+            }
+            
+            if (window.s_oGame._bIAmShooter && window.s_oGame._bPointBettingOpen) {
+                console.warn('⛔ Rolagem bloqueada: janela de apostas no ponto/7 ainda ativa');
+                showBlockedRollMessage('AGUARDE OS 10 SEGUNDOS! OUTROS JOGADORES ESTÃO APOSTANDO NO PONTO OU NO 7.');
+                return;
+            }
+            
             // Check if player has bets
             if (window.s_oGame._oMySeat && window.s_oGame._oMySeat.getCurBet() <= 0) {
                 console.log('❌ Nenhuma aposta feita');
-                alert('Você precisa fazer uma aposta primeiro!');
+                showBlockedRollMessage('Você precisa fazer uma aposta primeiro!');
                 return;
             }
             
@@ -60,9 +126,15 @@
             console.log('✅ Definindo _isRolling como true em:', new Date().toISOString());
             window.s_oGame._isRolling = true;
             
+            // Match CGame behavior: player that clicked roll becomes shooter
+            // and is locally blocked from rolling again until server updates turn.
+            window.s_oGame._bIAmShooter = true;
+            window.s_oGame._bIsMyTurn = false;
+            
             // Set game state and UI (from original onRoll logic)
             if (window.s_oGame._oInterface) {
                 window.s_oGame._oInterface.showBlock();
+                window.s_oGame._oInterface.enableRoll(false);
             }
             
             // Set state to COME_OUT if waiting for bet (accessing private variables)
@@ -202,6 +274,21 @@
                 }
                 
                 console.log('👀 Outro jogador lançando - INICIAR ANIMAÇÃO INSTANTANEAMENTE');
+                
+                // CRITICAL: Keep observer game state in sync before dice result is finalized.
+                // If observer remains in WAITING state, the same roll can be misinterpreted as
+                // an immediate point/seven resolution and skip the point betting modal.
+                if (window.s_oGame && window.s_oGame._setState) {
+                    const STATE_GAME_COME_OUT = 1;
+                    const STATE_GAME_COME_POINT = 2;
+                    const hasActivePoint = typeof window.s_oGame._iNumberPoint === 'number' && window.s_oGame._iNumberPoint > 0;
+                    const nextState = hasActivePoint ? STATE_GAME_COME_POINT : STATE_GAME_COME_OUT;
+                    
+                    if (window.s_oGame._iState !== nextState) {
+                        console.log('🧭 Sincronizando estado do observador para:', nextState === STATE_GAME_COME_POINT ? 'COME_POINT' : 'COME_OUT');
+                        window.s_oGame._setState(nextState);
+                    }
+                }
                 
                 // Prevent starting new animation if already rolling
                 if (window.s_oGame._isRolling) {
@@ -408,6 +495,9 @@
                         const iNewX = window.s_oGameSettings.getPuckXByNumber(data.point);
                         window.s_oGame._oPuck.switchOn(iNewX);
                     }
+                    
+                    // Safety: ensure non-shooters still get the betting modal if it did not open.
+                    ensurePointBettingWindowAfterPointEstablished(data.point, iAmShooter);
                     return;
                 }
                 
@@ -418,6 +508,7 @@
                 if (window.s_oGame._assignNumber) {
                     console.log('📍 Chamando _assignNumber com ponto:', data.point);
                     window.s_oGame._assignNumber(data.point);
+                    ensurePointBettingWindowAfterPointEstablished(data.point, iAmShooter);
                 } else {
                     console.warn('⚠️ _assignNumber não encontrado, fazendo fallback manual');
                     
@@ -443,6 +534,8 @@
                         // Se já foram mostrados por engano, eles serão escondidos sem force
                         // window.s_oInterface.hidePointBettingButtons(false);
                     }
+                    
+                    ensurePointBettingWindowAfterPointEstablished(data.point, iAmShooter);
                 }
             }
             
@@ -559,9 +652,10 @@
                 window.s_oGame._oMySeat.setCredit(confirmation.remainingCredit);
             }
             
-            // Enable roll button if has bets
+            // Enable roll button only when it is actually allowed
             if (confirmation.totalBet > 0 && window.s_oGame._oInterface) {
-                window.s_oGame._oInterface.enableRoll(true);
+                const canRoll = !!window.s_oGame._bIsMyTurn && !window.s_oGame._bPointBettingOpen;
+                window.s_oGame._oInterface.enableRoll(canRoll);
             }
         });
         

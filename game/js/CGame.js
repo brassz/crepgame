@@ -34,7 +34,7 @@ function CGame(oData){
     
     // CONTROLE DE APOSTAS NA FASE POINT
     var _bPointBettingOpen = false;  // Flag: período de apostas no ponto está aberto
-    var _iPointBettingTimer = null;  // Timer para fechar apostas após 8 segundos
+    var _iPointBettingTimer = null;  // Timer para fechar apostas no prazo configurado
     var _iVisibilityCheckInterval = null;  // Interval para verificar se botões estão visíveis
     var _assignNumberStartTime = null;  // Timestamp de quando o período de apostas começou
     
@@ -59,6 +59,10 @@ function CGame(oData){
     
     // CONTROLE DE QUEM É O SHOOTER (quem lançou os dados e estabeleceu o ponto)
     var _bIAmShooter = false;  // Flag: eu sou o shooter que lançou os dados?
+    
+    // Janela oficial para apostas em PONTO/7
+    var POINT_BETTING_DURATION_SECONDS = 10;
+    var POINT_BETTING_DURATION_MS = POINT_BETTING_DURATION_SECONDS * 1000;
     
     
     this._init = function(){
@@ -430,7 +434,7 @@ function CGame(oData){
         _oInterface.enablePassDice(isMyTurn);
         
         // CONTROLE DAS FICHAS E BOTÕES: Habilitar quando for o turno do jogador
-        // OU durante os 7 SEGUNDOS de apostas no POINT
+        // OU durante os 10 SEGUNDOS de apostas no POINT
         if (isMyTurn || _bPointBettingOpen) {
             _oInterface.enableBetFiches();
             if (isMyTurn) {
@@ -627,7 +631,7 @@ function CGame(oData){
                 // ou até a rodada terminar (ponto ou 7)
                 if(_assignNumberStartTime && _bPointBettingOpen){
                     var elapsed = Date.now() - _assignNumberStartTime;
-                    var remaining = Math.max(0, Math.ceil((8000 - elapsed) / 1000));
+                    var remaining = Math.max(0, Math.ceil((POINT_BETTING_DURATION_MS - elapsed) / 1000));
                     console.log("🔄 Rodada continua - botões de aposta permanecem visíveis por mais " + remaining + " segundos");
                     
                     // GARANTIR que os botões permaneçam visíveis para outros jogadores
@@ -643,7 +647,7 @@ function CGame(oData){
         _oInterface.setMoney(_oMySeat.getCredit());
         if(Object.keys(_aBetHistory).length > 0){
             // Só habilitar rolar se NÃO estiver no período de apostas
-            // O período de apostas bloqueia o shooter por 8 segundos
+            // O período de apostas bloqueia o shooter durante toda a janela ativa
             if(!_bPointBettingOpen){
                 _oInterface.enableRoll(true);
             } else if(_bIAmShooter){
@@ -653,9 +657,9 @@ function CGame(oData){
             _oInterface.enableClearButton();
         }
         
-        // IMPORTANTE: NÃO esconder botões de aposta no ponto durante o período de 8 segundos
+        // IMPORTANTE: NÃO esconder botões de aposta no ponto durante o período ativo
         // Os botões só devem ser escondidos quando:
-        // 1. O timer de 8 segundos expirar (feito no setTimeout dentro de _assignNumber)
+        // 1. O timer do período expirar (feito no setTimeout dentro de _startPointBettingPeriod)
         // 2. A rodada terminar (ponto acertado ou 7 out) - já está sendo feito acima
         
         // CRÍTICO: NÃO esconder o block se estiver no período de apostas no ponto
@@ -682,7 +686,7 @@ function CGame(oData){
         } else {
             // Período de apostas fechado OU é o shooter - esconder block normalmente
             // CRÍTICO: NÃO fechar o modal aqui em dicesAnimEnded!
-            // O modal só deve ser fechado pelo timer de 8 segundos ou quando a rodada terminar
+            // O modal só deve ser fechado pelo timer configurado ou quando a rodada terminar
             // Se fecharmos aqui, pode fechar antes do timer expirar
             // Deixar o timer gerenciar o fechamento do modal
             if(_bPointBettingOpen === undefined){
@@ -875,8 +879,8 @@ function CGame(oData){
             console.log("🔒 Botão de rolar DESABILITADO para o shooter durante os 10 segundos de apostas");
         }
         
-        // CONTADOR VISUAL: Mostrar segundos restantes (10 segundos)
-        var iBettingTimeSeconds = 10;
+        // CONTADOR VISUAL: Mostrar segundos restantes
+        var iBettingTimeSeconds = POINT_BETTING_DURATION_SECONDS;
         var secondsLeft = iBettingTimeSeconds;
         
         // Mensagem diferente para o shooter e outros jogadores
@@ -941,8 +945,9 @@ function CGame(oData){
             }
         }, 100);
         
-        // TIMER DE 10 SEGUNDOS: Após isso, fecha as apostas e libera o shooter
+        // TIMER DO PERÍODO: Após isso, fecha as apostas e libera o shooter
         // IMPORTANTE: Este timer começa AGORA, quando o modal é aberto (após animação terminar)
+        _assignNumberStartTime = Date.now();
         var iTimerStartTime = Date.now();
         console.log("⏰ Criando timer de " + iBettingTimeSeconds + " segundos...");
         console.log("   Timestamp de início:", iTimerStartTime);
@@ -991,7 +996,7 @@ function CGame(oData){
                     }
                 }, 2000);
             }
-        }, iBettingTimeSeconds * 1000); // 10 segundos - começa AGORA quando modal abre
+        }, iBettingTimeSeconds * 1000); // Começa AGORA quando modal abre
         
         console.log("✅ Período de apostas iniciado - 10 segundos começando AGORA");
         console.log("   _iPointBettingTimer criado:", _iPointBettingTimer);
@@ -1324,9 +1329,9 @@ function CGame(oData){
             return;
         }
         
-        // CRITICAL: Bloquear o shooter durante o período de apostas (8 segundos)
+        // CRITICAL: Bloquear o shooter durante o período de apostas (10 segundos)
         if(_bIAmShooter && _bPointBettingOpen){
-            _oMsgBox.show("AGUARDE OS 8 SEGUNDOS!\nOUTROS JOGADORES ESTÃO APOSTANDO NO PONTO OU NO 7.");
+            _oMsgBox.show("AGUARDE OS 10 SEGUNDOS!\nOUTROS JOGADORES ESTÃO APOSTANDO NO PONTO OU NO 7.");
             return;
         }
         
@@ -1468,19 +1473,19 @@ function CGame(oData){
         console.log('🎯 _bIAmShooter atualizado para:', _bIAmShooter, '(isMyTurn:', isMyTurn + ')');
         
         // Only allow rolling if it's my turn AND there's an active bet AND not during betting period
-        // CRITICAL: Bloquear shooter durante os 8 segundos de apostas
+        // CRITICAL: Bloquear shooter durante os 10 segundos de apostas
         const canRoll = isMyTurn && _oMySeat.getCurBet() > 0 && !_bPointBettingOpen;
         _oInterface.enableRoll(canRoll);
         
         if(isMyTurn && _bPointBettingOpen){
-            console.log("🔒 Botão de rolar BLOQUEADO - Período de apostas ainda ativo (8 segundos)");
+            console.log("🔒 Botão de rolar BLOQUEADO - Período de apostas ainda ativo (10 segundos)");
         }
         
         // Habilitar botão "Passar o Dado" apenas se for meu turno
         _oInterface.enablePassDice(isMyTurn);
         
         // CONTROLE DAS FICHAS E BOTÕES: Habilitar quando for o turno do jogador
-        // OU durante os 7 SEGUNDOS de apostas no POINT
+        // OU durante os 10 SEGUNDOS de apostas no POINT
         if (isMyTurn || _bPointBettingOpen) {
             _oInterface.enableBetFiches();
             if (isMyTurn) {
@@ -1488,7 +1493,7 @@ function CGame(oData){
                 console.log("✅ Fichas e Botões HABILITADOS - É seu turno!");
             } else if (_bPointBettingOpen) {
                 _oInterface.enableClearButton();
-                console.log("📊 Fichas HABILITADAS - 7 SEGUNDOS para apostar no POINT!");
+                console.log("📊 Fichas HABILITADAS - 10 SEGUNDOS para apostar no POINT!");
             }
         } else {
             _oInterface.disableBetFiches();
@@ -1523,19 +1528,19 @@ function CGame(oData){
         }
         
         // BLOQUEIO DE APOSTAS: Não permite apostar se não for o turno do jogador
-        // EXCEÇÃO: Durante os 7 SEGUNDOS após estabelecer o POINT, outros jogadores podem apostar
+        // EXCEÇÃO: Durante os 10 SEGUNDOS após estabelecer o POINT, outros jogadores podem apostar
         var isMultiplayer = window.GameClientSocketIO && window.GameClientSocketIO.isConnected && window.GameClientSocketIO.isAuthenticated;
         
-        // Verificar se o período de apostas no POINT está aberto (7 segundos)
+        // Verificar se o período de apostas no POINT está aberto (10 segundos)
         if(isMultiplayer && !_bIsMyTurn && !_bPointBettingOpen){
-            _oMsgBox.show("AGUARDE SUA VEZ!\nVOCÊ SÓ PODE APOSTAR QUANDO FOR SEU TURNO\nOU NOS 7 SEGUNDOS APÓS O PONTO SER ESTABELECIDO.");
+            _oMsgBox.show("AGUARDE SUA VEZ!\nVOCÊ SÓ PODE APOSTAR QUANDO FOR SEU TURNO\nOU NOS 10 SEGUNDOS APÓS O PONTO SER ESTABELECIDO.");
             playSound("lose", 0.3, false);
             return;
         }
         
         // Mensagem informativa durante o período de apostas do POINT
         if(isMultiplayer && !_bIsMyTurn && _bPointBettingOpen){
-            console.log("📊 Jogador apostando durante os 7 segundos do POINT - permitido!");
+            console.log("📊 Jogador apostando durante os 10 segundos do POINT - permitido!");
         }
 
         var  iIndexFicheSelected = _oInterface.getCurFicheSelected();
@@ -1614,7 +1619,7 @@ function CGame(oData){
         }
         
         // Só habilitar rolar se NÃO estiver no período de apostas OU se não for o shooter
-        // O shooter não pode jogar durante os 8 segundos de apostas
+        // O shooter não pode jogar durante os 10 segundos de apostas
         if(!_bPointBettingOpen || !_bIAmShooter){
             _oInterface.enableRoll(true);
         } else if(_bIAmShooter && _bPointBettingOpen){
@@ -1836,13 +1841,13 @@ function CGame(oData){
     
     this.onClearAllBets = function(){
         // BLOQUEIO: Não permite limpar apostas se não for o turno do jogador
-        // EXCEÇÃO: Durante os 7 SEGUNDOS de apostas no POINT, jogadores podem limpar suas apostas
+        // EXCEÇÃO: Durante os 10 SEGUNDOS de apostas no POINT, jogadores podem limpar suas apostas
         var isMultiplayer = window.GameClientSocketIO && 
                            window.GameClientSocketIO.isConnected && 
                            window.GameClientSocketIO.isAuthenticated;
         
         if(isMultiplayer && !_bIsMyTurn && !_bPointBettingOpen){
-            _oMsgBox.show("AGUARDE SUA VEZ!\nVOCÊ SÓ PODE GERENCIAR APOSTAS QUANDO FOR SEU TURNO\nOU NOS 7 SEGUNDOS APÓS O PONTO.");
+            _oMsgBox.show("AGUARDE SUA VEZ!\nVOCÊ SÓ PODE GERENCIAR APOSTAS QUANDO FOR SEU TURNO\nOU NOS 10 SEGUNDOS APÓS O PONTO.");
             playSound("lose", 0.3, false);
             return;
         }
@@ -1975,6 +1980,25 @@ function CGame(oData){
     Object.defineProperty(this, '_iNumberPoint', {
         get: function() { return _iNumberPoint; },
         set: function(value) { _iNumberPoint = value; }
+    });
+    
+    Object.defineProperty(this, '_bPointBettingOpen', {
+        get: function() { return _bPointBettingOpen; },
+        set: function(value) { _bPointBettingOpen = !!value; }
+    });
+    
+    Object.defineProperty(this, '_iPointBettingTimer', {
+        get: function() { return _iPointBettingTimer; }
+    });
+    
+    Object.defineProperty(this, '_bIAmShooter', {
+        get: function() { return _bIAmShooter; },
+        set: function(value) { _bIAmShooter = !!value; }
+    });
+    
+    Object.defineProperty(this, '_bIsMyTurn', {
+        get: function() { return _bIsMyTurn; },
+        set: function(value) { _bIsMyTurn = !!value; }
     });
     
     s_oGame = this;
