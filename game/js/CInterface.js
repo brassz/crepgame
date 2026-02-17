@@ -711,30 +711,40 @@ function CInterface(){
         
         // CRITICAL: Verificar timer local primeiro
         // Se o timer local ainda está ativo, NÃO fechar o modal (a menos que force seja true)
+        // MAS: Se o período de apostas foi fechado (_bPointBettingOpen = false), permitir fechar
         if(_iLocalPointBettingTimer && !force){
-            console.warn("⚠️⚠️⚠️ BLOQUEADO: Timer local ainda está ativo - modal deve permanecer aberto!");
-            console.warn("   Timer local foi criado há menos de 8 segundos");
-            console.warn("   Use force=true para forçar esconder (apenas quando rodada terminar)");
-            console.warn("   Stack trace da tentativa de fechar:", new Error().stack);
-            // NÃO esconder - retornar imediatamente
-            // Além disso, FORÇAR mostrar novamente para garantir
-            if(window.s_oGame && window.s_oGame._iNumberPoint > 0 && !window.s_oGame._bIAmShooter){
-                console.log("🔄 Forçando mostrar botões novamente após tentativa de esconder");
-                this.showPointBettingButtons(window.s_oGame._iNumberPoint);
+            // Verificar se o período de apostas foi fechado (timer principal expirou)
+            var bPeriodoFechado = window.s_oGame && window.s_oGame._bPointBettingOpen === false;
+            
+            if(bPeriodoFechado){
+                // Período foi fechado - timer principal expirou, permitir fechar mesmo com timer local ativo
+                console.log("✅ Timer principal expirou (_bPointBettingOpen = false) - permitindo fechar modal mesmo com timer local ativo");
+            } else {
+                console.warn("⚠️⚠️⚠️ BLOQUEADO: Timer local ainda está ativo - modal deve permanecer aberto!");
+                console.warn("   Timer local foi criado há menos de 10 segundos");
+                console.warn("   Use force=true para forçar esconder (apenas quando rodada terminar)");
+                console.warn("   Stack trace da tentativa de fechar:", new Error().stack);
+                // NÃO esconder - retornar imediatamente
+                // Além disso, FORÇAR mostrar novamente para garantir
+                if(window.s_oGame && window.s_oGame._iNumberPoint > 0 && !window.s_oGame._bIAmShooter){
+                    console.log("🔄 Forçando mostrar botões novamente após tentativa de esconder");
+                    this.showPointBettingButtons(window.s_oGame._iNumberPoint);
+                }
+                return;
             }
-            return;
         }
         
         // CRITICAL: Verificar também o timer principal em CGame.js
-        // Se o timer principal ainda está ativo, NÃO fechar o modal (a menos que force seja true)
-        // IMPORTANTE: Mesmo com force=true, se o timer principal ainda está ativo, NÃO fechar
-        // (exceto se a rodada terminou - ponto acertado ou 7 out)
+        // IMPORTANTE: Verificar o estado do período (_bPointBettingOpen) em vez de apenas o timer
+        // Se o período está fechado, significa que o timer expirou e devemos permitir fechar
         var bTimerPrincipalAtivo = window.s_oGame && window.s_oGame._iPointBettingTimer !== null;
         var bPeriodoAindaAberto = window.s_oGame && window.s_oGame._bPointBettingOpen === true;
         
-        if(bTimerPrincipalAtivo && !force){
-            console.warn("⚠️⚠️⚠️ BLOQUEADO: Timer principal ainda está ativo - modal deve permanecer aberto!");
-            console.warn("   Timer principal foi criado há menos de 8 segundos");
+        // Se o período está fechado, permitir fechar mesmo que o timer ainda esteja ativo
+        // (o timer pode ainda estar ativo durante a execução do callback)
+        if(bTimerPrincipalAtivo && !force && bPeriodoAindaAberto){
+            console.warn("⚠️⚠️⚠️ BLOQUEADO: Timer principal ainda está ativo E período ainda está aberto - modal deve permanecer aberto!");
+            console.warn("   Timer principal foi criado há menos de 10 segundos");
             console.warn("   Use force=true para forçar esconder (apenas quando rodada terminar)");
             // NÃO esconder - retornar imediatamente
             // Além disso, FORÇAR mostrar novamente para garantir
@@ -745,10 +755,12 @@ function CInterface(){
             return;
         }
         
-        // Se force=true mas timer ainda está ativo, verificar se realmente deve fechar
-        // (só fechar se a rodada terminou - ponto acertado ou 7 out)
-        if(bTimerPrincipalAtivo && force){
-            console.warn("⚠️⚠️⚠️ ATENÇÃO: Tentativa de fechar modal com force=true mas timer ainda está ativo!");
+        // Se force=true, verificar se o período foi fechado ou se a rodada terminou
+        // Se o período está fechado (_bPointBettingOpen = false), significa que o timer expirou
+        // e devemos permitir fechar o modal
+        if(force && bPeriodoAindaAberto){
+            // Período ainda está aberto mas force=true - verificar se rodada terminou
+            console.warn("⚠️⚠️⚠️ ATENÇÃO: Tentativa de fechar modal com force=true mas período ainda está aberto!");
             console.warn("   Verificando se rodada terminou...");
             // Verificar se o ponto foi acertado ou 7 foi tirado (rodada terminou)
             // Se não terminou, não fechar ainda
@@ -758,17 +770,22 @@ function CInterface(){
                 bRodadaTerminou = true;
             }
             if(!bRodadaTerminou){
-                console.warn("   Rodada NÃO terminou - bloqueando fechamento do modal");
+                console.warn("   Rodada NÃO terminou e período ainda está aberto - bloqueando fechamento do modal");
                 // NÃO fechar - retornar imediatamente
                 if(window.s_oGame._iNumberPoint > 0 && !window.s_oGame._bIAmShooter){
                     console.log("🔄 Forçando mostrar botões novamente (rodada não terminou)");
                     this.showPointBettingButtons(window.s_oGame._iNumberPoint);
                 }
                 return;
+            } else {
+                console.log("✅ Rodada terminou - permitindo fechar modal mesmo com período aberto");
             }
+        } else if(force && !bPeriodoAindaAberto){
+            // Período foi fechado - timer expirou, permitir fechar
+            console.log("✅ Timer expirou (_bPointBettingOpen = false) - permitindo fechar modal");
         }
         
-        // CRITICAL: Verificar se estamos no período de apostas (8 segundos após estabelecer ponto)
+        // CRITICAL: Verificar se estamos no período de apostas (10 segundos após estabelecer ponto)
         // Só esconder se FORCE for true OU se não estiver mais no período de apostas
         // IMPORTANTE: Verificar se window.s_oGame existe e se _bPointBettingOpen existe
         // Se _bPointBettingOpen for undefined, tratar como false (período não está aberto)
@@ -783,10 +800,12 @@ function CInterface(){
             return;
         }
         
+        // Se force=true, sempre permitir fechar (timer expirou ou rodada terminou)
+        // Se force=false e período está aberto, bloquear
         if(bPointBettingOpen && !force){
             console.warn("⚠️ BLOQUEADO: Tentativa de esconder botões durante período de apostas ativo!");
-            console.warn("   Os botões devem permanecer visíveis por 8 segundos completos");
-            console.warn("   Use force=true para forçar esconder (apenas quando rodada terminar)");
+            console.warn("   Os botões devem permanecer visíveis por 10 segundos completos");
+            console.warn("   Use force=true para forçar esconder (apenas quando rodada terminar ou timer expirar)");
             // NÃO esconder - retornar imediatamente
             // Além disso, FORÇAR mostrar novamente para garantir
             if(window.s_oGame && window.s_oGame._iNumberPoint > 0 && !window.s_oGame._bIAmShooter){

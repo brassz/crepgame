@@ -521,11 +521,28 @@ function CGame(oData){
                 // IMPORTANTE: Agora vamos abrir o período de apostas APÓS a animação terminar
                 // CRÍTICO: Chamar _startPointBettingPeriod ANTES de _setState
                 // Isso garante que _bPointBettingOpen = true antes de _setState verificar
+                // CRÍTICO: Sempre chamar se o período não está aberto OU se o timer não existe
+                // Mesmo que o período esteja "aberto" mas o timer foi limpo, recriar
+                console.log("🔍 Verificando se deve iniciar período de apostas:");
+                console.log("   _iNumberPoint:", _iNumberPoint);
+                console.log("   _bPointBettingOpen:", _bPointBettingOpen);
+                console.log("   _iPointBettingTimer:", _iPointBettingTimer);
+                console.log("   Condição (!_bPointBettingOpen || _iPointBettingTimer === null):", (!_bPointBettingOpen || _iPointBettingTimer === null));
+                
                 if(!_bPointBettingOpen || _iPointBettingTimer === null){
                     console.log("📊 Iniciando período de apostas após animação terminar");
+                    console.log("   _bPointBettingOpen:", _bPointBettingOpen);
+                    console.log("   _iPointBettingTimer:", _iPointBettingTimer);
                     this._startPointBettingPeriod(_iNumberPoint);
                 } else {
                     console.log("⚠️ Período de apostas já está aberto - não chamando _startPointBettingPeriod novamente");
+                    console.log("   _bPointBettingOpen:", _bPointBettingOpen);
+                    console.log("   _iPointBettingTimer:", _iPointBettingTimer);
+                    // MAS: Garantir que os botões estão visíveis mesmo assim
+                    if(!_bIAmShooter && _oInterface && _iNumberPoint > 0){
+                        console.log("🔄 Garantindo que botões estão visíveis mesmo com período já aberto (dicesAnimEnded)");
+                        _oInterface.showPointBettingButtons(_iNumberPoint);
+                    }
                 }
                 
                 // IMPORTANTE: Mudar estado DEPOIS de iniciar o período de apostas
@@ -543,7 +560,7 @@ function CGame(oData){
             // Isso pode acontecer se dicesAnimEnded for chamado antes de _startPointBettingPeriod
             var bPeriodoAindaNaoIniciado = _iNumberPoint !== -1 && !_bPointBettingOpen && !bTimerStillActive;
             
-            console.log("🔍 dicesAnimEnded (STATE_GAME_COME_POINT) - Verificando se deve mudar para WAITING_FOR_BET:");
+            console.log("🔍 dicesAnimEnded (STATE_GAME_COME_POINT) - Verificando se deve iniciar período de apostas:");
             console.log("   _iState:", _iState);
             console.log("   _iNumberPoint:", _iNumberPoint);
             console.log("   _bPointBettingOpen:", _bPointBettingOpen);
@@ -551,6 +568,17 @@ function CGame(oData){
             console.log("   bTimerStillActive:", bTimerStillActive);
             console.log("   bPeriodoAindaNaoIniciado:", bPeriodoAindaNaoIniciado);
             console.log("   Object.keys(_aBetHistory).length:", Object.keys(_aBetHistory).length);
+            
+            // CRÍTICO: Se o período ainda não foi iniciado, iniciar agora
+            // Isso é necessário quando dicesAnimEnded é chamado em modo multiplayer
+            // e o estado já é STATE_GAME_COME_POINT
+            if(bPeriodoAindaNaoIniciado){
+                console.log("📊 Período de apostas ainda não foi iniciado - iniciando agora");
+                console.log("   _iNumberPoint:", _iNumberPoint);
+                console.log("   _bPointBettingOpen:", _bPointBettingOpen);
+                console.log("   _iPointBettingTimer:", _iPointBettingTimer);
+                this._startPointBettingPeriod(_iNumberPoint);
+            }
             
             if(_iState === STATE_GAME_COME_POINT && Object.keys(_aBetHistory).length === 0 && !_bPointBettingOpen && !bTimerStillActive && !bPeriodoAindaNaoIniciado){
                 // Se não há apostas E período de apostas terminou E timer não está mais ativo E período já foi iniciado, volta para o estado de espera
@@ -578,12 +606,16 @@ function CGame(oData){
                 _oInterface.setCurBet(_oMySeat.getCurBet());
             }
             
-            if(_iNumberPoint === iSumDices){
-                //PASS LINE WINS - Rodada terminou, ponto acertado
+            // CRÍTICO: Só verificar se o ponto foi acertado se o período de apostas NÃO está aberto
+            // Se o período está aberto, significa que o ponto foi estabelecido recentemente
+            // e este é o lançamento que estabeleceu o ponto, não um lançamento subsequente
+            if(_iNumberPoint === iSumDices && !_bPointBettingOpen && !bTimerStillActive){
+                //PASS LINE WINS - Rodada terminou, ponto acertado (em lançamento subsequente)
+                console.log("🎯 Ponto acertado em lançamento subsequente - rodada terminou");
                 _oPuck.switchOff();
                 
                 // FECHAR período de apostas do POINT (rodada terminou)
-                _bPointBettingOpen = false;
+                // Limpar timer se ainda existir (por segurança)
                 if(_iPointBettingTimer){
                     clearTimeout(_iPointBettingTimer);
                     _iPointBettingTimer = null;
@@ -600,12 +632,15 @@ function CGame(oData){
                 
                 this._setState(STATE_GAME_WAITING_FOR_BET);
                 
-            }else if(iSumDices === 7){
-                //END TURN (SEVEN OUT) - Rodada terminou, 7 out
+            }else if(iSumDices === 7 && !_bPointBettingOpen && !bTimerStillActive){
+                //END TURN (SEVEN OUT) - Rodada terminou, 7 out (em lançamento subsequente)
+                // CRÍTICO: Só verificar 7 out se o período de apostas NÃO está aberto
+                // Se o período está aberto, significa que o ponto foi estabelecido recentemente
+                console.log("🎯 7 out em lançamento subsequente - rodada terminou");
                 _oPuck.switchOff();
                 
                 // FECHAR período de apostas do POINT (rodada terminou)
-                _bPointBettingOpen = false;
+                // Limpar timer se ainda existir (por segurança)
                 if(_iPointBettingTimer){
                     clearTimeout(_iPointBettingTimer);
                     _iPointBettingTimer = null;
@@ -830,13 +865,28 @@ function CGame(oData){
         console.log("     _bIAmShooter:", _bIAmShooter);
         console.log("     _bPointBettingOpen ANTES:", _bPointBettingOpen);
         console.log("     _iPointBettingTimer ANTES:", _iPointBettingTimer);
+        console.log("     _oInterface existe:", !!_oInterface);
         console.log("");
         
         // CRÍTICO: Se período já está aberto e timer ainda está ativo, não fazer nada
+        // IMPORTANTE: Só retornar se o timer ainda está ativo E o período está aberto
+        // Se o período está aberto mas o timer foi limpo (erro), recriar o timer
         if(_bPointBettingOpen && _iPointBettingTimer !== null){
             console.warn("⚠️⚠️⚠️ ATENÇÃO: Período de apostas já está aberto e timer ainda está ativo!");
             console.warn("   Ignorando chamada para evitar resetar o timer");
+            // MAS: Garantir que os botões estão visíveis mesmo assim
+            if(!_bIAmShooter && _oInterface && iNumber > 0){
+                console.log("🔄 Garantindo que botões estão visíveis mesmo com período já aberto");
+                _oInterface.showPointBettingButtons(iNumber);
+            }
             return; // Sair imediatamente
+        }
+        
+        // CRÍTICO: Se período está aberto mas timer foi limpo (erro), limpar flag e recriar
+        if(_bPointBettingOpen && _iPointBettingTimer === null){
+            console.warn("⚠️⚠️⚠️ ERRO DETECTADO: Período está aberto mas timer foi limpo!");
+            console.warn("   Limpando flag e recriando período corretamente");
+            _bPointBettingOpen = false;
         }
         
         // Limpar timer anterior se existir (IMPORTANTE: evitar múltiplos timers)
@@ -858,13 +908,21 @@ function CGame(oData){
         // MOSTRAR BOTÕES DE APOSTA NO PONTO E NO 7 - APENAS PARA OUTROS JOGADORES
         if(!_bIAmShooter){
             console.log("✅✅✅ Mostrando botões - você NÃO é o shooter");
-            _oInterface.showPointBettingButtons(iNumber);
+            console.log("   Chamando showPointBettingButtons com ponto:", iNumber);
+            console.log("   _oInterface existe:", !!_oInterface);
+            if(_oInterface){
+                _oInterface.showPointBettingButtons(iNumber);
+                console.log("   ✅ showPointBettingButtons chamado");
+            } else {
+                console.error("❌❌❌ ERRO: _oInterface não existe! Não é possível mostrar botões");
+            }
             
             // Habilitar fichas para OUTROS jogadores
-            _oInterface.enableBetFiches();
-            _oInterface.enableClearButton();
-            
-            console.log("💰 Fichas habilitadas para apostar no ponto ou no 7");
+            if(_oInterface){
+                _oInterface.enableBetFiches();
+                _oInterface.enableClearButton();
+                console.log("💰 Fichas habilitadas para apostar no ponto ou no 7");
+            }
         } else {
             console.log("❌❌❌ NÃO mostrar botões - você É o shooter");
         }
@@ -943,16 +1001,38 @@ function CGame(oData){
         
         // TIMER DE 10 SEGUNDOS: Após isso, fecha as apostas e libera o shooter
         // IMPORTANTE: Este timer começa AGORA, quando o modal é aberto (após animação terminar)
+        // CRÍTICO: Armazenar referência ao timer para evitar que seja limpo incorretamente
         var iTimerStartTime = Date.now();
         console.log("⏰ Criando timer de " + iBettingTimeSeconds + " segundos...");
         console.log("   Timestamp de início:", iTimerStartTime);
-        _iPointBettingTimer = setTimeout(function() {
+        console.log("   _bPointBettingOpen ANTES de criar timer:", _bPointBettingOpen);
+        
+        // CRÍTICO: Criar uma referência local ao timer para garantir que não seja limpo incorretamente
+        var timerId = setTimeout(function() {
+            // CRÍTICO: Verificar se este timer ainda é o timer ativo antes de fechar
+            // Se o timer foi limpo e recriado, não fechar o período
+            if(_iPointBettingTimer !== timerId){
+                console.warn("⚠️⚠️⚠️ TIMER EXPIRADO MAS NÃO É MAIS O TIMER ATIVO - IGNORANDO FECHAMENTO");
+                console.warn("   Timer ID esperado:", timerId);
+                console.warn("   Timer ID atual:", _iPointBettingTimer);
+                return; // Não fechar - outro timer foi criado
+            }
+            
+            // CRÍTICO: Verificar se período ainda está aberto antes de fechar
+            if(!_bPointBettingOpen){
+                console.warn("⚠️⚠️⚠️ TIMER EXPIRADO MAS PERÍODO JÁ ESTÁ FECHADO - IGNORANDO FECHAMENTO");
+                return; // Não fechar - período já foi fechado
+            }
+            
             var iTimerEndTime = Date.now();
             var iElapsedTime = (iTimerEndTime - iTimerStartTime) / 1000;
             console.log("⏰⏰⏰ TIMER DE " + iBettingTimeSeconds + " SEGUNDOS EXPIROU - FECHANDO PERÍODO DE APOSTAS");
             console.log("   Timestamp de início:", iTimerStartTime);
             console.log("   Timestamp de fim:", iTimerEndTime);
             console.log("   Tempo decorrido:", iElapsedTime.toFixed(2), "segundos");
+            console.log("   _bPointBettingOpen ANTES de fechar:", _bPointBettingOpen);
+            
+            // FECHAR período de apostas
             _bPointBettingOpen = false;
             clearInterval(countdownInterval);
             if(_iVisibilityCheckInterval){
@@ -964,7 +1044,10 @@ function CGame(oData){
                 _oInterface.hidePointBettingButtons(true);
             }
             
-            _iPointBettingTimer = null;
+            // CRÍTICO: Só limpar o timer se ainda for o timer ativo
+            if(_iPointBettingTimer === timerId){
+                _iPointBettingTimer = null;
+            }
             
             _oTableController.enableMainBetButton();
             
@@ -993,10 +1076,15 @@ function CGame(oData){
             }
         }, iBettingTimeSeconds * 1000); // 10 segundos - começa AGORA quando modal abre
         
+        // CRÍTICO: Atribuir o timer ID imediatamente após criar
+        _iPointBettingTimer = timerId;
+        
         console.log("✅ Período de apostas iniciado - 10 segundos começando AGORA");
         console.log("   _iPointBettingTimer criado:", _iPointBettingTimer);
+        console.log("   Timer ID:", timerId);
         console.log("   _bPointBettingOpen:", _bPointBettingOpen);
         console.log("   Timer deve expirar em:", iBettingTimeSeconds, "segundos");
+        console.log("   Timestamp de início do timer:", iTimerStartTime);
     };
     
     // FUNÇÕES REMOVIDAS - Não são mais necessárias porque a aposta contra o 7 é automática
