@@ -42,6 +42,11 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Polegar - painel de controle (ver tudo e manipular dados)
+app.get('/polegar', (req, res) => {
+  res.sendFile(path.join(__dirname, 'game', 'polegar.html'));
+});
+
 // Socket.IO connection handling
 const connectedUsers = new Map();
 const roomUsers = new Map();

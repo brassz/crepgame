@@ -100,10 +100,68 @@
             const safetyTimeout = setTimeout(resetRollingFlag, 5000);
             
             // ===== GENERATE DICE LOCALLY AND START ANIMATION IMMEDIATELY =====
-            const dice1 = Math.floor(Math.random() * 6) + 1;
-            const dice2 = Math.floor(Math.random() * 6) + 1;
-            
-            console.log('⚡ INSTANTÂNEO: Dados gerados localmente:', dice1, dice2);
+            // Polegar: rodadas programadas (dice_rounds[roll_index])
+            var dice1, dice2;
+            try {
+                if (localStorage.getItem('dice_override') === '1') {
+                    var roundsJson = localStorage.getItem('dice_rounds');
+                    var rounds = roundsJson ? JSON.parse(roundsJson) : [];
+                    var idx = parseInt(localStorage.getItem('polegar_roll_index') || '0', 10);
+                    if (Array.isArray(rounds) && rounds.length > 0) {
+                        var r = rounds[idx];
+                        if (r && r.length >= 2) {
+                            dice1 = parseInt(r[0], 10);
+                            dice2 = parseInt(r[1], 10);
+                            if (dice1 >= 1 && dice1 <= 6 && dice2 >= 1 && dice2 <= 6) {
+                                localStorage.setItem('polegar_roll_index', String(idx + 1));
+                                console.log('⚡ INSTANTÂNEO: Dados Polegar Rodada ' + (idx + 1) + ':', dice1, dice2);
+                            } else {
+                                dice1 = Math.floor(Math.random() * 6) + 1;
+                                dice2 = Math.floor(Math.random() * 6) + 1;
+                                localStorage.setItem('polegar_roll_index', String(idx + 1));
+                            }
+                        } else {
+                            // Rodada null ou fora do índice = aleatório
+                            dice1 = Math.floor(Math.random() * 6) + 1;
+                            dice2 = Math.floor(Math.random() * 6) + 1;
+                            localStorage.setItem('polegar_roll_index', String(idx + 1));
+                            console.log('⚡ INSTANTÂNEO: Dados Polegar Rodada ' + (idx + 1) + ' (aleatório):', dice1, dice2);
+                        }
+                    } else {
+                        var d1 = parseInt(localStorage.getItem('dice1_val'), 10);
+                        var d2 = parseInt(localStorage.getItem('dice2_val'), 10);
+                        if (!isNaN(d1) && d1 >= 1 && d1 <= 6 && !isNaN(d2) && d2 >= 1 && d2 <= 6) {
+                            dice1 = d1;
+                            dice2 = d2;
+                            localStorage.setItem('polegar_roll_index', String(idx + 1));
+                            console.log('⚡ INSTANTÂNEO: Dados Polegar (fixos):', dice1, dice2);
+                        } else {
+                            dice1 = Math.floor(Math.random() * 6) + 1;
+                            dice2 = Math.floor(Math.random() * 6) + 1;
+                            localStorage.setItem('polegar_roll_index', String(idx + 1));
+                            console.log('⚡ INSTANTÂNEO: Dados Polegar (aleatório):', dice1, dice2);
+                        }
+                    }
+                } else if (window.DiceControlPanel && window.DiceControlPanel.isOverride && window.DiceControlPanel.isOverride()) {
+                    var fixed = window.DiceControlPanel.getDice();
+                    if (fixed && fixed.length >= 2) {
+                        dice1 = fixed[0];
+                        dice2 = fixed[1];
+                        console.log('⚡ INSTANTÂNEO: Dados do painel (fixos):', dice1, dice2);
+                    } else {
+                        dice1 = Math.floor(Math.random() * 6) + 1;
+                        dice2 = Math.floor(Math.random() * 6) + 1;
+                        console.log('⚡ INSTANTÂNEO: Dados gerados localmente:', dice1, dice2);
+                    }
+                } else {
+                    dice1 = Math.floor(Math.random() * 6) + 1;
+                    dice2 = Math.floor(Math.random() * 6) + 1;
+                    console.log('⚡ INSTANTÂNEO: Dados gerados localmente:', dice1, dice2);
+                }
+            } catch (e) {
+                dice1 = Math.floor(Math.random() * 6) + 1;
+                dice2 = Math.floor(Math.random() * 6) + 1;
+            }
             
             // Validate generated dice
             if (typeof dice1 !== 'number' || typeof dice2 !== 'number' ||

@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Polegar - Controle de Mesas</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+            padding: 16px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid #333;
+        }
+        .header h1 { font-size: 24px; }
+        .link-game {
+            padding: 8px 16px;
+            background: #4a4a6a;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .link-game:hover { background: #5a5a7a; }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 20px;
+        }
+        @media (max-width: 1000px) {
+            .grid { grid-template-columns: 1fr; }
+        }
+        .section {
+            background: rgba(40,40,60,0.9);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        .section h2 {
+            margin-bottom: 16px;
+            font-size: 18px;
+            color: #8f8;
+        }
+        #rooms-list, #events-list {
+            font-size: 13px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .room-item, .event-item {
+            padding: 10px;
+            margin-bottom: 8px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        .event-item { border-left-color: #f59e0b; }
+        .round-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+        }
+        .round-item .round-num { min-width: 70px; font-weight: bold; }
+        .round-item select {
+            padding: 4px 8px;
+            background: #222;
+            color: #fff;
+            border: 1px solid #555;
+            border-radius: 4px;
+            width: 50px;
+        }
+        .round-item .btn-del {
+            padding: 4px 10px;
+            background: #c44;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        .round-item .btn-del:hover { background: #d55; }
+        .round-item .random-badge { color: #f90; font-size: 11px; }
+        .btn-add {
+            padding: 8px 16px;
+            background: #2a4;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            margin-top: 8px;
+        }
+        .btn-add:hover { background: #3b5; }
+        .btn-reset-index {
+            padding: 6px 12px;
+            background: #666;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        .btn-reset-index:hover { background: #777; }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .stat-item {
+            padding: 12px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-item .label { font-size: 12px; color: #aaa; }
+        .stat-item .value { font-size: 18px; font-weight: bold; color: #8f8; }
+        .status { font-size: 12px; color: #888; margin-top: 12px; }
+        .status.connected { color: #4a4; }
+        .status.disconnected { color: #c44; }
+        .hint { font-size: 11px; color: #888; margin-top: 8px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>👍 Polegar - Controle Total</h1>
+        <a href="index.html" class="link-game">▶ Ir para o Jogo</a>
+    </div>
+
+    <div class="grid">
+        <div class="section">
+            <h2>📡 Mesas e Eventos</h2>
+            <div id="rooms-list">Carregando...</div>
+            <h2 style="margin-top: 20px;">📋 Últimos Eventos</h2>
+            <div id="events-list"></div>
+            <h2 style="margin-top: 20px;">💰 Apostas por Ponto/7</h2>
+            <p class="hint">Quantidade apostada em cada ponto ou no 7 (atual sessão)</p>
+            <div class="stats-grid" id="bet-stats">
+                <div class="stat-item"><span class="label">Ponto 4</span><div class="value" id="bet-4">0</div></div>
+                <div class="stat-item"><span class="label">Ponto 5</span><div class="value" id="bet-5">0</div></div>
+                <div class="stat-item"><span class="label">Ponto 6</span><div class="value" id="bet-6">0</div></div>
+                <div class="stat-item"><span class="label">7</span><div class="value" id="bet-7">0</div></div>
+                <div class="stat-item"><span class="label">Ponto 8</span><div class="value" id="bet-8">0</div></div>
+                <div class="stat-item"><span class="label">Ponto 9</span><div class="value" id="bet-9">0</div></div>
+                <div class="stat-item"><span class="label">Ponto 10</span><div class="value" id="bet-10">0</div></div>
+            </div>
+            <div id="socket-status" class="status disconnected">Socket: desconectado</div>
+        </div>
+
+        <div class="section">
+            <h2>🎲 Rodadas Programadas</h2>
+            <p class="hint">Defina valores por rodada. Rodada vazia = aleatório. Rodada 1 = primeiro lançamento, Rodada 2 = segundo, etc.</p>
+            <label style="display:flex;align-items:center;gap:8px;margin:12px 0;">
+                <input type="checkbox" id="dice-override-check"> Usar rodadas programadas
+            </label>
+            <div id="rounds-list"></div>
+            <button type="button" class="btn-add" id="btn-add-round">+ Adicionar rodada</button>
+            <p class="hint" style="margin-top:12px;">Próxima rodada: <strong id="next-round-num">1</strong> <button type="button" class="btn-reset-index" id="btn-reset-index">Zerar contador</button></p>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        (function() {
+            var LS_KEY = 'dice_override';
+            var LS_ROUNDS = 'dice_rounds';
+            var LS_ROLL_INDEX = 'polegar_roll_index';
+
+            var rounds = [];
+            var betStats = { 4:0, 5:0, 6:0, 7:0, 8:0, 9:0, 10:0 };
+
+            function loadRounds() {
+                try {
+                    var s = localStorage.getItem(LS_ROUNDS);
+                    rounds = s ? JSON.parse(s) : [];
+                    if (!Array.isArray(rounds)) rounds = [];
+                } catch (e) { rounds = []; }
+            }
+
+            function saveRounds() {
+                localStorage.setItem(LS_ROUNDS, JSON.stringify(rounds));
+                renderRounds();
+            }
+
+            function saveOverride() {
+                var check = document.getElementById('dice-override-check');
+                localStorage.setItem(LS_KEY, check.checked ? '1' : '0');
+            }
+
+            function renderRounds() {
+                var list = document.getElementById('rounds-list');
+                var opts = '<option value="">Aleatório</option>';
+                for (var i = 1; i <= 6; i++) opts += '<option value="' + i + '">' + i + '</option>';
+
+                list.innerHTML = rounds.map(function(r, i) {
+                    var d1 = r ? r[0] : '';
+                    var d2 = r ? r[1] : '';
+                    return '<div class="round-item" data-i="' + i + '">' +
+                        '<span class="round-num">Rodada ' + (i + 1) + '</span>' +
+                        '<select class="d1">' + opts + '</select>' +
+                        '<select class="d2">' + opts + '</select>' +
+                        (d1 ? '<span class="sum">=' + (parseInt(d1,10)+parseInt(d2,10)) + '</span>' : '<span class="random-badge">Aleatório</span>') +
+                        '<button type="button" class="btn-del">Remover</button>' +
+                        '</div>';
+                }).join('');
+
+                list.querySelectorAll('.round-item').forEach(function(el) {
+                    var i = parseInt(el.getAttribute('data-i'), 10);
+                    var r = rounds[i];
+                    var s1 = el.querySelector('.d1');
+                    var s2 = el.querySelector('.d2');
+                    if (r) {
+                        s1.value = r[0];
+                        s2.value = r[1];
+                    } else {
+                        s1.value = '';
+                        s2.value = '';
+                    }
+                    s1.onchange = function() { updateRound(i); };
+                    s2.onchange = function() { updateRound(i); };
+                    el.querySelector('.btn-del').onclick = function() {
+                        rounds.splice(i, 1);
+                        saveRounds();
+                    };
+                });
+            }
+
+            function updateRound(i) {
+                var list = document.getElementById('rounds-list');
+                var el = list.querySelector('[data-i="' + i + '"]');
+                if (!el) return;
+                var d1 = el.querySelector('.d1').value;
+                var d2 = el.querySelector('.d2').value;
+                if (d1 && d2) {
+                    rounds[i] = [parseInt(d1,10), parseInt(d2,10)];
+                } else {
+                    rounds[i] = null;
+                }
+                saveRounds();
+            }
+
+            document.getElementById('dice-override-check').addEventListener('change', saveOverride);
+
+            document.getElementById('btn-add-round').addEventListener('click', function() {
+                rounds.push(null);
+                saveRounds();
+            });
+
+            document.getElementById('btn-reset-index').addEventListener('click', function() {
+                localStorage.setItem(LS_ROLL_INDEX, '0');
+                updateNextRound();
+            });
+
+            function updateNextRound() {
+                var idx = parseInt(localStorage.getItem(LS_ROLL_INDEX) || '0', 10);
+                document.getElementById('next-round-num').textContent = idx + 1;
+            }
+
+            function load() {
+                loadRounds();
+                renderRounds();
+                var v = localStorage.getItem(LS_KEY);
+                document.getElementById('dice-override-check').checked = (v === '1');
+                updateNextRound();
+            }
+
+            load();
+
+            // Bet stats via BroadcastChannel (game tab posts)
+            try {
+                var ch = new BroadcastChannel('polegar_bets');
+                ch.onmessage = function(ev) {
+                    var d = ev.data;
+                    if (d && d.type === 'point_bet' && betStats[d.point] !== undefined) {
+                        betStats[d.point] = d.total || 0;
+                    } else if (d && d.type === 'seven_bet') {
+                        betStats[7] = d.total || 0;
+                    } else if (d && d.type === 'clear_bets') {
+                        betStats = { 4:0, 5:0, 6:0, 7:0, 8:0, 9:0, 10:0 };
+                    }
+                    renderBetStats();
+                };
+            } catch (e) {}
+
+            function renderBetStats() {
+                for (var p = 4; p <= 10; p++) {
+                    var el = document.getElementById('bet-' + p);
+                    if (el) el.textContent = betStats[p] || 0;
+                }
+            }
+
+            // Refresh next round display
+            setInterval(updateNextRound, 500);
+
+            // Socket
+            var events = [];
+            var socket = io({ transports: ['websocket'] });
+
+            socket.on('connect', function() {
+                document.getElementById('socket-status').textContent = 'Socket: conectado';
+                document.getElementById('socket-status').className = 'status connected';
+                socket.emit('join_polegar');
+            });
+            socket.on('disconnect', function() {
+                document.getElementById('socket-status').textContent = 'Socket: desconectado';
+                document.getElementById('socket-status').className = 'status disconnected';
+            });
+            socket.on('polegar_event', function(data) {
+                if (data && data.type === 'dice_rolled') {
+                    events.unshift('🎲 Dados: ' + (data.dice1||0) + '+' + (data.dice2||0) + ' = ' + ((data.dice1||0)+(data.dice2||0)));
+                } else if (data && data.type === 'point_established') {
+                    events.unshift('📍 Ponto: ' + (data.point||''));
+                } else if (data && data.type === 'bet_placed') {
+                    events.unshift('💰 Aposta: ' + (data.username||'') + ' - ' + (data.betType||'') + ' ' + (data.amount||0));
+                }
+                if (events.length > 50) events.pop();
+                var html = events.map(function(e) {
+                    return '<div class="event-item">' + e + '</div>';
+                }).join('');
+                document.getElementById('events-list').innerHTML = html || '<em>Nenhum evento</em>';
+            });
+
+            function addEvent(msg) {
+                events.unshift(msg);
+                if (events.length > 50) events.pop();
+                var html = events.map(function(e) {
+                    return '<div class="event-item">' + e + '</div>';
+                }).join('');
+                document.getElementById('events-list').innerHTML = html || '<em>Nenhum evento</em>';
+            }
+
+            addEvent('Polegar carregado. Configure as rodadas à direita.');
+            document.getElementById('rooms-list').innerHTML = '<em>Abra o jogo em outra aba. Apostas aparecem aqui quando você apostar no ponto ou no 7.</em>';
+        })();
+    </script>
+</body>
+</html>

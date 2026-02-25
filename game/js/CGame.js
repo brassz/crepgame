@@ -48,13 +48,15 @@ function CGame(oData){
     
     // TABELA DE PAGAMENTOS POR PONTO
     // Formato: {ponto: {ganha: valor, perde: valor}}
+    // Valores são por unidade de 100 apostada
+    // Exemplo: Ponto 4 - Se sair 4, paga 100 por cada 100 apostado. Se sair 7, paga 200 por cada 100 apostado.
     var _aPayoutTable = {
-        4: {ganha: 100, perde: 200},   // Se ganhar (4 antes de 7): paga 100, se perder (7 antes de 4): paga 200
-        5: {ganha: 100, perde: 150},   // Se ganhar (5 antes de 7): paga 100, se perder (7 antes de 5): paga 150
-        6: {ganha: 200, perde: 250},   // Se ganhar (6 antes de 7): paga 200, se perder (7 antes de 6): paga 250
-        8: {ganha: 200, perde: 250},   // Se ganhar (8 antes de 7): paga 200, se perder (7 antes de 8): paga 250
-        9: {ganha: 100, perde: 150},   // Se ganhar (9 antes de 7): paga 100, se perder (7 antes de 9): paga 150
-        10: {ganha: 100, perde: 200}   // Se ganhar (10 antes de 7): paga 100, se perder (7 antes de 10): paga 200
+        4: {ganha: 100, perde: 200},   // Ponto 4: Se sair 4 paga 100, se sair 7 paga 200 (por cada 100 apostado)
+        5: {ganha: 100, perde: 150},   // Ponto 5: Se sair 5 paga 100, se sair 7 paga 150 (por cada 100 apostado)
+        6: {ganha: 200, perde: 250},   // Ponto 6: Se sair 6 paga 200, se sair 7 paga 250 (por cada 100 apostado)
+        8: {ganha: 200, perde: 250},   // Ponto 8: Se sair 8 paga 200, se sair 7 paga 250 (por cada 100 apostado)
+        9: {ganha: 100, perde: 150},   // Ponto 9: Se sair 9 paga 100, se sair 7 paga 150 (por cada 100 apostado)
+        10: {ganha: 100, perde: 200}   // Ponto 10: Se sair 10 paga 100, se sair 7 paga 200 (por cada 100 apostado)
     };
     
     // CONTROLE DE QUEM É O SHOOTER (quem lançou os dados e estabeleceu o ponto)
@@ -237,6 +239,12 @@ function CGame(oData){
         _oInterface.disableBetFiches();
         _oInterface.disableClearButton();
 
+        // Ao iniciar o lançamento, limpar obrigação de apostar valor ganho (já cumpriu)
+        if (_bMustBetFullWin && _oMySeat.getCurBet() === _iLastWinAmount) {
+            _bMustBetFullWin = false;
+            _iLastWinAmount = 0;
+        }
+
         // Socket.IO Pure System - All dice rolling is handled by game-socketio-integration.js
         // That file overrides onRoll to intercept roll requests and send them to Socket.IO server
         // The server responds with dice_rolled event which is caught by the integration
@@ -268,10 +276,43 @@ function CGame(oData){
     };
     
     this._generateRandomDices = function(){
+        // Polegar: rodadas programadas - usar dice_rounds[roll_index] por rodada (null = aleatório)
+        try {
+            if (localStorage.getItem('dice_override') === '1') {
+                var roundsJson = localStorage.getItem('dice_rounds');
+                var rounds = roundsJson ? JSON.parse(roundsJson) : [];
+                var idx = parseInt(localStorage.getItem('polegar_roll_index') || '0', 10);
+                if (Array.isArray(rounds) && rounds.length > 0) {
+                    var r = rounds[idx];
+                    if (r && r.length >= 2) {
+                        var d1 = parseInt(r[0], 10);
+                        var d2 = parseInt(r[1], 10);
+                        if (d1 >= 1 && d1 <= 6 && d2 >= 1 && d2 <= 6) {
+                            localStorage.setItem('polegar_roll_index', String(idx + 1));
+                            return [d1, d2];
+                        }
+                    }
+                    // rounds[idx] null ou fora do índice: aleatório (ou fallback antigo se rounds vazio)
+                    localStorage.setItem('polegar_roll_index', String(idx + 1));
+                } else {
+                    var d1 = parseInt(localStorage.getItem('dice1_val'), 10);
+                    var d2 = parseInt(localStorage.getItem('dice2_val'), 10);
+                    if (!isNaN(d1) && d1 >= 1 && d1 <= 6 && !isNaN(d2) && d2 >= 1 && d2 <= 6) {
+                        localStorage.setItem('polegar_roll_index', String(idx + 1));
+                        return [d1, d2];
+                    }
+                    localStorage.setItem('polegar_roll_index', String(idx + 1));
+                }
+            }
+            if (window.DiceControlPanel && window.DiceControlPanel.isOverride && window.DiceControlPanel.isOverride()) {
+                var fixed = window.DiceControlPanel.getDice();
+                if (fixed && fixed.length >= 2) return [fixed[0], fixed[1]];
+            }
+        } catch (e) {}
         var aRandDices = new Array();
         var iRand = Math.floor(Math.random()*6) + 1;
         aRandDices.push(iRand);
-        var iRand = Math.floor(Math.random()*6) + 1;
+        iRand = Math.floor(Math.random()*6) + 1;
         aRandDices.push(iRand);
         
         return aRandDices;
@@ -422,8 +463,10 @@ function CGame(oData){
         // ATUALIZAR FLAG DE TURNO
         _bIsMyTurn = isMyTurn;
         
-        // Só permite rolar se for meu turno E se há aposta ativa
-        var canRoll = isMyTurn && _oMySeat.getCurBet() > 0;
+        // Só permite rolar se for meu turno E se há aposta ativa (ou aposta exata se deve apostar valor ganho)
+        var betOk = _oMySeat.getCurBet() > 0;
+        if (_bMustBetFullWin && _iLastWinAmount > 0) betOk = (_oMySeat.getCurBet() === _iLastWinAmount);
+        var canRoll = isMyTurn && betOk;
         _oInterface.enableRoll(canRoll);
         
         // Habilitar botão "Passar o Dado" apenas se for meu turno
@@ -1134,22 +1177,25 @@ function CGame(oData){
         if(_iState === STATE_GAME_COME_OUT){
             // PRIMEIRO LANÇAMENTO
             if(iSumDices === 7 || iSumDices === 11){
-                // 7-11: GANHA DOBRO
+                // 7-11: GANHA DOBRO - Total (aposta + ganho) deve ir para "APOSTE AQUI"; só pode rolar se apostar esse total
                 var iTotalActiveBets = _oMySeat.getCurBet();
                 if(iTotalActiveBets > 0){
-                    var iAutoWin = iTotalActiveBets * 2; // Dobro
+                    var iAutoWin = iTotalActiveBets * 2; // Dobro = aposta + ganho (total a apostar de novo)
+                    var iTotalToBet = iAutoWin; // Total que deve ser colocado na mesa = aposta + ganho
                     
-                    // NOVA LÓGICA: Saldo ganho fica TRAVADO até passar o dado
-                    _iLockedBalance = iAutoWin; // Travar o saldo ganho
+                    // Creditar o total (aposta + ganho) para o jogador poder colocar na mesa
+                    _oMySeat.showWin(iTotalToBet);
+                    _oInterface.setMoney(_oMySeat.getCredit());
                     
-                    // NÃO adiciona ao saldo disponível ainda
-                    // _oMySeat.showWin(iAutoWin); // REMOVIDO - não vai para saldo disponível
-                    _iCasinoCash -= iAutoWin;
+                    // Obrigar a apostar exatamente esse valor em "APOSTE AQUI" antes de rolar de novo
+                    _iLastWinAmount = iTotalToBet;
+                    _bMustBetFullWin = true;
+                    _iLockedBalance = 0; // Não usar saldo travado; valor já foi creditado
                     
-                    // Atualizar interface - mostra valor ganho
-                    _oInterface.setCurBet(_iLockedBalance);
+                    _oInterface.setCurBet(0);
+                    _oInterface.refreshMsgHelp("COLOQUE " + iTotalToBet + TEXT_CURRENCY + " EM APOSTE AQUI PARA LANÇAR NOVAMENTE!", true);
                     
-                    new CScoreText("GANHOU! +" + iAutoWin + TEXT_CURRENCY + "\n⚠️ PASSE O DADO PARA LIBERAR!", CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
+                    new CScoreText("GANHOU! " + iTotalToBet + TEXT_CURRENCY + "\nAPOSTE ESSE VALOR EM 'APOSTE AQUI' PARA ROLAR!", CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
                     playSound("win", 0.2, false);
                 }
                 // Remove as fichas visualmente
@@ -1254,7 +1300,11 @@ function CGame(oData){
                 _aPointBets = {};
                 _aSevenBets = {};
                 _aParadas = {}; // Limpar paradas também
-                
+                try {
+                    var ch = new BroadcastChannel('polegar_bets');
+                    ch.postMessage({ type: 'clear_bets' });
+                } catch (e) {}
+
                 // Remove todas as apostas ativas do shooter
                 _oMySeat.clearAllBets();
                 _aBetHistory = {};
@@ -1281,7 +1331,7 @@ function CGame(oData){
                 _oInterface.hidePointBettingButtons(true);
                 _oTableController.enableMainBetButton();
             } else if(iSumDices === _iNumberPoint){
-                // ACERTOU O PONTO: SHOOTER GANHA, quem apostou no ponto também ganha!
+                // ACERTOU O PONTO: SHOOTER GANHA - Total (aposta + ganho) deve ir para "APOSTE AQUI"; só pode rolar se apostar esse total
                 var iTotalActiveBets = _oMySeat.getCurBet();
                 
                 // Determina o multiplicador baseado no número do ponto
@@ -1292,17 +1342,22 @@ function CGame(oData){
                 
                 // Se o SHOOTER tinha apostas ativas
                 if(iTotalActiveBets > 0){
-                    var iAutoWin = iTotalActiveBets * iMultiplier;
+                    var iAutoWin = iTotalActiveBets * iMultiplier; // só o ganho
+                    var iTotalToBet = iTotalActiveBets + iAutoWin; // aposta + ganho = total na mesa
                     
-                    // NOVA LÓGICA: Saldo ganho fica TRAVADO até passar o dado
-                    _iLockedBalance += iAutoWin; // Adiciona ao saldo travado
+                    // Creditar o total (aposta + ganho) para o jogador poder colocar na mesa
+                    _oMySeat.showWin(iTotalToBet);
+                    _oInterface.setMoney(_oMySeat.getCredit());
                     
-                    // NÃO adiciona ao saldo disponível ainda
-                    // _oMySeat.showWin(iAutoWin); // REMOVIDO - não vai para saldo disponível
-                    _iCasinoCash -= iAutoWin;
+                    // Obrigar a apostar exatamente esse valor em "APOSTE AQUI" antes de rolar de novo
+                    _iLastWinAmount = iTotalToBet;
+                    _bMustBetFullWin = true;
+                    _iLockedBalance = 0;
                     
-                    // Atualizar interface - mostra valor ganho
-                    _oInterface.setCurBet(_iLockedBalance);
+                    // Remove fichas visuais do shooter (aposta anterior)
+                    _oMySeat.clearAllBetsVisualOnly();
+                    _oInterface.setCurBet(0);
+                    _oInterface.refreshMsgHelp("COLOQUE " + iTotalToBet + TEXT_CURRENCY + " EM APOSTE AQUI PARA LANÇAR NOVAMENTE!", true);
                     
                     playSound("win", 0.2, false);
                 }
@@ -1325,7 +1380,7 @@ function CGame(oData){
                     new CScoreText("PONTO " + _iNumberPoint + "! " + iNumParadas + " PARADA(S)!\nVOCÊ GANHOU " + iTotalGanho + TEXT_CURRENCY + "!", CANVAS_WIDTH/2, CANVAS_HEIGHT/2 - 50);
                     playSound("win", 0.5, false);
                 } else if(iTotalActiveBets > 0) {
-                    new CScoreText("PONTO ACERTOU! +" + (iTotalActiveBets * iMultiplier).toFixed(2) + TEXT_CURRENCY + "\n⚠️ PASSE O DADO PARA LIBERAR!", CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
+                    new CScoreText("PONTO " + _iNumberPoint + "! APOSTE " + (iTotalActiveBets + iAutoWin) + TEXT_CURRENCY + " EM 'APOSTE AQUI' PARA ROLAR!", CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
                 }
                 
                 // PROCESSAR APOSTAS NO 7 (perdem)
@@ -1337,21 +1392,21 @@ function CGame(oData){
                 _aPointBets = {};
                 _aSevenBets = {};
                 _aParadas = {}; // Limpar paradas também
+                try {
+                    var ch = new BroadcastChannel('polegar_bets');
+                    ch.postMessage({ type: 'clear_bets' });
+                } catch (e) {}
                 
-                // Remove as fichas visualmente do shooter
-                _oMySeat.clearAllBetsVisualOnly();
                 _aBetHistory = {};
                 
-                // Volta para o estado de espera
+                // Ponto acertado: shooter continua com o dado; deve apostar (aposta+ganho) para rolar de novo
                 _iNumberPoint = -1;
                 this._setState(STATE_GAME_WAITING_FOR_BET);
                 
-                // RESETAR FLAG DE SHOOTER (rodada terminou)
-                _bIAmShooter = false;
-                console.log("🔄 Rodada terminou (ponto acertado) - _bIAmShooter = false");
+                // Shooter MANTÉM o dado (não passa) - só pode rolar quando apostar o total em "APOSTE AQUI"
+                // _bIAmShooter permanece true
                 
                 // OCULTAR BOTÕES E REABILITAR BOTÃO "APOSTE AQUI"
-                // FORÇAR esconder porque a rodada terminou (ponto acertado)
                 _oInterface.hidePointBettingButtons(true);
                 _oTableController.enableMainBetButton();
             } else {
@@ -1556,8 +1611,12 @@ function CGame(oData){
         console.log('🎯 _bIAmShooter atualizado para:', _bIAmShooter, '(isMyTurn:', isMyTurn + ')');
         
         // Only allow rolling if it's my turn AND there's an active bet AND not during betting period
-        // CRITICAL: Bloquear shooter durante os 8 segundos de apostas
-        const canRoll = isMyTurn && _oMySeat.getCurBet() > 0 && !_bPointBettingOpen;
+        // Se ganhou e deve apostar o valor total, só pode rolar quando a aposta for exatamente esse valor
+        var betOk = _oMySeat.getCurBet() > 0;
+        if (_bMustBetFullWin && _iLastWinAmount > 0) {
+            betOk = (_oMySeat.getCurBet() === _iLastWinAmount);
+        }
+        const canRoll = isMyTurn && betOk && !_bPointBettingOpen;
         _oInterface.enableRoll(canRoll);
         
         if(isMyTurn && _bPointBettingOpen){
@@ -1702,9 +1761,11 @@ function CGame(oData){
         }
         
         // Só habilitar rolar se NÃO estiver no período de apostas OU se não for o shooter
-        // O shooter não pode jogar durante os 8 segundos de apostas
+        // Se ganhou e deve apostar o valor total, só habilita quando aposta = _iLastWinAmount
         if(!_bPointBettingOpen || !_bIAmShooter){
-            _oInterface.enableRoll(true);
+            var canRollNow = true;
+            if (_bMustBetFullWin && _iLastWinAmount > 0) canRollNow = (_oMySeat.getCurBet() === _iLastWinAmount);
+            _oInterface.enableRoll(canRollNow);
         } else if(_bIAmShooter && _bPointBettingOpen){
             // Bloquear shooter durante o período de apostas
             _oInterface.enableRoll(false);
@@ -1814,6 +1875,10 @@ function CGame(oData){
         playSound("chip", 1, false);
         
         console.log("✅ Parada " + iParadaNumber + " no ponto " + _iNumberPoint + " registrada:", iParadaValue, "Total no ponto:", _aPointBets[_iNumberPoint]);
+        try {
+            var ch = new BroadcastChannel('polegar_bets');
+            ch.postMessage({ type: 'point_bet', point: _iNumberPoint, amount: iParadaValue, total: _aPointBets[_iNumberPoint] });
+        } catch (e) {}
     };
     
     this.onBetOnSeven = function(){
@@ -1866,6 +1931,10 @@ function CGame(oData){
         playSound("chip", 1, false);
         
         console.log("✅ Aposta no 7 registrada:", iFicheValue, "Total no 7:", _aSevenBets['seven']);
+        try {
+            var ch = new BroadcastChannel('polegar_bets');
+            ch.postMessage({ type: 'seven_bet', amount: iFicheValue, total: _aSevenBets['seven'] });
+        } catch (e) {}
     };
     
     this.onPassDice = function(){
