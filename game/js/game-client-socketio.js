@@ -40,7 +40,13 @@ window.GameClientSocketIO = (function() {
         onError: null,
         onChatMessage: null,
         onUserJoined: null,
-        onUserLeft: null
+        onUserLeft: null,
+        // Pré-rolagem (apostas contra o shooter)
+        onPreRollShooterBetting: null,
+        onPreRollCoverageStart: null,
+        onPreRollPlayerTurn: null,
+        onPreRollDone: null,
+        onPreRollCancelled: null
     };
     
     /**
@@ -273,6 +279,42 @@ window.GameClientSocketIO = (function() {
                 callbacks.onError({ type: 'socket', message: error.message || error });
             }
         });
+
+        // ===== Pré-rolagem: apostas contra o shooter =====
+        socket.on('pre_roll_shooter_betting', (data) => {
+            console.log('⏱️ Pré-rolagem: shooter apostando (15s):', data);
+            if (callbacks.onPreRollShooterBetting) {
+                callbacks.onPreRollShooterBetting(data);
+            }
+        });
+
+        socket.on('pre_roll_coverage_start', (data) => {
+            console.log('🚦 Pré-rolagem: início da cobertura dos jogadores:', data);
+            if (callbacks.onPreRollCoverageStart) {
+                callbacks.onPreRollCoverageStart(data);
+            }
+        });
+
+        socket.on('pre_roll_player_turn', (data) => {
+            console.log('⏱️ Pré-rolagem: vez do jogador para apostar contra o shooter:', data);
+            if (callbacks.onPreRollPlayerTurn) {
+                callbacks.onPreRollPlayerTurn(data);
+            }
+        });
+
+        socket.on('pre_roll_done', (data) => {
+            console.log('✅ Pré-rolagem: fase concluída, liberar lançamento do shooter:', data);
+            if (callbacks.onPreRollDone) {
+                callbacks.onPreRollDone(data);
+            }
+        });
+
+        socket.on('pre_roll_cancelled', (data) => {
+            console.log('⚠️ Pré-rolagem: cancelada:', data);
+            if (callbacks.onPreRollCancelled) {
+                callbacks.onPreRollCancelled(data);
+            }
+        });
     }
     
     /**
@@ -357,6 +399,30 @@ window.GameClientSocketIO = (function() {
         socket.emit('clear_bets');
         return true;
     }
+
+    /**
+     * Iniciar fase de pré-rolagem (shooter clica APOSTAR)
+     */
+    function startPreRoll() {
+        if (!socket || !isConnected || !isAuthenticated) {
+            console.error('Não é possível iniciar pré-rolagem: não conectado ou não autenticado');
+            return false;
+        }
+
+        // Usar o valor da aposta local do shooter (CGame/CSeat) para o servidor
+        let shooterBetAmount = 0;
+        try {
+            if (window.s_oGame && window.s_oGame._oMySeat && window.s_oGame._oMySeat.getCurBet) {
+                shooterBetAmount = window.s_oGame._oMySeat.getCurBet() || 0;
+            }
+        } catch (e) {
+            console.warn('Não foi possível obter aposta atual do shooter do jogo local:', e);
+        }
+
+        console.log('🚦 Iniciando pré-rolagem (APOSTAR do shooter)... Aposta atual:', shooterBetAmount);
+        socket.emit('pre_roll_start', { amount: shooterBetAmount });
+        return true;
+    }
     
     /**
      * Request current game state
@@ -420,6 +486,12 @@ window.GameClientSocketIO = (function() {
     function onChatMessage(callback) { callbacks.onChatMessage = callback; }
     function onUserJoined(callback) { callbacks.onUserJoined = callback; }
     function onUserLeft(callback) { callbacks.onUserLeft = callback; }
+    // Pré-rolagem
+    function onPreRollShooterBetting(callback) { callbacks.onPreRollShooterBetting = callback; }
+    function onPreRollCoverageStart(callback) { callbacks.onPreRollCoverageStart = callback; }
+    function onPreRollPlayerTurn(callback) { callbacks.onPreRollPlayerTurn = callback; }
+    function onPreRollDone(callback) { callbacks.onPreRollDone = callback; }
+    function onPreRollCancelled(callback) { callbacks.onPreRollCancelled = callback; }
     
     // Public API
     return {
@@ -431,6 +503,7 @@ window.GameClientSocketIO = (function() {
         requestGameState,
         sendChatMessage,
         disconnect,
+        startPreRoll,
         
         // Event handlers
         onConnected,
@@ -450,6 +523,12 @@ window.GameClientSocketIO = (function() {
         onChatMessage,
         onUserJoined,
         onUserLeft,
+        // Pré-rolagem
+        onPreRollShooterBetting,
+        onPreRollCoverageStart,
+        onPreRollPlayerTurn,
+        onPreRollDone,
+        onPreRollCancelled,
         
         // Getters
         get isConnected() { return isConnected; },

@@ -66,7 +66,21 @@ function createGameState(roomId) {
     lastRoll: null,
     bets: new Map(),
     history: [],
-    createdAt: new Date()
+    createdAt: new Date(),
+    // Controle da FASE PRÉ-ROLAGEM (APOSTAS CONTRA O SHOOTER)
+    preRoll: {
+      phase: 'IDLE', // IDLE, SHOOTER_BETTING, COVERAGE
+      shooterId: null,
+      shooterBetAmount: 0,
+      coverageRemaining: 0,
+      coverageBets: new Map(), // userId -> amount total apostado contra o shooter
+      queue: [],              // ordem dos jogadores (sem o shooter)
+      currentIndex: -1,
+      currentPlayerId: null,
+      shooterTimer: null,
+      playerTimer: null,
+      attemptedPlayers: new Set() // jogadores que já tiveram sua vez na cobertura
+    }
   };
 }
 
@@ -171,6 +185,230 @@ io.on('connection', (socket) => {
     }
   });
   
+  // ======== CONTROLE DA FASE PRÉ-ROLAGEM (SHOOTER x OUTROS JOGADORES) ========
+
+  // Shooter clicou em APOSTAR → iniciar fase de pré-rolagem
+  socket.on('pre_roll_start', (data) => {
+    try {
+      const user = connectedUsers.get(socket.id);
+      if (!user) {
+        socket.emit('error', { message: 'Usuário não autenticado' });
+        return;
+      }
+
+      const roomId = user.roomId;
+      const gameState = gameRooms.get(roomId);
+
+      if (!gameState) {
+        socket.emit('error', { message: 'Sala de jogo não encontrada' });
+        return;
+      }
+
+      const player = gameState.players.get(user.userId);
+      if (!player) {
+        socket.emit('error', { message: 'Jogador não encontrado no jogo' });
+        return;
+      }
+
+      // Apenas o shooter atual pode iniciar a fase de pré-rolagem
+      if (gameState.currentShooter !== user.userId) {
+        socket.emit('error', { message: 'Apenas o shooter pode iniciar as apostas pré-lançamento.' });
+        return;
+      }
+
+      const preRoll = gameState.preRoll;
+
+      // Se já estiver em alguma fase de pré-rolagem, ignorar
+      if (preRoll.phase !== 'IDLE') {
+        socket.emit('error', { message: 'Fase de apostas pré-lançamento já está em andamento.' });
+        return;
+      }
+
+      // Shooter deve ter uma aposta já feita antes de clicar em APOSTAR
+      // Priorizar valor enviado pelo cliente (aposta local), com fallback para currentBet do servidor
+      let shooterBet = 0;
+      if (data && typeof data.amount === 'number') {
+        shooterBet = data.amount;
+      } else {
+        shooterBet = player.currentBet || 0;
+      }
+      if (shooterBet <= 0) {
+        socket.emit('error', { message: 'Você precisa ter uma aposta antes de clicar em APOSTAR.' });
+        return;
+      }
+
+      // Preparar estado de pré-rolagem para COBERTURA IMEDIATA
+      preRoll.phase = 'COVERAGE';
+      preRoll.shooterId = user.userId;
+      preRoll.shooterBetAmount = shooterBet;
+      preRoll.coverageRemaining = shooterBet;
+      preRoll.coverageBets = new Map();
+      preRoll.queue = [];
+      preRoll.currentIndex = -1;
+      preRoll.currentPlayerId = null;
+      preRoll.attemptedPlayers = new Set();
+
+      // Garantir que timers antigos foram limpos
+      if (preRoll.shooterTimer) {
+        clearTimeout(preRoll.shooterTimer);
+        preRoll.shooterTimer = null;
+      }
+      if (preRoll.playerTimer) {
+        clearTimeout(preRoll.playerTimer);
+        preRoll.playerTimer = null;
+      }
+
+      console.log(`🚦 Shooter ${player.username} iniciou fase de pré-lançamento na sala ${roomId}. Aposta travada em ${shooterBet}. Iniciando cobertura dos outros jogadores.`);
+
+      // Opcional: notificar que o shooter travou a aposta (mantém evento para feedback de UI, mas sem esperar 15s)
+      io.to(`room_${roomId}`).emit('pre_roll_shooter_betting', {
+        shooterId: user.userId,
+        shooterName: player.username,
+        seconds: 15
+      });
+
+      // Iniciar fase de cobertura IMEDIATAMENTE (jogadores, um por vez, com 10 segundos cada)
+      startCoveragePhase(roomId);
+    } catch (error) {
+      console.error('Erro ao iniciar pré-rolagem:', error);
+      socket.emit('error', { message: 'Falha ao iniciar apostas pré-lançamento' });
+    }
+  });
+
+  // Função auxiliar: iniciar fase de cobertura (outros jogadores apostam contra o shooter)
+  function startCoveragePhase(roomId) {
+    const gameState = gameRooms.get(roomId);
+    if (!gameState) return;
+
+    const preRoll = gameState.preRoll;
+    const shooterId = preRoll.shooterId;
+
+    if (!shooterId || preRoll.shooterBetAmount <= 0) {
+      preRoll.phase = 'IDLE';
+      return;
+    }
+
+    // Construir fila de jogadores (ordem de entrada), excluindo o shooter
+    const playerIds = Array.from(gameState.players.keys());
+    preRoll.queue = playerIds.filter(id => id !== shooterId);
+    preRoll.currentIndex = -1;
+    preRoll.currentPlayerId = null;
+    preRoll.phase = 'COVERAGE';
+    preRoll.attemptedPlayers = new Set();
+
+    console.log(`🚦 Iniciando fase de cobertura na sala ${roomId} - valor a cobrir: ${preRoll.coverageRemaining}`);
+
+    // Avisar sala que começa a fase de cobertura
+    io.to(`room_${roomId}`).emit('pre_roll_coverage_start', {
+      shooterId,
+      shooterBetAmount: preRoll.shooterBetAmount,
+      coverageRemaining: preRoll.coverageRemaining
+    });
+
+    // Avançar imediatamente para o primeiro jogador
+    advanceCoveragePlayer(roomId);
+  }
+
+  // Função auxiliar: avançar para o próximo jogador da fila de cobertura
+  function advanceCoveragePlayer(roomId) {
+    const gameState = gameRooms.get(roomId);
+    if (!gameState) return;
+
+    const preRoll = gameState.preRoll;
+
+    // Se já cobriu tudo ou não há mais jogadores, finalizar fase
+    if (preRoll.coverageRemaining <= 0 || !preRoll.queue || preRoll.queue.length === 0) {
+      preRoll.phase = 'IDLE';
+
+      io.to(`room_${roomId}`).emit('pre_roll_done', {
+        shooterId: preRoll.shooterId,
+        shooterBetAmount: preRoll.shooterBetAmount,
+        totalCoverage: preRoll.shooterBetAmount - preRoll.coverageRemaining,
+        coverageRemaining: Math.max(0, preRoll.coverageRemaining)
+      });
+
+      console.log(`✅ Fase de cobertura encerrada na sala ${roomId}. Restante a cobrir: ${preRoll.coverageRemaining}`);
+      return;
+    }
+
+    // Limpar timer anterior, se existir
+    if (preRoll.playerTimer) {
+      clearTimeout(preRoll.playerTimer);
+      preRoll.playerTimer = null;
+    }
+
+    // Avançar índice
+    preRoll.currentIndex = (preRoll.currentIndex + 1) % preRoll.queue.length;
+    const nextPlayerId = preRoll.queue[preRoll.currentIndex];
+    preRoll.currentPlayerId = nextPlayerId;
+
+    const nextPlayer = gameState.players.get(nextPlayerId);
+    if (!nextPlayer) {
+      // Jogador não existe mais (desconectou), ir para o próximo
+      console.log(`⚠️ Jogador da fila de cobertura não encontrado na sala ${roomId}, pulando...`);
+      return advanceCoveragePlayer(roomId);
+    }
+
+    const PLAYER_SECONDS = 10;
+
+    console.log(`⏱️ Fase de cobertura na sala ${roomId}: vez do jogador ${nextPlayer.username} (${PLAYER_SECONDS}s). Restante a cobrir: ${preRoll.coverageRemaining}`);
+
+    // Avisar todos na sala de quem é a vez de apostar contra o shooter
+    io.to(`room_${roomId}`).emit('pre_roll_player_turn', {
+      playerId: nextPlayer.userId,
+      playerName: nextPlayer.username,
+      seconds: PLAYER_SECONDS,
+      coverageRemaining: preRoll.coverageRemaining
+    });
+
+    // Marcar que este jogador já teve (ou está tendo) sua vez de cobertura
+    if (preRoll.attemptedPlayers) {
+      preRoll.attemptedPlayers.add(nextPlayerId);
+    } else {
+      preRoll.attemptedPlayers = new Set([nextPlayerId]);
+    }
+
+    // Timer de 10 segundos para esse jogador
+    preRoll.playerTimer = setTimeout(() => {
+      try {
+        const gs = gameRooms.get(roomId);
+        if (!gs) return;
+        const pr = gs.preRoll;
+
+        // Se durante esses 10s a cobertura foi alcançada, não fazer nada
+        if (pr.coverageRemaining <= 0 || pr.phase !== 'COVERAGE') {
+          return;
+        }
+
+        // Se todos os jogadores já tiveram ao menos uma vez de cobertura,
+        // encerra mesmo que não tenha coberto totalmente
+        const allTriedOnce = pr.attemptedPlayers &&
+          pr.queue &&
+          pr.queue.length > 0 &&
+          pr.attemptedPlayers.size >= pr.queue.length;
+
+        if (allTriedOnce) {
+          console.log(`⏱️ Todos os jogadores já tiveram sua vez de cobertura na sala ${roomId}. Encerrando cobertura mesmo sem cobrir totalmente.`);
+          pr.phase = 'IDLE';
+
+          io.to(`room_${roomId}`).emit('pre_roll_done', {
+            shooterId: pr.shooterId,
+            shooterBetAmount: pr.shooterBetAmount,
+            totalCoverage: pr.shooterBetAmount - pr.coverageRemaining,
+            coverageRemaining: Math.max(0, pr.coverageRemaining)
+          });
+
+          return;
+        }
+
+        console.log(`⏭️ Tempo esgotado para jogador ${nextPlayer.username} na sala ${roomId}. Passando para o próximo.`);
+        advanceCoveragePlayer(roomId);
+      } catch (err) {
+        console.error('Erro ao avançar jogador na fase de cobertura:', err);
+      }
+    }, PLAYER_SECONDS * 1000);
+  }
+
   // Handle dice roll - OPTIMIZED FOR ZERO LATENCY
   socket.on('roll_dice', (data) => {
     try {
@@ -264,8 +502,41 @@ io.on('connection', (socket) => {
                 total,
                 message: `Natural ${total}! Lançador vence!`
               });
-              // Reset for next round
-              gameState.point = null;
+            // DEVOLVER AS APOSTAS DO SHOOTER PARA O SALDO
+            const shooterId = gameState.currentShooter;
+            const shooterPlayer = shooterId ? gameState.players.get(shooterId) : null;
+            if (shooterPlayer) {
+              let refundAmount = 0;
+              const betsToRemove = [];
+
+              for (const [betKey, bet] of gameState.bets.entries()) {
+                if (bet.userId === shooterId) {
+                  refundAmount += bet.amount;
+                  betsToRemove.push(betKey);
+                }
+              }
+
+              // Remover apostas do shooter
+              betsToRemove.forEach(betKey => gameState.bets.delete(betKey));
+
+              // Devolver crédito e zerar aposta atual
+              shooterPlayer.credit += refundAmount;
+              shooterPlayer.currentBet = 0;
+
+              // Notificar shooter com evento de bets_cleared (mesma estrutura do clear_bets/pass_dice)
+              const shooterSocketId = shooterPlayer.socketId;
+              if (shooterSocketId) {
+                io.to(shooterSocketId).emit('bets_cleared', {
+                  refundAmount,
+                  remainingCredit: shooterPlayer.credit
+                });
+              }
+
+              console.log(`💰 Shooter ganhou na saída e recebeu de volta ${refundAmount} em créditos (novo saldo: ${shooterPlayer.credit})`);
+            }
+
+            // Reset for next round
+            gameState.point = null;
             } else if (total === 2 || total === 3 || total === 12) {
               // Craps
               io.to(`room_${roomId}`).emit('game_result', {
@@ -358,6 +629,24 @@ io.on('connection', (socket) => {
         socket.emit('error', { message: 'Valor de aposta inválido' });
         return;
       }
+
+      // Se estamos na fase de COBERTURA PRÉ-ROLAGEM, só o jogador da vez pode apostar
+      const preRoll = gameState.preRoll;
+      if (preRoll && preRoll.phase === 'COVERAGE') {
+        const shooterId = gameState.currentShooter;
+
+        // Shooter NÃO pode apostar nessa fase
+        if (player.userId === shooterId) {
+          socket.emit('error', { message: 'Shooter não pode apostar durante a cobertura dos outros jogadores.' });
+          return;
+        }
+
+        // Apenas o jogador atual da fila pode apostar
+        if (preRoll.currentPlayerId && preRoll.currentPlayerId !== player.userId) {
+          socket.emit('error', { message: 'Aguarde a sua vez. Cada jogador tem 10 segundos para apostar contra o shooter.' });
+          return;
+        }
+      }
       
       // Create bet key
       const betKey = `${user.userId}_${betType}`;
@@ -382,6 +671,42 @@ io.on('connection', (socket) => {
       // Update player credit and current bet
       player.credit -= amount;
       player.currentBet += amount;
+
+      // Se estamos na fase de COBERTURA, acumular valor apostado contra o shooter
+      if (preRoll && preRoll.phase === 'COVERAGE') {
+        const shooterId = gameState.currentShooter;
+        if (player.userId !== shooterId) {
+          // Atualizar mapa de cobertura por jogador
+          const prev = preRoll.coverageBets.get(player.userId) || 0;
+          const newTotal = prev + amount;
+          preRoll.coverageBets.set(player.userId, newTotal);
+
+          // Diminuir o valor restante a cobrir
+          preRoll.coverageRemaining = Math.max(0, preRoll.coverageRemaining - amount);
+
+          console.log(`💥 Cobertura contra o shooter na sala ${roomId}: jogador ${player.username} apostou ${amount}. Restante a cobrir: ${preRoll.coverageRemaining}`);
+
+          // Se já cobriu o valor do shooter, finalizar imediatamente a fase de cobertura
+          if (preRoll.coverageRemaining <= 0) {
+            // Limpar timers
+            if (preRoll.playerTimer) {
+              clearTimeout(preRoll.playerTimer);
+              preRoll.playerTimer = null;
+            }
+
+            preRoll.phase = 'IDLE';
+
+            io.to(`room_${roomId}`).emit('pre_roll_done', {
+              shooterId,
+              shooterBetAmount: preRoll.shooterBetAmount,
+              totalCoverage: preRoll.shooterBetAmount,
+              coverageRemaining: 0
+            });
+
+            console.log(`✅ Cobertura COMPLETA na sala ${roomId} - liberando lançamento do shooter`);
+          }
+        }
+      }
       
       // Broadcast bet to room
       io.to(`room_${roomId}`).emit('bet_placed', {
@@ -560,6 +885,35 @@ io.on('connection', (socket) => {
       }
       
       console.log(`🎲 Jogador ${user.username} está passando o dado manualmente na sala ${roomId}`);
+
+      // DEVOLVE TODO O VALOR APOSTADO AO JOGADOR AO PASSAR O DADO
+      const player = gameState.players.get(user.userId);
+      if (player) {
+        let refundAmount = 0;
+        const betsToRemove = [];
+
+        for (const [betKey, bet] of gameState.bets.entries()) {
+          if (bet.userId === user.userId) {
+            refundAmount += bet.amount;
+            betsToRemove.push(betKey);
+          }
+        }
+
+        // Remover apostas desse jogador da sala
+        betsToRemove.forEach(betKey => gameState.bets.delete(betKey));
+
+        // Devolver crédito e zerar aposta atual
+        player.credit += refundAmount;
+        player.currentBet = 0;
+
+        // Notificar o próprio jogador sobre o reembolso
+        socket.emit('bets_cleared', {
+          refundAmount,
+          remainingCredit: player.credit
+        });
+
+        console.log(`💰 ${user.username} passou o dado e recebeu de volta ${refundAmount} em créditos (novo saldo: ${player.credit})`);
+      }
       
       // Notify the room that the player passed
       io.to(`room_${roomId}`).emit('player_passed_dice', {

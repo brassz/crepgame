@@ -1,30 +1,26 @@
 /**
- * Dice History Panel - Shows recent dice rolls
- * Horizontal bar displaying last 5 rolls with dice faces and totals
+ * Apostas da Mesa - Mostra todas as apostas de todos os jogadores da mesa
+ * Substitui o painel de "últimas 5 jogadas"
  */
 function CDiceHistory() {
     var _oContainer;
     var _oBackground;
     var _oTitle;
-    var _aHistoryItems = [];
-    var _iMaxHistoryItems = 5; // Mostra apenas as últimas 5 jogadas
+    var _oContentContainer;  // container dos textos de apostas (para limpar e redesenhar)
     var _oThis;
 
     this._init = function() {
-        // Container posicionado na parte inferior central da tela - SUBIDO MAIS PARA CIMA
         _oContainer = new createjs.Container();
-        _oContainer.x = CANVAS_WIDTH / 2 - 400; // Centralizado
-        _oContainer.y = CANVAS_HEIGHT - 200; // 200px do fundo - MAIS PARA CIMA (era 150)
+        _oContainer.x = CANVAS_WIDTH / 2 - 400;
+        _oContainer.y = CANVAS_HEIGHT - 200;
         s_oStage.addChild(_oContainer);
 
-        // Background panel horizontal - aumentado para 95px de altura
         var oGraphics = new createjs.Graphics()
             .beginFill("rgba(0, 0, 0, 0.8)")
             .drawRoundRect(0, 0, 800, 95, 10);
         _oBackground = new createjs.Shape(oGraphics);
         _oContainer.addChild(_oBackground);
 
-        // Border
         var oBorderGraphics = new createjs.Graphics()
             .setStrokeStyle(2)
             .beginStroke("#FFD700")
@@ -32,168 +28,110 @@ function CDiceHistory() {
         var oBorder = new createjs.Shape(oBorderGraphics);
         _oContainer.addChild(oBorder);
 
-        // Title
-        _oTitle = new createjs.Text("ÚLTIMAS 5 JOGADAS", "bold 14px Arial", "#FFD700");
+        _oTitle = new createjs.Text("APOSTAS DA MESA", "bold 14px Arial", "#FFD700");
         _oTitle.x = 400;
         _oTitle.y = 12;
         _oTitle.textAlign = "center";
         _oTitle.textBaseline = "middle";
         _oContainer.addChild(_oTitle);
 
-        console.log('✅ Dice History Panel initialized (horizontal layout)');
+        _oContentContainer = new createjs.Container();
+        _oContentContainer.y = 28;
+        _oContainer.addChild(_oContentContainer);
+
+        console.log('✅ Apostas da Mesa panel initialized');
     };
 
     /**
-     * Add a new dice roll to the history
-     * @param {number} dice1 - First die value (1-6)
-     * @param {number} dice2 - Second die value (1-6)
-     * @param {string} shooterName - Name of the shooter (optional)
+     * Atualiza a lista de apostas de todos os jogadores.
+     * @param {Array} players - Array de { username, userId?, currentBet?, pointBet?, sevenBet? }
+     * @param {string} currentShooterId - userId do jogador com os dados (opcional, para marcar (DADOS))
+     */
+    this.updateBets = function(players, currentShooterId) {
+        while (_oContentContainer.getNumChildren() > 0) {
+            _oContentContainer.removeChildAt(0);
+        }
+
+        var list = players && players.length > 0 ? players : [];
+        var isMultiplayer = window.GameClientSocketIO && window.GameClientSocketIO.isConnected && window.GameClientSocketIO.isAuthenticated;
+
+        if (list.length === 0 && !isMultiplayer && window.s_oGame && window.s_oGame._oMySeat) {
+            var myBet = window.s_oGame._oMySeat.getCurBet();
+            list = [{ username: "Você", currentBet: myBet, userId: "local" }];
+        }
+
+        var y = 0;
+        var lineHeight = 16;
+        var maxWidth = 780;
+        var maxLines = 5;
+
+        for (var i = 0; i < list.length; i++) {
+            if (i >= maxLines) {
+                var oMore = new createjs.Text("+ " + (list.length - maxLines) + " jogador(es)", "10px Arial", "#aaa");
+                oMore.x = 10;
+                oMore.y = y;
+                _oContentContainer.addChild(oMore);
+                break;
+            }
+            var p = list[i];
+            var name = p.username || ("Jogador " + (i + 1));
+            var bet = p.currentBet || 0;
+            var pointBet = p.pointBet || 0;
+            var pointBetNumber = p.pointBetNumber;
+            var sevenBet = p.sevenBet || 0;
+            var isDados = currentShooterId && p.userId === currentShooterId;
+            var line = name + (isDados ? " (DADOS)" : "") + " — R$ " + (bet || 0).toFixed(2);
+            if (pointBet > 0) line += " | " + (pointBetNumber ? "Ponto " + pointBetNumber + ": R$ " : "Ponto: R$ ") + pointBet.toFixed(2);
+            if (sevenBet > 0) line += " | 7: R$ " + sevenBet.toFixed(2);
+
+            var oText = new createjs.Text(line, "11px Arial", "#ffffff");
+            oText.x = 10;
+            oText.y = y;
+            oText.maxWidth = maxWidth;
+            _oContentContainer.addChild(oText);
+            y += lineHeight;
+        }
+
+        if (list.length === 0) {
+            var oEmpty = new createjs.Text("Nenhuma aposta na mesa", "12px Arial", "#888");
+            oEmpty.x = 10;
+            oEmpty.y = 0;
+            _oContentContainer.addChild(oEmpty);
+        }
+    };
+
+    /**
+     * Compatibilidade: chamado quando há nova jogada; não exibe mais jogadas (painel é de apostas).
      */
     this.addRoll = function(dice1, dice2, shooterName) {
-        console.log('📊 Adding roll to history:', dice1, dice2, shooterName);
-
-        // Validate input
-        if (typeof dice1 !== 'number' || typeof dice2 !== 'number' ||
-            dice1 < 1 || dice1 > 6 || dice2 < 1 || dice2 > 6) {
-            console.error('❌ Valores de dados inválidos para o histórico:', dice1, dice2);
-            return;
-        }
-
-        // Remove oldest item if at max capacity (remove from the left/first position)
-        if (_aHistoryItems.length >= _iMaxHistoryItems) {
-            var oldestItem = _aHistoryItems.shift();
-            _oContainer.removeChild(oldestItem.container);
-            
-            // Shift all remaining items to the left
-            for (var i = 0; i < _aHistoryItems.length; i++) {
-                createjs.Tween.get(_aHistoryItems[i].container)
-                    .to({x: 15 + (i * 155)}, 300, createjs.Ease.cubicOut);
-            }
-        }
-
-        // Create new history item (will be added on the right)
-        var oItemContainer = new createjs.Container();
-        var xPosition = 15 + (_aHistoryItems.length * 155);
-        oItemContainer.x = xPosition;
-        oItemContainer.y = 35; // Abaixo do título
-
-        // Background for this item - aumentado para 58px de altura para acomodar o nome
-        var oItemBg = new createjs.Graphics()
-            .beginFill("rgba(255, 215, 0, 0.1)")
-            .drawRoundRect(0, 0, 145, 58, 5);
-        var oBgShape = new createjs.Shape(oItemBg);
-        oItemContainer.addChild(oBgShape);
-
-        // Shooter name (if provided, show at the top - ANTES dos dados para não sobrepor)
-        if (shooterName) {
-            var oShooterText = new createjs.Text(shooterName, "bold 9px Arial", "#FFD700");
-            oShooterText.x = 73; // Centralizado
-            oShooterText.y = 3; // Bem no topo
-            oShooterText.maxWidth = 70;
-            oShooterText.textAlign = "center";
-            oItemContainer.addChild(oShooterText);
-        }
-
-        // Dice text (simple representation) - larger for horizontal layout
-        var sDiceText = this._getDiceEmoji(dice1) + " " + this._getDiceEmoji(dice2);
-        var oDiceText = new createjs.Text(sDiceText, "22px Arial", "#FFFFFF");
-        oDiceText.x = 15;
-        oDiceText.y = shooterName ? 16 : 10; // Move um pouco para baixo se tiver nome
-        oItemContainer.addChild(oDiceText);
-
-        // Total - displayed below the dice
-        var iTotal = dice1 + dice2;
-        var oTotalText = new createjs.Text("= " + iTotal, "bold 16px Arial", "#FFD700");
-        oTotalText.x = 15;
-        oTotalText.y = shooterName ? 36 : 32; // Move um pouco para baixo se tiver nome
-        oItemContainer.addChild(oTotalText);
-
-        _oContainer.addChild(oItemContainer);
-
-        // Add to history array
-        _aHistoryItems.push({
-            container: oItemContainer,
-            dice1: dice1,
-            dice2: dice2,
-            total: iTotal
-        });
-
-        // Fade in animation
-        oItemContainer.alpha = 0;
-        createjs.Tween.get(oItemContainer)
-            .to({alpha: 1}, 300, createjs.Ease.cubicOut);
-
-        console.log('✅ Roll added to history. Total items:', _aHistoryItems.length);
+        // Painel agora mostra apostas; ignorar novas jogadas
     };
 
-    /**
-     * Get dice emoji/character representation
-     * Using dice unicode characters for visual representation
-     */
-    this._getDiceEmoji = function(value) {
-        switch(value) {
-            case 1: return "⚀";
-            case 2: return "⚁";
-            case 3: return "⚂";
-            case 4: return "⚃";
-            case 5: return "⚄";
-            case 6: return "⚅";
-            default: return "?";
-        }
-    };
-
-    /**
-     * Clear all history
-     */
     this.clear = function() {
-        console.log('🧹 Clearing dice history');
-        
-        for (var i = 0; i < _aHistoryItems.length; i++) {
-            _oContainer.removeChild(_aHistoryItems[i].container);
-        }
-        
-        _aHistoryItems = [];
+        this.updateBets([], null);
     };
 
-    /**
-     * Show the history panel
-     */
     this.show = function() {
         _oContainer.visible = true;
     };
 
-    /**
-     * Hide the history panel
-     */
     this.hide = function() {
         _oContainer.visible = false;
     };
 
-    /**
-     * Toggle visibility
-     */
     this.toggle = function() {
         _oContainer.visible = !_oContainer.visible;
     };
 
-    /**
-     * Check if panel is visible
-     */
     this.isVisible = function() {
         return _oContainer.visible;
     };
 
-    /**
-     * Set position
-     */
     this.setPosition = function(x, y) {
         _oContainer.x = x;
         _oContainer.y = y;
     };
 
-    /**
-     * Unload and cleanup
-     */
     this.unload = function() {
         this.clear();
         s_oStage.removeChild(_oContainer);

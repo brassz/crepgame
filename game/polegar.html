@@ -202,36 +202,52 @@
 
             function renderRounds() {
                 var list = document.getElementById('rounds-list');
-                var opts = '<option value="">Aleatório</option>';
+                // Mostrar "--" no select para rodada aleatória
+                var opts = '<option value="">--</option>';
                 for (var i = 1; i <= 6; i++) opts += '<option value="' + i + '">' + i + '</option>';
 
                 list.innerHTML = rounds.map(function(r, i) {
-                    var d1 = r ? r[0] : '';
-                    var d2 = r ? r[1] : '';
+                    var d1 = (r && r[0] != null) ? r[0] : '';
+                    var d2 = (r && r[1] != null) ? r[1] : '';
+                    var sumHtml = '<span class="random-badge">Aleatório</span>';
+                    if (d1 && d2) {
+                        sumHtml = '<span class="sum">=' + (parseInt(d1,10) + parseInt(d2,10)) + '</span>';
+                    }
                     return '<div class="round-item" data-i="' + i + '">' +
                         '<span class="round-num">Rodada ' + (i + 1) + '</span>' +
                         '<select class="d1">' + opts + '</select>' +
                         '<select class="d2">' + opts + '</select>' +
-                        (d1 ? '<span class="sum">=' + (parseInt(d1,10)+parseInt(d2,10)) + '</span>' : '<span class="random-badge">Aleatório</span>') +
+                        sumHtml +
                         '<button type="button" class="btn-del">Remover</button>' +
                         '</div>';
                 }).join('');
 
                 list.querySelectorAll('.round-item').forEach(function(el) {
-                    var i = parseInt(el.getAttribute('data-i'), 10);
-                    var r = rounds[i];
+                    var idx = parseInt(el.getAttribute('data-i'), 10);
+                    var r = rounds[idx];
                     var s1 = el.querySelector('.d1');
                     var s2 = el.querySelector('.d2');
                     if (r) {
-                        s1.value = r[0];
-                        s2.value = r[1];
+                        s1.value = (r[0] != null && r[0] !== '') ? String(r[0]) : '';
+                        s2.value = (r[1] != null && r[1] !== '') ? String(r[1]) : '';
                     } else {
                         s1.value = '';
                         s2.value = '';
                     }
-                    s1.onchange = function() { updateRound(i); };
-                    s2.onchange = function() { updateRound(i); };
+                    // Usar o índice da própria linha no momento do clique,
+                    // para evitar o problema de "sempre altera a última rodada"
+                    function bindUpdate(selectEl){
+                        selectEl.addEventListener('change', function() {
+                            var parent = this.closest('.round-item');
+                            var i = parseInt(parent.getAttribute('data-i'), 10);
+                            updateRound(i);
+                        });
+                    }
+                    bindUpdate(s1);
+                    bindUpdate(s2);
                     el.querySelector('.btn-del').onclick = function() {
+                        var parent = this.closest('.round-item');
+                        var i = parseInt(parent.getAttribute('data-i'), 10);
                         rounds.splice(i, 1);
                         saveRounds();
                     };
@@ -244,8 +260,12 @@
                 if (!el) return;
                 var d1 = el.querySelector('.d1').value;
                 var d2 = el.querySelector('.d2').value;
-                if (d1 && d2) {
-                    rounds[i] = [parseInt(d1,10), parseInt(d2,10)];
+                // Permitir escolher um dado por vez: guarda null para o que ainda não foi selecionado
+                if (d1 || d2) {
+                    rounds[i] = [
+                        d1 ? parseInt(d1,10) : null,
+                        d2 ? parseInt(d2,10) : null
+                    ];
                 } else {
                     rounds[i] = null;
                 }

@@ -87,6 +87,23 @@ function CSeat(){
         return true; // Retornar true se sucesso
     };
     
+    // Coloca automaticamente um valor total na mesa (APOSTE AQUI) - usado após ganho do shooter
+    this.placeBetAmountOnButton = function(iTotalAmount, szNameAttach){
+        var iAmount = Math.round(roundDecimal(iTotalAmount, 1));
+        if(iAmount <= 0 || _iCredit < iAmount) return false;
+        var aDenoms = [100, 50, 25, 10, 5, 1];
+        var aIndices = [5, 4, 3, 2, 1, 0];
+        var remaining = iAmount;
+        for(var i = 0; i < aDenoms.length && remaining > 0; i++){
+            var count = Math.floor(remaining / aDenoms[i]);
+            for(var j = 0; j < count; j++){
+                if(!this.addFicheOnButton(aDenoms[i], aIndices[i], szNameAttach)) return false;
+                remaining -= aDenoms[i];
+            }
+        }
+        return remaining === 0;
+    };
+    
     this.decreaseBet = function(iAmount){
         _iCurBet -= iAmount;
     };

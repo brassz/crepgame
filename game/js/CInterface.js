@@ -311,12 +311,32 @@ function CInterface(){
     };
     
     this.enableRoll = function(bEnable){
+        // Proteção extra: se o jogo marcou que o shooter
+        // PODE lançar após a cobertura, não permitir que
+        // chamadas com false desabilitem o botão.
+        if (!bEnable &&
+            window.s_oGame &&
+            window.s_oGame._bForceRollAfterCoverage &&
+            window.s_oGame._bIAmShooter &&
+            window.s_oGame._bIsMyTurn &&
+            window.s_oGame._oMySeat &&
+            window.s_oGame._oMySeat.getCurBet &&
+            window.s_oGame._oMySeat.getCurBet() > 0) {
+            console.log("⚠️ Ignorando pedido para desabilitar botão de lançar (forçado após cobertura)");
+            bEnable = true;
+        }
+
         if(bEnable){
             _oRollBut.enable();
         }else{
             _oRollBut.disable();
         }
-        
+    };
+    
+    this.setRollButtonLabel = function(szLabel){
+        if(_oRollBut && _oRollBut.changeText){
+            _oRollBut.changeText("  " + (szLabel || TEXT_ROLL));
+        }
     };
     
     this.enablePassDice = function(bEnable){
@@ -572,8 +592,8 @@ function CInterface(){
         console.log("✅ Botões de aposta no ponto e no 7 inicializados com sucesso!");
     };
     
-    this.showPointBettingButtons = function(iPointNumber){
-        console.log("🎮 showPointBettingButtons chamado com ponto:", iPointNumber);
+    this.showPointBettingButtons = function(iPointNumber, bIsShooter){
+        console.log("🎮 showPointBettingButtons chamado com ponto:", iPointNumber, "shooter:", !!bIsShooter);
         
         // Verificar se container existe, se não existir, criar
         if(!_oPointBettingContainer){
@@ -658,9 +678,8 @@ function CInterface(){
             // Resetar contador de paradas quando mostrar botões
             _iParadasCount = 0;
             
-            // Garantir que o botão do 7 também está visível
             if(_oButBetOnSeven){
-                _oButBetOnSeven.setVisible(true); // Garantir que o botão está visível
+                _oButBetOnSeven.setVisible(!bIsShooter);
             }
             
             // Forçar atualização do stage
@@ -726,9 +745,9 @@ function CInterface(){
                 console.warn("   Stack trace da tentativa de fechar:", new Error().stack);
                 // NÃO esconder - retornar imediatamente
                 // Além disso, FORÇAR mostrar novamente para garantir
-                if(window.s_oGame && window.s_oGame._iNumberPoint > 0 && !window.s_oGame._bIAmShooter){
+                if(window.s_oGame && window.s_oGame._iNumberPoint > 0){
                     console.log("🔄 Forçando mostrar botões novamente após tentativa de esconder");
-                    this.showPointBettingButtons(window.s_oGame._iNumberPoint);
+                    this.showPointBettingButtons(window.s_oGame._iNumberPoint, window.s_oGame._bIAmShooter);
                 }
                 return;
             }
@@ -748,9 +767,9 @@ function CInterface(){
             console.warn("   Use force=true para forçar esconder (apenas quando rodada terminar)");
             // NÃO esconder - retornar imediatamente
             // Além disso, FORÇAR mostrar novamente para garantir
-            if(window.s_oGame._iNumberPoint > 0 && !window.s_oGame._bIAmShooter){
+            if(window.s_oGame._iNumberPoint > 0){
                 console.log("🔄 Forçando mostrar botões novamente após tentativa de esconder (timer principal ativo)");
-                this.showPointBettingButtons(window.s_oGame._iNumberPoint);
+                this.showPointBettingButtons(window.s_oGame._iNumberPoint, window.s_oGame._bIAmShooter);
             }
             return;
         }
@@ -772,9 +791,9 @@ function CInterface(){
             if(!bRodadaTerminou){
                 console.warn("   Rodada NÃO terminou e período ainda está aberto - bloqueando fechamento do modal");
                 // NÃO fechar - retornar imediatamente
-                if(window.s_oGame._iNumberPoint > 0 && !window.s_oGame._bIAmShooter){
+                if(window.s_oGame._iNumberPoint > 0){
                     console.log("🔄 Forçando mostrar botões novamente (rodada não terminou)");
-                    this.showPointBettingButtons(window.s_oGame._iNumberPoint);
+                    this.showPointBettingButtons(window.s_oGame._iNumberPoint, window.s_oGame._bIAmShooter);
                 }
                 return;
             } else {
@@ -808,9 +827,9 @@ function CInterface(){
             console.warn("   Use force=true para forçar esconder (apenas quando rodada terminar ou timer expirar)");
             // NÃO esconder - retornar imediatamente
             // Além disso, FORÇAR mostrar novamente para garantir
-            if(window.s_oGame && window.s_oGame._iNumberPoint > 0 && !window.s_oGame._bIAmShooter){
+            if(window.s_oGame && window.s_oGame._iNumberPoint > 0){
                 console.log("🔄 Forçando mostrar botões novamente após tentativa de esconder");
-                this.showPointBettingButtons(window.s_oGame._iNumberPoint);
+                this.showPointBettingButtons(window.s_oGame._iNumberPoint, window.s_oGame._bIAmShooter);
             }
             return;
         }
@@ -853,12 +872,11 @@ function CInterface(){
             return; // Sair imediatamente - não restaurar
         }
         
-        // Só garantir visibilidade se período de apostas está aberto e não é o shooter
-        if(bPointBettingOpen && !bIAmShooter && iPointNumber > 0){
+        if(bPointBettingOpen && iPointNumber > 0){
             // Verificar se container existe e está no stage
             if(!_oPointBettingContainer){
                 console.warn("⚠️ Container de botões não existe - criando novamente");
-                this.showPointBettingButtons(iPointNumber);
+                this.showPointBettingButtons(iPointNumber, bIAmShooter);
                 return;
             }
             
@@ -871,7 +889,7 @@ function CInterface(){
             // Verificar visibilidade
             if(!_oPointBettingContainer.visible){
                 console.warn("⚠️ Botões de aposta foram escondidos prematuramente - restaurando visibilidade");
-                this.showPointBettingButtons(iPointNumber);
+                this.showPointBettingButtons(iPointNumber, bIAmShooter);
                 return;
             }
             
@@ -917,7 +935,7 @@ function CInterface(){
             console.error("❌❌❌ Container não existe durante período de apostas! Criando agora...");
             this._initPointBettingButtons();
             if(_oPointBettingContainer && iPointNumber > 0){
-                this.showPointBettingButtons(iPointNumber);
+                this.showPointBettingButtons(iPointNumber, bIAmShooter);
             }
         }
     };
@@ -1030,9 +1048,9 @@ function CInterface(){
             // Montar texto do jogador
             var playerText = "• " + (player.username || "Jogador " + i);
             
-            // Adicionar indicador de shooter
+            // Adicionar indicador de quem está com os dados
             if(isShooter){
-                playerText += " 🎲 [SHOOTER]";
+                playerText += " (DADOS)";
             }
             
             // Adicionar informações de apostas
@@ -1068,6 +1086,23 @@ function CInterface(){
             
             _aPlayerTexts.push(oPlayerText);
             yOffset += 16; // Espaçamento reduzido
+        }
+        
+        // Atualizar painel "Apostas da Mesa" com as apostas de todos
+        var betsList = [];
+        for(var j = 0; j < players.length; j++){
+            var pl = players[j];
+            betsList.push({
+                username: pl.username || ("Jogador " + (j + 1)),
+                userId: pl.userId,
+                currentBet: pl.currentBet || 0,
+                pointBet: (gameBets[pl.userId] || 0),
+                pointBetNumber: pointValue,
+                sevenBet: (window.s_oGame && window.s_oGame._aSevenBets && window.s_oGame._aSevenBets[pl.userId]) || 0
+            });
+        }
+        if(window.s_oGame && window.s_oGame._oDiceHistory && window.s_oGame._oDiceHistory.updateBets){
+            window.s_oGame._oDiceHistory.updateBets(betsList, currentShooter);
         }
         
         // Garantir que o container está no topo
