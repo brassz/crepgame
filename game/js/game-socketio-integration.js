@@ -784,25 +784,26 @@
         // Handle bets cleared
         gameClient.onBetsCleared((data) => {
             console.log('🧹 Apostas limpas:', data);
-            
-            // Update credit display
-            if (window.s_oGame._oInterface) {
-                window.s_oGame._oInterface.setMoney(data.remainingCredit);
-            }
-            
-            // Update seat credit
-            if (window.s_oGame._oMySeat) {
-                window.s_oGame._oMySeat.setCredit(data.remainingCredit);
-            }
-            
-            // Clear visual bets
+
+            // Limpar apostas locais (isso devolve o crédito das fichas da mesa ao saldo local)
             if (window.s_oGame._oMySeat && window.s_oGame._oMySeat.clearAllBets) {
                 window.s_oGame._oMySeat.clearAllBets();
             }
-            
-            // Disable roll button
-            if (window.s_oGame._oInterface) {
-                window.s_oGame._oInterface.enableRoll(false);
+
+            // Atualizar UI com o saldo local após devolver as fichas
+            if (window.s_oGame._oInterface && window.s_oGame._oMySeat && window.s_oGame._oMySeat.getCredit) {
+                window.s_oGame._oInterface.setMoney(window.s_oGame._oMySeat.getCredit());
+            }
+            if (window.s_oGame._oInterface && window.s_oGame._oMySeat && window.s_oGame._oMySeat.getCurBet) {
+                window.s_oGame._oInterface.setCurBet(window.s_oGame._oMySeat.getCurBet());
+            }
+
+            // Após passar/limpar, deixar o controle do botão de lançar para onTurnChange
+            if (window.s_oGame && window.s_oGame.onTurnChange) {
+                window.s_oGame.onTurnChange({
+                    isMyTurn: window.s_oGame._bIsMyTurn === true,
+                    playerId: window.GameClientSocketIO && window.GameClientSocketIO.gameState ? window.GameClientSocketIO.gameState.currentShooter : null
+                });
             }
         });
         

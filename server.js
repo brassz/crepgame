@@ -425,6 +425,21 @@ io.on('connection', (socket) => {
         socket.emit('error', { message: 'Sala de jogo não encontrada' });
         return;
       }
+
+      // Validar shooter e aposta ANTES de transmitir animação (para não "rolar" sem aposta)
+      const player = gameState.players.get(user.userId);
+      if (!player) {
+        socket.emit('error', { message: 'Jogador não encontrado no jogo' });
+        return;
+      }
+      if (gameState.currentShooter !== user.userId) {
+        socket.emit('error', { message: 'Não é sua vez de lançar!' });
+        return;
+      }
+      if (!player.currentBet || player.currentBet <= 0) {
+        socket.emit('error', { message: 'Você precisa fazer uma aposta antes de lançar os dados.' });
+        return;
+      }
       
       // ===== STEP 1: GET DICE VALUES FROM CLIENT (generated locally for instant animation) =====
       const dice1 = data.dice1 || Math.floor(Math.random() * 6) + 1;
@@ -457,16 +472,6 @@ io.on('connection', (socket) => {
           if (!player) {
             console.warn('Jogador não encontrado após lançamento dos dados');
             return;
-          }
-          
-          // Validate shooter (log warning but don't block)
-          if (gameState.currentShooter !== user.userId) {
-            console.warn(`Não-lançador ${user.userId} lançou dados na sala ${roomId}`);
-          }
-          
-          // Validate bet (log warning but don't block)
-          if (player.currentBet <= 0) {
-            console.warn(`Jogador ${user.userId} lançou sem apostar na sala ${roomId}`);
           }
           
           const total = dice1 + dice2;
@@ -625,7 +630,9 @@ io.on('connection', (socket) => {
       const { betType, amount } = betData;
       
       // Validate bet amount
-      if (amount <= 0 || amount > player.credit) {
+      // Em multiplayer com lógica híbrida, o crédito é controlado no cliente.
+      // Aqui só validamos valor positivo para registrar a aposta e liberar o roll.
+      if (amount <= 0) {
         socket.emit('error', { message: 'Valor de aposta inválido' });
         return;
       }
@@ -668,8 +675,7 @@ io.on('connection', (socket) => {
         timestamp: new Date().toISOString()
       });
       
-      // Update player credit and current bet
-      player.credit -= amount;
+      // Update player current bet (não debitar crédito no servidor)
       player.currentBet += amount;
 
       // Se estamos na fase de COBERTURA, acumular valor apostado contra o shooter

@@ -1720,6 +1720,14 @@ function CGame(oData){
         }
         var canRoll = isMyTurn && _bIAmShooter && betOk && !_bPointBettingOpen && !_bPreRollBettingOpen && !_bPreRollCoverageOpen;
         _oInterface.enableRoll(canRoll);
+
+        // Se ainda não apostou, garantir que o botão NÃO fica habilitado nem com texto de LANÇAR
+        if (isMyTurn && _bIAmShooter && !betOk) {
+            _oInterface.enableRoll(false);
+            if (_oInterface.setRollButtonLabel) {
+                _oInterface.setRollButtonLabel(typeof TEXT_APOSTAR !== 'undefined' ? TEXT_APOSTAR : "APOSTAR");
+            }
+        }
         if(_iState === STATE_GAME_WAITING_FOR_BET && isMyTurn){
             if(!_bShooterClickedApostar){
                 _oInterface.setRollButtonLabel(typeof TEXT_APOSTAR !== 'undefined' ? TEXT_APOSTAR : "APOSTAR");
@@ -1866,15 +1874,19 @@ function CGame(oData){
             return;
         }
 
-        // Se estamos na fase de COBERTURA PRÉ-ROLAGEM em multiplayer (apostas contra o shooter),
-        // também enviar a aposta para o servidor via Socket.IO
-        if (isMultiplayer && _bPreRollCoverageOpen && !_bIAmShooter &&
-            window.GameClientSocketIO && window.GameClientSocketIO.placeBet) {
+        // Multiplayer: enviar apostas para o servidor (para validar roll e registrar cobertura)
+        if (isMultiplayer && window.GameClientSocketIO && window.GameClientSocketIO.placeBet) {
             try {
-                console.log("📤 Enviando aposta de COBERTURA ao servidor:", iFicheValue);
-                window.GameClientSocketIO.placeBet('coverage', iFicheValue);
+                if (_bPreRollCoverageOpen && !_bIAmShooter) {
+                    console.log("📤 Enviando aposta de COBERTURA ao servidor:", iFicheValue);
+                    window.GameClientSocketIO.placeBet('coverage', iFicheValue);
+                } else {
+                    // Aposta principal (APOSTE AQUI)
+                    console.log("📤 Enviando aposta PRINCIPAL ao servidor:", iFicheValue);
+                    window.GameClientSocketIO.placeBet('main_bet', iFicheValue);
+                }
             } catch (e) {
-                console.error("❌ Erro ao enviar aposta de cobertura para o servidor:", e);
+                console.error("❌ Erro ao enviar aposta para o servidor:", e);
             }
         }
         

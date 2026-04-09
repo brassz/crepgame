@@ -161,14 +161,14 @@
         </div>
 
         <div class="section">
-            <h2>🎲 Rodadas Programadas</h2>
-            <p class="hint">Defina valores por rodada. Rodada vazia = aleatório. Rodada 1 = primeiro lançamento, Rodada 2 = segundo, etc.</p>
+            <h2>🎲 Sequência Programada</h2>
+            <p class="hint">Defina uma sequência de lançamentos. Item vazio = aleatório. Item 1 = próximo lançamento, Item 2 = o seguinte, etc.</p>
             <label style="display:flex;align-items:center;gap:8px;margin:12px 0;">
                 <input type="checkbox" id="dice-override-check"> Usar rodadas programadas
             </label>
             <div id="rounds-list"></div>
-            <button type="button" class="btn-add" id="btn-add-round">+ Adicionar rodada</button>
-            <p class="hint" style="margin-top:12px;">Próxima rodada: <strong id="next-round-num">1</strong> <button type="button" class="btn-reset-index" id="btn-reset-index">Zerar contador</button></p>
+            <button type="button" class="btn-add" id="btn-add-round">+ Adicionar item</button>
+            <p class="hint" style="margin-top:12px;">Próximo item: <strong id="next-round-num">1</strong> <button type="button" class="btn-reset-index" id="btn-reset-index">Zerar contador</button></p>
         </div>
     </div>
 
@@ -214,7 +214,7 @@
                         sumHtml = '<span class="sum">=' + (parseInt(d1,10) + parseInt(d2,10)) + '</span>';
                     }
                     return '<div class="round-item" data-i="' + i + '">' +
-                        '<span class="round-num">Rodada ' + (i + 1) + '</span>' +
+                        '<span class="round-num">Item ' + (i + 1) + '</span>' +
                         '<select class="d1">' + opts + '</select>' +
                         '<select class="d2">' + opts + '</select>' +
                         sumHtml +
@@ -362,7 +362,7 @@
                 document.getElementById('events-list').innerHTML = html || '<em>Nenhum evento</em>';
             }
 
-            addEvent('Polegar carregado. Configure as rodadas à direita.');
+            addEvent('Polegar carregado. Configure a sequência à direita.');
             document.getElementById('rooms-list').innerHTML = '<em>Abra o jogo em outra aba. Apostas aparecem aqui quando você apostar no ponto ou no 7.</em>';
         })();
     </script>
