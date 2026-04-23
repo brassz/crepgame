@@ -35,7 +35,12 @@
                         return sb.from('profiles').insert({ 
                             id: userId, 
                             balance: DEFAULT_BALANCE 
-                        }).select('id,balance').single().catch(function(insertError){
+                        }).select('id,balance').single().then(function(insertResult){
+                            if (insertResult.error) {
+                                throw insertResult.error;
+                            }
+                            return insertResult;
+                        }).catch(function(insertError){
                             // Check if it's a foreign key constraint error
                             if (insertError.code === '23503' && insertError.message.includes('profiles_id_fkey')) {
                                 throw new Error('Cannot create profile: User ID does not exist in authentication system');
