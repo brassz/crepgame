@@ -9,6 +9,7 @@
     var players = [];
     var selectedPlayer = null;
     var adjustOperation = 'add';
+    var selectedIds = new Set();
 
     var els = {};
 
@@ -24,6 +25,21 @@
     function formatDate(iso) {
         if (!iso) return '—';
         return new Date(iso).toLocaleString('pt-BR');
+    }
+
+    async function notifyDisconnectPlayers(userIds) {
+        try {
+            await fetch('/api/disconnect-players', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    adminId: adminUser.id,
+                    userIds: userIds
+                })
+            });
+        } catch (e) {
+            console.warn('Falha ao desconectar jogadores online:', e.message);
+        }
     }
 
     async function notifyGameBalanceSync(userId, balanceAfter) {
@@ -137,7 +153,53 @@
         localStorage.removeItem('admin_user');
         adminUser = null;
         players = [];
+        selectedIds.clear();
         showLogin();
+    }
+
+    function updateDeleteButton() {
+        var n = selectedIds.size;
+        els.deleteSelectedBtn.disabled = n === 0;
+        els.deleteSelectedBtn.textContent = n > 0
+            ? 'Excluir selecionados (' + n + ')'
+            : 'Excluir selecionados';
+    }
+
+    function syncSelectAllCheckbox() {
+        var list = getFilteredPlayers();
+        var allSelected = list.length > 0 && list.every(function (p) {
+            return selectedIds.has(p.id);
+        });
+        els.selectAllPlayers.checked = allSelected;
+        els.selectAllPlayers.indeterminate = !allSelected && list.some(function (p) {
+            return selectedIds.has(p.id);
+        });
+    }
+
+    function onPlayerCheckboxChange(e) {
+        var id = e.target.getAttribute('data-id');
+        if (!id) return;
+        if (e.target.checked) {
+            selectedIds.add(id);
+        } else {
+            selectedIds.delete(id);
+        }
+        var tr = e.target.closest('tr');
+        if (tr) tr.classList.toggle('row-selected', e.target.checked);
+        updateDeleteButton();
+        syncSelectAllCheckbox();
+    }
+
+    function onSelectAllChange(e) {
+        var checked = e.target.checked;
+        getFilteredPlayers().forEach(function (p) {
+            if (checked) {
+                selectedIds.add(p.id);
+            } else {
+                selectedIds.delete(p.id);
+            }
+        });
+        renderPlayers();
     }
 
     async function loadPlayers() {
@@ -158,6 +220,10 @@
             }
 
             players = data.players || [];
+            var validIds = new Set(players.map(function (p) { return p.id; }));
+            selectedIds.forEach(function (id) {
+                if (!validIds.has(id)) selectedIds.delete(id);
+            });
             renderPlayers();
             updateSummary();
         } catch (err) {
@@ -210,9 +276,16 @@
 
         list.forEach(function (p) {
             var tr = document.createElement('tr');
-            if (!p.is_active) tr.className = 'row-inactive';
+            var rowClass = !p.is_active ? 'row-inactive' : '';
+            if (selectedIds.has(p.id)) {
+                rowClass = (rowClass ? rowClass + ' ' : '') + 'row-selected';
+            }
+            if (rowClass) tr.className = rowClass;
+
+            var checked = selectedIds.has(p.id) ? ' checked' : '';
 
             tr.innerHTML =
+                '<td class="col-check"><input type="checkbox" class="player-check" data-id="' + p.id + '"' + checked + '></td>' +
                 '<td><strong>' + escapeHtml(p.username) + '</strong>' +
                 (p.full_name ? '<br><span class="muted">' + escapeHtml(p.full_name) + '</span>' : '') + '</td>' +
                 '<td>' + escapeHtml(p.email) + '</td>' +
@@ -232,6 +305,11 @@
         els.playersTbody.querySelectorAll('button[data-action]').forEach(function (btn) {
             btn.addEventListener('click', onPlayerAction);
         });
+        els.playersTbody.querySelectorAll('.player-check').forEach(function (cb) {
+            cb.addEventListener('change', onPlayerCheckboxChange);
+        });
+        updateDeleteButton();
+        syncSelectAllCheckbox();
     }
 
     function escapeHtml(str) {
@@ -395,6 +473,61 @@
         }
     }
 
+    function openDeleteModal() {
+        if (selectedIds.size === 0) return;
+        var list = players.filter(function (p) { return selectedIds.has(p.id); });
+        els.deletePlayerList.innerHTML = '';
+        list.forEach(function (p) {
+            var li = document.createElement('li');
+            li.textContent = (p.username || '—') + ' · ' + (p.email || '—');
+            els.deletePlayerList.appendChild(li);
+        });
+        $('deleteReason').value = '';
+        els.deleteModal.style.display = 'flex';
+    }
+
+    function closeDeleteModal() {
+        els.deleteModal.style.display = 'none';
+    }
+
+    async function confirmDeletePlayers() {
+        if (selectedIds.size === 0) return;
+
+        var ids = Array.from(selectedIds);
+        var reason = $('deleteReason').value.trim();
+        var btn = $('deleteConfirm');
+        btn.disabled = true;
+        btn.textContent = 'Excluindo...';
+
+        try {
+            var res = await supabase.rpc('painel_delete_players', {
+                p_admin_id: adminUser.id,
+                p_user_ids: ids,
+                p_reason: reason || null
+            });
+
+            if (res.error) throw new Error(res.error.message);
+
+            var data = res.data;
+            if (!data || !data.success) {
+                throw new Error((data && data.error) || 'Falha ao excluir jogadores');
+            }
+
+            await notifyDisconnectPlayers(ids);
+
+            var count = data.deleted_count || ids.length;
+            selectedIds.clear();
+            closeDeleteModal();
+            showToast(count + ' jogador(es) excluído(s) com sucesso', 'success');
+            await loadPlayers();
+        } catch (err) {
+            showToast(err.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Excluir permanentemente';
+        }
+    }
+
     function bindElements() {
         els.toast = $('toast');
         els.searchInput = $('searchInput');
@@ -409,6 +542,10 @@
         els.adjustModal = $('adjustModal');
         els.historyModal = $('historyModal');
         els.historyTbody = $('historyTbody');
+        els.deleteSelectedBtn = $('deleteSelectedBtn');
+        els.selectAllPlayers = $('selectAllPlayers');
+        els.deleteModal = $('deleteModal');
+        els.deletePlayerList = $('deletePlayerList');
     }
 
     function init() {
@@ -420,6 +557,10 @@
         $('adjustForm').addEventListener('submit', submitAdjust);
         $('adjustCancel').addEventListener('click', closeAdjustModal);
         $('historyClose').addEventListener('click', closeHistoryModal);
+        els.deleteSelectedBtn.addEventListener('click', openDeleteModal);
+        $('deleteCancel').addEventListener('click', closeDeleteModal);
+        $('deleteConfirm').addEventListener('click', confirmDeletePlayers);
+        els.selectAllPlayers.addEventListener('change', onSelectAllChange);
 
         els.searchInput.addEventListener('input', renderPlayers);
 
@@ -428,6 +569,9 @@
         });
         els.historyModal.addEventListener('click', function (e) {
             if (e.target === els.historyModal) closeHistoryModal();
+        });
+        els.deleteModal.addEventListener('click', function (e) {
+            if (e.target === els.deleteModal) closeDeleteModal();
         });
 
         adminUser = loadAdminSession();

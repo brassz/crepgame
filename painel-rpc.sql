@@ -243,7 +243,87 @@ BEGIN
 END;
 $$;
 
+-- Exclui cadastros de jogadores (um ou vários)
+CREATE OR REPLACE FUNCTION painel_delete_players(
+    p_admin_id UUID,
+    p_user_ids UUID[],
+    p_reason TEXT DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_uid UUID;
+    v_user RECORD;
+    v_deleted JSONB := '[]'::jsonb;
+    v_count INTEGER := 0;
+    v_admin_name TEXT;
+BEGIN
+    IF NOT painel_verify_admin(p_admin_id) THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Admin não autorizado');
+    END IF;
+
+    IF p_user_ids IS NULL OR array_length(p_user_ids, 1) IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Nenhum jogador selecionado');
+    END IF;
+
+    SELECT full_name INTO v_admin_name FROM public.admin_users WHERE id = p_admin_id;
+
+    FOREACH v_uid IN ARRAY p_user_ids
+    LOOP
+        SELECT id, username, email, full_name INTO v_user
+        FROM public.users
+        WHERE id = v_uid;
+
+        IF NOT FOUND THEN
+            CONTINUE;
+        END IF;
+
+        DELETE FROM public.deposits WHERE user_id = v_uid;
+        UPDATE public.admin_logs SET target_user_id = NULL WHERE target_user_id = v_uid;
+
+        DELETE FROM public.users WHERE id = v_uid;
+
+        v_deleted := v_deleted || jsonb_build_array(
+            jsonb_build_object(
+                'id', v_user.id,
+                'username', v_user.username,
+                'email', v_user.email
+            )
+        );
+        v_count := v_count + 1;
+
+        INSERT INTO public.admin_logs (admin_id, action_type, description, target_user_id, metadata)
+        VALUES (
+            p_admin_id,
+            'delete_player',
+            COALESCE(p_reason, 'Cadastro de jogador excluído'),
+            NULL,
+            jsonb_build_object(
+                'deleted_user_id', v_user.id,
+                'username', v_user.username,
+                'email', v_user.email,
+                'admin_name', v_admin_name
+            )
+        );
+    END LOOP;
+
+    IF v_count = 0 THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Nenhum jogador encontrado para excluir');
+    END IF;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'deleted_count', v_count,
+        'deleted', v_deleted
+    );
+END;
+$$;
+
 GRANT EXECUTE ON FUNCTION painel_list_players(UUID) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION painel_adjust_balance(UUID, UUID, NUMERIC, TEXT, TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION painel_get_balance_history(UUID, UUID, INTEGER) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION painel_delete_players(UUID, UUID[], TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION painel_verify_admin(UUID) TO anon, authenticated;

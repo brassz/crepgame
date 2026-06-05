@@ -139,8 +139,25 @@
         .btn-add { background: #dcfce7; color: #15803d; }
         .btn-remove { background: #fee2e2; color: #b91c1c; }
         .btn-history { background: #e0e7ff; color: #3730a3; }
+        .btn-delete { background: #fecaca; color: #991b1b; }
+        .btn-delete-full { background: #dc2626; color: #fff; width: 100%; }
         .btn-add-full { background: #16a34a; color: #fff; width: 100%; }
         .btn-remove-full { background: #dc2626; color: #fff; width: 100%; }
+        .col-check { width: 40px; text-align: center; }
+        .col-check input { width: 16px; height: 16px; cursor: pointer; }
+        tr.row-selected { background: #fff7ed; }
+        .delete-list {
+            max-height: 160px;
+            overflow-y: auto;
+            margin: 12px 0 16px;
+            padding: 12px;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            font-size: 13px;
+        }
+        .delete-list li { margin: 4px 0; }
+        .delete-warning { color: #b91c1c; font-size: 13px; margin-bottom: 12px; }
 
         .form-group { margin-bottom: 16px; }
         .form-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #374151; }
@@ -268,6 +285,7 @@
 
         <div class="toolbar">
             <input type="search" id="searchInput" placeholder="Buscar por nome, email ou CPF...">
+            <button class="btn btn-delete" id="deleteSelectedBtn" disabled>Excluir selecionados</button>
             <button class="btn btn-primary" id="refreshBtn">Atualizar</button>
         </div>
 
@@ -278,6 +296,7 @@
                 <table>
                     <thead>
                         <tr>
+                            <th class="col-check"><input type="checkbox" id="selectAllPlayers" title="Selecionar todos"></th>
                             <th>Jogador</th>
                             <th>Email</th>
                             <th class="num">Saldo</th>
@@ -339,6 +358,23 @@
         </div>
         <div style="margin-top:16px;text-align:right">
             <button class="btn btn-primary" id="historyClose">Fechar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal excluir jogadores -->
+<div class="modal-overlay" id="deleteModal">
+    <div class="modal">
+        <h2>Excluir cadastros</h2>
+        <p class="delete-warning">Esta ação é permanente. Os jogadores selecionados serão removidos do sistema e desconectados se estiverem online.</p>
+        <ul class="delete-list" id="deletePlayerList"></ul>
+        <div class="form-group">
+            <label for="deleteReason">Motivo (opcional)</label>
+            <textarea id="deleteReason" placeholder="Ex.: cadastro duplicado, solicitação do usuário..."></textarea>
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn" id="deleteCancel" style="background:#f1f5f9;color:#475569">Cancelar</button>
+            <button type="button" class="btn btn-delete-full" id="deleteConfirm">Excluir permanentemente</button>
         </div>
     </div>
 </div>

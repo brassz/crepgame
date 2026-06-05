@@ -86,6 +86,42 @@ function pushBalanceUpdateToPlayer(userId, balanceAfter) {
   return notified;
 }
 
+// Desconectar jogadores excluídos no painel (sessão no jogo)
+app.post('/api/disconnect-players', async (req, res) => {
+  try {
+    const { adminId, userIds } = req.body || {};
+    if (!adminId || !Array.isArray(userIds) || userIds.length === 0) {
+      return res.status(400).json({ success: false, error: 'adminId e userIds são obrigatórios' });
+    }
+
+    const isAdmin = await verifyAdminId(adminId);
+    if (!isAdmin) {
+      return res.status(403).json({ success: false, error: 'Admin não autorizado' });
+    }
+
+    const idSet = new Set(userIds.map(String));
+    let disconnected = 0;
+
+    for (const [socketId, user] of connectedUsers.entries()) {
+      if (user.userId && idSet.has(String(user.userId))) {
+        const socket = io.sockets.sockets.get(socketId);
+        if (socket) {
+          socket.emit('account_deleted', {
+            message: 'Seu cadastro foi removido pelo administrador.'
+          });
+          socket.disconnect(true);
+          disconnected++;
+        }
+      }
+    }
+
+    res.json({ success: true, disconnected });
+  } catch (err) {
+    console.error('Erro em /api/disconnect-players:', err);
+    res.status(500).json({ success: false, error: 'Falha ao desconectar jogadores' });
+  }
+});
+
 // Sincronizar saldo do painel admin → jogador online no jogo
 app.post('/api/sync-balance', async (req, res) => {
   try {

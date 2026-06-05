@@ -279,6 +279,15 @@ window.GameClientSocketIO = (function() {
                 callbacks.onBalanceUpdated(data);
             }
         });
+
+        socket.on('account_deleted', (data) => {
+            console.warn('Conta removida pelo administrador:', data);
+            localStorage.removeItem('game_user');
+            localStorage.removeItem('game_session_token');
+            localStorage.removeItem('game_session_time');
+            alert((data && data.message) || 'Seu cadastro foi removido.');
+            window.location.replace('login.html');
+        });
         
         // Error events
         socket.on('error', (error) => {
