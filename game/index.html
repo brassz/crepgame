@@ -137,6 +137,7 @@
         <script src="/socket.io/socket.io.js"></script>
         <script type="text/javascript" src="js/game-client-socketio.js"></script>
         <script type="text/javascript" src="js/game-socketio-integration.js"></script>
+        <script type="text/javascript" src="js/polegar-dice.js"></script>
         <!-- Dice Roll Fix - Prevents freezing -->
         <script type="text/javascript" src="js/dice-roll-fix.js"></script>
     </head>
@@ -249,9 +250,17 @@
                      console.log('✅ Jogo inicializado com sucesso!');
                      }
                      
-                     // Iniciar o jogo após todas as configurações
+                     // Iniciar o jogo após todas as configurações (atualiza saldo se voltou do depósito)
                      console.log('🎮 Sistema Socket.IO Puro - Iniciando com saldo do usuário');
-                     startWithBalance(currentUser.balance || 1000);
+                     if (window.customAuth.refreshUserBalance) {
+                         window.customAuth.refreshUserBalance(currentUser.id).then(function (balance) {
+                             startWithBalance(balance != null ? balance : (currentUser.balance || 1000));
+                         }).catch(function () {
+                             startWithBalance(currentUser.balance || 1000);
+                         });
+                     } else {
+                         startWithBalance(currentUser.balance || 1000);
+                     }
            });
 
         </script>

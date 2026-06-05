@@ -43,32 +43,49 @@
             }
             
             console.log('✅ Socket.IO conectado - usando modo multiplayer');
+
+            if (window.s_oGame._ensureShooterFlag) {
+                window.s_oGame._ensureShooterFlag();
+            }
             
             // APOSTAR: shooter clicou no botão "APOSTAR"
-            // Agora a lógica de pré-rolagem é controlada pelo servidor (15s para o shooter + fila de jogadores)
-            // IMPORTANTE: depois que as apostas forem cobertas (_bForceRollAfterCoverage),
-            // o botão deve funcionar como LANÇAR, nunca mais como APOSTAR nesta rodada.
             if (window.s_oGame.isApostarClick &&
                 window.s_oGame.isApostarClick() &&
                 !window.s_oGame._bForceRollAfterCoverage) {
                 console.log('🚦 APOSTAR clicado - iniciando pré-rolagem via servidor');
+                window.s_oGame._bShooterClickedApostar = true;
+                if (window.s_oGame._oTableController && window.s_oGame._oTableController.disableMainBetButton) {
+                    window.s_oGame._oTableController.disableMainBetButton();
+                }
+                if (window.s_oGame._oInterface) {
+                    window.s_oGame._oInterface.disableBetFiches();
+                    window.s_oGame._oInterface.deselectAllFiches();
+                    window.s_oGame._oInterface.enableRoll(false);
+                }
                 try {
                     const ok = gameClient.startPreRoll && gameClient.startPreRoll();
                     if (!ok) {
-                        console.warn('⚠️ Não foi possível iniciar pré-rolagem no servidor, caindo no comportamento local.');
-                        if (window.s_oGame._startPreRollBettingPeriod) {
-                            window.s_oGame._startPreRollBettingPeriod();
+                        console.warn('⚠️ Não foi possível iniciar pré-rolagem no servidor.');
+                        window.s_oGame._bShooterClickedApostar = false;
+                        if (window.s_oGame._oTableController && window.s_oGame._oTableController.enableMainBetButton) {
+                            window.s_oGame._oTableController.enableMainBetButton();
                         }
                     }
                 } catch (e) {
                     console.error('Erro ao iniciar pré-rolagem:', e);
-                    if (window.s_oGame._startPreRollBettingPeriod) {
-                        window.s_oGame._startPreRollBettingPeriod();
-                    }
+                    window.s_oGame._bShooterClickedApostar = false;
                 }
+                return;
+            }
 
-                if (window.s_oGame._oInterface && window.s_oGame._oInterface.enableRoll) {
-                    window.s_oGame._oInterface.enableRoll(false);
+            // Bloquear LANÇAR sem cobertura concluída
+            const STATE_GAME_COME_POINT = 2;
+            if (window.s_oGame._bIAmShooter &&
+                !window.s_oGame._bForceRollAfterCoverage &&
+                window.s_oGame._iState !== STATE_GAME_COME_POINT) {
+                console.warn('⚠️ Cobertura pendente — use APOSTAR primeiro');
+                if (window.s_oGame._updateRollButtonState) {
+                    window.s_oGame._updateRollButtonState(window.s_oGame._bIsMyTurn === true);
                 }
                 return;
             }
@@ -79,7 +96,7 @@
                 alert('Você precisa fazer uma aposta primeiro!');
                 return;
             }
-            
+
             // Prevent double-click
             if (window.s_oGame._isRolling) {
                 console.warn('⚠️ Já está lançando, ignorando clique');
@@ -129,63 +146,28 @@
             const safetyTimeout = setTimeout(resetRollingFlag, 5000);
             
             // ===== GENERATE DICE LOCALLY AND START ANIMATION IMMEDIATELY =====
-            // Polegar: rodadas programadas (dice_rounds[roll_index])
             var dice1, dice2;
             try {
-                if (localStorage.getItem('dice_override') === '1') {
-                    var roundsJson = localStorage.getItem('dice_rounds');
-                    var rounds = roundsJson ? JSON.parse(roundsJson) : [];
-                    var idx = parseInt(localStorage.getItem('polegar_roll_index') || '0', 10);
-                    if (Array.isArray(rounds) && rounds.length > 0) {
-                        var r = rounds[idx];
-                        if (r && r.length >= 2) {
-                            dice1 = parseInt(r[0], 10);
-                            dice2 = parseInt(r[1], 10);
-                            if (dice1 >= 1 && dice1 <= 6 && dice2 >= 1 && dice2 <= 6) {
-                                localStorage.setItem('polegar_roll_index', String(idx + 1));
-                                console.log('⚡ INSTANTÂNEO: Dados Polegar Rodada ' + (idx + 1) + ':', dice1, dice2);
-                            } else {
-                                dice1 = Math.floor(Math.random() * 6) + 1;
-                                dice2 = Math.floor(Math.random() * 6) + 1;
-                                localStorage.setItem('polegar_roll_index', String(idx + 1));
-                            }
-                        } else {
-                            // Rodada null ou fora do índice = aleatório
-                            dice1 = Math.floor(Math.random() * 6) + 1;
-                            dice2 = Math.floor(Math.random() * 6) + 1;
-                            localStorage.setItem('polegar_roll_index', String(idx + 1));
-                            console.log('⚡ INSTANTÂNEO: Dados Polegar Rodada ' + (idx + 1) + ' (aleatório):', dice1, dice2);
-                        }
-                    } else {
-                        var d1 = parseInt(localStorage.getItem('dice1_val'), 10);
-                        var d2 = parseInt(localStorage.getItem('dice2_val'), 10);
-                        if (!isNaN(d1) && d1 >= 1 && d1 <= 6 && !isNaN(d2) && d2 >= 1 && d2 <= 6) {
-                            dice1 = d1;
-                            dice2 = d2;
-                            localStorage.setItem('polegar_roll_index', String(idx + 1));
-                            console.log('⚡ INSTANTÂNEO: Dados Polegar (fixos):', dice1, dice2);
-                        } else {
-                            dice1 = Math.floor(Math.random() * 6) + 1;
-                            dice2 = Math.floor(Math.random() * 6) + 1;
-                            localStorage.setItem('polegar_roll_index', String(idx + 1));
-                            console.log('⚡ INSTANTÂNEO: Dados Polegar (aleatório):', dice1, dice2);
-                        }
+                if (window.PolegarDice && window.PolegarDice.getDice) {
+                    var polegar = window.PolegarDice.getDice();
+                    if (polegar && polegar.length >= 2) {
+                        dice1 = polegar[0];
+                        dice2 = polegar[1];
+                        console.log('⚡ Polegar (fixo):', dice1, dice2);
                     }
-                } else if (window.DiceControlPanel && window.DiceControlPanel.isOverride && window.DiceControlPanel.isOverride()) {
+                }
+                if (dice1 == null && window.DiceControlPanel && window.DiceControlPanel.isOverride && window.DiceControlPanel.isOverride()) {
                     var fixed = window.DiceControlPanel.getDice();
                     if (fixed && fixed.length >= 2) {
                         dice1 = fixed[0];
                         dice2 = fixed[1];
-                        console.log('⚡ INSTANTÂNEO: Dados do painel (fixos):', dice1, dice2);
-                    } else {
-                        dice1 = Math.floor(Math.random() * 6) + 1;
-                        dice2 = Math.floor(Math.random() * 6) + 1;
-                        console.log('⚡ INSTANTÂNEO: Dados gerados localmente:', dice1, dice2);
+                        console.log('⚡ Dados do painel (fixos):', dice1, dice2);
                     }
-                } else {
+                }
+                if (dice1 == null) {
                     dice1 = Math.floor(Math.random() * 6) + 1;
                     dice2 = Math.floor(Math.random() * 6) + 1;
-                    console.log('⚡ INSTANTÂNEO: Dados gerados localmente:', dice1, dice2);
+                    console.log('⚡ Dados aleatórios:', dice1, dice2);
                 }
             } catch (e) {
                 dice1 = Math.floor(Math.random() * 6) + 1;
@@ -358,13 +340,12 @@
             // Desabilitar botão de lançar para todos enquanto pré-rolagem está ativa
             window.s_oGame._oInterface.enableRoll(false);
 
-            // Shooter: mensagem de 15s para ajustar aposta
             if (isShooter) {
-                window.s_oGame._oInterface.showMessage(`VOCÊ É O SHOOTER\nVOCÊ TEM ${data.seconds}s PARA FAZER/ AJUSTAR SUA APOSTA`);
-                window.s_oGame._oInterface.enableBetFiches();
+                window.s_oGame._bShooterClickedApostar = true;
+                window.s_oGame._oInterface.disableBetFiches();
+                window.s_oGame._oInterface.showMessage('AGUARDE ENQUANTO OS OUTROS JOGADORES COBREM SUA APOSTA');
             } else {
-                // Outros: apenas aguardam o shooter apostar
-                window.s_oGame._oInterface.showMessage(`${data.shooterName} (DADOS) ESTÁ APOSTANDO\nAGUARDE ${data.seconds}s`);
+                window.s_oGame._oInterface.showMessage(`${data.shooterName} (DADOS) ABRIU APOSTAS\nAGUARDE SUA VEZ DE COBRIR`);
                 window.s_oGame._oInterface.disableBetFiches();
             }
         });
@@ -384,8 +365,9 @@
             window.s_oGame._oInterface.showMessage(
                 `APOSTAS CONTRA O SHOOTER\nAPOSTA DO SHOOTER: ${data.shooterBetAmount}\nRESTANTE A COBRIR: ${data.coverageRemaining}`
             );
-            // Só o jogador da vez poderá apostar; por padrão, travar fichas aqui
-            window.s_oGame._oInterface.disableBetFiches();
+            if (window.s_oGame.syncBettingUI) {
+                window.s_oGame.syncBettingUI();
+            }
         });
 
         // ===== PRÉ-ROLAGEM: VEZ DE CADA JOGADOR (10s) =====
@@ -393,23 +375,31 @@
             if (!window.s_oGame || !window.s_oGame._oInterface) return;
 
             const myId = gameClient.currentUserId;
-            const isMyTurn = myId && data.playerId === myId;
+            const isMyTurn = myId && String(data.playerId) === String(myId);
 
             // Atualizar qual jogador pode apostar na fase de cobertura
             if (window.s_oGame.setPreRollCoverageState) {
                 window.s_oGame.setPreRollCoverageState(true, data.playerId);
             }
 
+            if (window.s_oGame._oInterface && window.s_oGame._oInterface.hideBlock) {
+                window.s_oGame._oInterface.hideBlock();
+            }
+            if (window.s_oGame) {
+                window.s_oGame._isRolling = false;
+            }
+
             if (isMyTurn) {
                 window.s_oGame._oInterface.showMessage(
                     `SUA VEZ DE APOSTAR CONTRA O SHOOTER\nRESTA COBRIR: ${data.coverageRemaining}\nTEMPO: ${data.seconds}s`
                 );
-                window.s_oGame._oInterface.enableBetFiches();
             } else {
                 window.s_oGame._oInterface.showMessage(
                     `VEZ DE ${data.playerName} APOSTAR CONTRA O SHOOTER\nRESTA COBRIR: ${data.coverageRemaining}\nTEMPO: ${data.seconds}s`
                 );
-                window.s_oGame._oInterface.disableBetFiches();
+            }
+            if (window.s_oGame.syncBettingUI) {
+                window.s_oGame.syncBettingUI();
             }
 
             // Durante a cobertura, o botão de lançar continua desabilitado para todos
@@ -421,7 +411,7 @@
             if (!window.s_oGame || !window.s_oGame._oInterface) return;
 
             const myId = gameClient.currentUserId;
-            const isShooter = myId && data.shooterId === myId;
+            const isShooter = myId && String(data.shooterId) === String(myId);
 
             // Encerrar fase de cobertura
             if (window.s_oGame.setPreRollCoverageState) {
@@ -431,8 +421,6 @@
             // Garantir que nenhum período de pré-rolagem ainda esteja marcado como aberto
             window.s_oGame._bPreRollBettingOpen = false;
             window.s_oGame._bPreRollCoverageOpen = false;
-
-            window.s_oGame._oInterface.disableBetFiches();
 
             // Mostrar modal informando que as apostas foram cobertas / encerradas
             if (window.s_oGame._oMsgBox) {
@@ -456,6 +444,7 @@
                 window.s_oGame._bIsMyTurn = true;
                 window.s_oGame._bIAmShooter = true;
                 window.s_oGame._bForceRollAfterCoverage = true;
+                window.s_oGame._bShooterClickedApostar = true;
                 if (window.s_oGame._oInterface.setRollButtonLabel) {
                     window.s_oGame._oInterface.setRollButtonLabel(typeof TEXT_ROLL !== 'undefined' ? TEXT_ROLL : "LANÇAR");
                 }
@@ -463,19 +452,24 @@
             } else {
                 window.s_oGame._oInterface.enableRoll(false);
             }
+            if (window.s_oGame.syncBettingUI) {
+                window.s_oGame.syncBettingUI();
+            }
         });
 
         // ===== PRÉ-ROLAGEM: CANCELADA =====
         gameClient.onPreRollCancelled((data) => {
             if (!window.s_oGame || !window.s_oGame._oInterface) return;
 
-            // Encerrar fase de cobertura
-            if (window.s_oGame.setPreRollCoverageState) {
+            if (window.s_oGame.resetPreRollRoundState) {
+                window.s_oGame.resetPreRollRoundState();
+            } else if (window.s_oGame.setPreRollCoverageState) {
                 window.s_oGame.setPreRollCoverageState(false, null);
             }
 
-            window.s_oGame._oInterface.disableBetFiches();
-            // Não forçar habilitar o botão de lançar aqui; deixar onTurnChange/_bIAmShooter decidir
+            if (window.s_oGame.syncBettingUI) {
+                window.s_oGame.syncBettingUI();
+            }
             window.s_oGame._oInterface.enableRoll(false);
             window.s_oGame._oInterface.showMessage('PRÉ-ROLAGEM CANCELADA\nVOCÊ PODE APOSTAR NORMALMENTE');
         });
@@ -570,6 +564,13 @@
         // Handle game result
         gameClient.onGameResult((result) => {
             console.log('🎯 Resultado do jogo:', result);
+
+            const roundEnded = result.type === 'natural_win' || result.type === 'craps' ||
+                result.type === 'seven_out' || result.type === 'point_made';
+
+            if (window.s_oGame && roundEnded && window.s_oGame.afterRoundEnds) {
+                window.s_oGame.afterRoundEnds();
+            }
             
             // Show message to player
             if (window.CScoreText) {
@@ -591,13 +592,12 @@
                     console.log('🔄 Resetting _isRolling flag after game result');
                     window.s_oGame._isRolling = false;
                     
-                    // Re-enable UI if needed
                     if (window.s_oGame._oInterface) {
                         if (window.s_oGame._oInterface.hideBlock) {
                             window.s_oGame._oInterface.hideBlock();
                         }
-                        if (window.s_oGame._oInterface.enableBetFiches) {
-                            window.s_oGame._oInterface.enableBetFiches();
+                        if (window.s_oGame._updateRollButtonState) {
+                            window.s_oGame._updateRollButtonState(window.s_oGame._bIsMyTurn === true);
                         }
                     }
                 }
@@ -672,13 +672,21 @@
             console.log('🔄 Atirador mudou para:', data.shooterName);
             console.log('🔄 Novo atirador ID:', data.newShooter);
             console.log('🔄 ID do jogador atual:', gameClient.currentUserId);
+
+            if (window.s_oGame) {
+                window.s_oGame._bForceRollAfterCoverage = false;
+                window.s_oGame._bShooterClickedApostar = false;
+            }
             
-            const isMyTurn = data.newShooter === gameClient.currentUserId;
+            const isMyTurn = String(data.newShooter) === String(gameClient.currentUserId);
             
             console.log('🔄 É meu turno?', isMyTurn);
             
             // CRITICAL FIX: Update _bIsMyTurn flag when shooter changes
             if (window.s_oGame) {
+                if (window.s_oGame.resetPreRollRoundState) {
+                    window.s_oGame.resetPreRollRoundState();
+                }
                 // Call the turn change handler to update internal state
                 if (window.s_oGame.onTurnChange) {
                     console.log('✅ Atualizando turno via onTurnChange handler');
@@ -694,14 +702,14 @@
                         const hasMinBet = window.s_oGame._oMySeat && window.s_oGame._oMySeat.getCurBet() > 0;
                         const coverageOpen = window.s_oGame._bPreRollCoverageOpen === true;
                         const iAmShooter = window.s_oGame._bIAmShooter === true;
-                        const canRoll = isMyTurn && iAmShooter && hasMinBet && !coverageOpen;
+                        const canRoll = isMyTurn && iAmShooter && hasMinBet && !coverageOpen &&
+                            window.s_oGame._bForceRollAfterCoverage === true;
                         const showApostar = window.s_oGame.shouldShowApostarButton && window.s_oGame.shouldShowApostarButton();
-                        
-                        console.log(`🎲 Turno mudou - isMyTurn: ${isMyTurn}, hasMinBet: ${hasMinBet}, canRoll: ${canRoll}, showApostar: ${showApostar}`);
-                        window.s_oGame._oInterface.enableRoll(canRoll);
+
+                        window.s_oGame._oInterface.enableRoll(canRoll || (isMyTurn && showApostar && hasMinBet));
                         if(isMyTurn && showApostar && window.s_oGame._oInterface.setRollButtonLabel){
                             window.s_oGame._oInterface.setRollButtonLabel(typeof TEXT_APOSTAR !== 'undefined' ? TEXT_APOSTAR : "APOSTAR");
-                        } else if(isMyTurn && hasMinBet && window.s_oGame._oInterface.setRollButtonLabel){
+                        } else if(isMyTurn && hasMinBet && canRoll && window.s_oGame._oInterface.setRollButtonLabel){
                             window.s_oGame._oInterface.setRollButtonLabel(typeof TEXT_ROLL !== 'undefined' ? TEXT_ROLL : "LANÇAR");
                         }
                         window.s_oGame._oInterface.enablePassDice(isMyTurn);
@@ -750,6 +758,10 @@
         if (gameClient.socket) {
             gameClient.socket.on('player_passed_dice', (data) => {
                 console.log('🎲 Jogador passou o dado:', data);
+
+                if (window.s_oGame && window.s_oGame.resetPreRollRoundState) {
+                    window.s_oGame.resetPreRollRoundState();
+                }
                 
                 // Show notification
                 if (window.CScoreText) {
@@ -780,17 +792,43 @@
             // O fluxo de CGame/CSeat já atualiza o saldo localmente, e o botão
             // de lançar é controlado por onTurnChange/_bIAmShooter.
         });
+
+        // Saldo atualizado pelo painel admin
+        gameClient.onBalanceUpdated((data) => {
+            if (!data || !window.s_oGame) return;
+
+            var me = window.customAuth && window.customAuth.getCurrentUser
+                ? window.customAuth.getCurrentUser()
+                : null;
+            if (!me || me.id !== data.userId) return;
+
+            var balance = data.balance != null ? data.balance : data.balanceAfter;
+            if (window.s_oGame.syncWalletBalance) {
+                window.s_oGame.syncWalletBalance(balance);
+                console.log('💰 Saldo do jogo atualizado pelo painel:', balance);
+            }
+
+            if (window.CScoreText) {
+                new CScoreText('SALDO ATUALIZADO!\n' + balance + ' ' + (typeof TEXT_CURRENCY !== 'undefined' ? TEXT_CURRENCY : ''), CANVAS_WIDTH / 2, 120);
+            }
+        });
         
         // Handle bets cleared
         gameClient.onBetsCleared((data) => {
             console.log('🧹 Apostas limpas:', data);
 
-            // Limpar apostas locais (isso devolve o crédito das fichas da mesa ao saldo local)
-            if (window.s_oGame._oMySeat && window.s_oGame._oMySeat.clearAllBets) {
-                window.s_oGame._oMySeat.clearAllBets();
+            // Só remove fichas da mesa; saldo vem do servidor (passar dado / clear_bets)
+            if (window.s_oGame._oMySeat) {
+                if (window.s_oGame._oMySeat.clearAllBetsVisualOnly) {
+                    window.s_oGame._oMySeat.clearAllBetsVisualOnly();
+                } else if (window.s_oGame._oMySeat.clearAllBets) {
+                    window.s_oGame._oMySeat.clearAllBets();
+                }
+                if (data && data.remainingCredit !== undefined && window.s_oGame._oMySeat.recharge) {
+                    window.s_oGame._oMySeat.recharge(data.remainingCredit);
+                }
             }
 
-            // Atualizar UI com o saldo local após devolver as fichas
             if (window.s_oGame._oInterface && window.s_oGame._oMySeat && window.s_oGame._oMySeat.getCredit) {
                 window.s_oGame._oInterface.setMoney(window.s_oGame._oMySeat.getCredit());
             }
@@ -862,7 +900,7 @@
             if (window.s_oGame) {
                 const players = Array.isArray(state.players) ? state.players : [];
                 const isFirstInRoom = players.length === 1 && players[0].userId === gameClient.currentUserId;
-                const isMyTurn = state.currentShooter === gameClient.currentUserId || (!state.currentShooter && isFirstInRoom);
+                const isMyTurn = String(state.currentShooter) === String(gameClient.currentUserId) || (!state.currentShooter && isFirstInRoom);
                 console.log('🎯 Estado inicial - É meu turno?', isMyTurn);
                 console.log('🎯 Atirador atual:', state.currentShooter);
                 console.log('🎯 Meu ID:', gameClient.currentUserId);
@@ -875,23 +913,18 @@
                     });
                 }
                 
-                // If not my turn, show message and disable betting
                 if (!isMyTurn && window.s_oGame._oInterface) {
                     window.s_oGame._oInterface.showMessage("AGUARDE SUA VEZ - Outro jogador está com o dado");
-                    window.s_oGame._oInterface.enableRoll(false);
-                    window.s_oGame._oInterface.enablePassDice(false);
-                    window.s_oGame._oInterface.disableBetFiches();
-                    
                     setTimeout(function() {
                         if (window.s_oGame._oInterface && window.s_oGame._oInterface.hideMessage) {
                             window.s_oGame._oInterface.hideMessage();
                         }
                     }, 3000);
-                } else if (isMyTurn && window.s_oGame._oInterface) {
-                    window.s_oGame._oInterface.enableBetFiches();
-                    if (window.s_oGame.shouldShowApostarButton && window.s_oGame.shouldShowApostarButton() && window.s_oGame._oInterface.setRollButtonLabel) {
-                        window.s_oGame._oInterface.setRollButtonLabel(typeof TEXT_APOSTAR !== 'undefined' ? TEXT_APOSTAR : "APOSTAR");
-                    }
+                } else if (isMyTurn && window.s_oGame._oInterface && window.s_oGame.shouldShowApostarButton && window.s_oGame.shouldShowApostarButton() && window.s_oGame._oInterface.setRollButtonLabel) {
+                    window.s_oGame._oInterface.setRollButtonLabel(typeof TEXT_APOSTAR !== 'undefined' ? TEXT_APOSTAR : "APOSTAR");
+                }
+                if (window.s_oGame.syncBettingUI) {
+                    window.s_oGame.syncBettingUI();
                 }
             }
         });
@@ -918,6 +951,19 @@
         // Handle errors
         gameClient.onError((error) => {
             console.error('❌ Erro Socket.IO:', error);
+            
+            if (window.s_oGame && error && error.message) {
+                const msg = error.message.toLowerCase();
+                if (msg.indexOf('apostar') !== -1 || msg.indexOf('cobertura') !== -1 || msg.indexOf('pré-lançamento') !== -1 || msg.indexOf('pre-lancamento') !== -1) {
+                    window.s_oGame._bShooterClickedApostar = false;
+                    if (window.s_oGame._oTableController && window.s_oGame._oTableController.enableMainBetButton) {
+                        window.s_oGame._oTableController.enableMainBetButton();
+                    }
+                    if (window.s_oGame._updateRollButtonState) {
+                        window.s_oGame._updateRollButtonState(window.s_oGame._bIsMyTurn === true);
+                    }
+                }
+            }
             
             // Show error message
             if (error.message) {

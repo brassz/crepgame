@@ -63,57 +63,25 @@
             border-left: 4px solid #667eea;
         }
         .event-item { border-left-color: #f59e0b; }
-        .round-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 8px 12px;
-            margin-bottom: 8px;
-            background: rgba(0,0,0,0.3);
-            border-radius: 8px;
+        .preset-btns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+        .preset-btns button {
+            min-width: 36px; padding: 8px 10px;
+            background: #444; color: #fff; border: 1px solid #666;
+            border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold;
         }
-        .round-item .round-num { min-width: 70px; font-weight: bold; }
-        .round-item select {
-            padding: 4px 8px;
-            background: #222;
-            color: #fff;
-            border: 1px solid #555;
-            border-radius: 4px;
-            width: 50px;
+        .preset-btns button:hover { background: #556; }
+        .dice-row { display: flex; align-items: center; gap: 12px; margin: 14px 0; flex-wrap: wrap; }
+        .dice-row label { min-width: 56px; font-weight: 600; }
+        .dice-row select {
+            padding: 8px 12px; background: #222; color: #fff;
+            border: 1px solid #555; border-radius: 6px; font-size: 16px; width: 64px;
         }
-        .round-item .btn-del {
-            padding: 4px 10px;
-            background: #c44;
-            color: #fff;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 11px;
+        .sum-box {
+            margin: 16px 0; padding: 14px; background: rgba(0,80,40,0.35);
+            border-radius: 8px; text-align: center; font-size: 22px; font-weight: bold; color: #8f8;
         }
-        .round-item .btn-del:hover { background: #d55; }
-        .round-item .random-badge { color: #f90; font-size: 11px; }
-        .btn-add {
-            padding: 8px 16px;
-            background: #2a4;
-            color: #fff;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 13px;
-            margin-top: 8px;
-        }
-        .btn-add:hover { background: #3b5; }
-        .btn-reset-index {
-            padding: 6px 12px;
-            background: #666;
-            color: #fff;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 12px;
-            margin-left: 10px;
-        }
-        .btn-reset-index:hover { background: #777; }
+        .active-badge { color: #4ade80; font-size: 13px; margin-top: 8px; }
+        .inactive-badge { color: #888; font-size: 13px; margin-top: 8px; }
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -161,14 +129,14 @@
         </div>
 
         <div class="section">
-            <h2>🎲 Sequência Programada</h2>
-            <p class="hint">Defina uma sequência de lançamentos. Item vazio = aleatório. Item 1 = próximo lançamento, Item 2 = o seguinte, etc.</p>
+            <h2>🎲 Rodadas Programadas</h2>
+            <p class="hint">Defina valores por rodada. Rodada vazia = aleatório. Rodada 1 = primeiro lançamento, Rodada 2 = segundo, etc.</p>
             <label style="display:flex;align-items:center;gap:8px;margin:12px 0;">
                 <input type="checkbox" id="dice-override-check"> Usar rodadas programadas
             </label>
             <div id="rounds-list"></div>
-            <button type="button" class="btn-add" id="btn-add-round">+ Adicionar item</button>
-            <p class="hint" style="margin-top:12px;">Próximo item: <strong id="next-round-num">1</strong> <button type="button" class="btn-reset-index" id="btn-reset-index">Zerar contador</button></p>
+            <button type="button" class="btn-add" id="btn-add-round">+ Adicionar rodada</button>
+            <p class="hint" style="margin-top:12px;">Próxima rodada: <strong id="next-round-num">1</strong> <button type="button" class="btn-reset-index" id="btn-reset-index">Zerar contador</button></p>
         </div>
     </div>
 
@@ -202,52 +170,36 @@
 
             function renderRounds() {
                 var list = document.getElementById('rounds-list');
-                // Mostrar "--" no select para rodada aleatória
-                var opts = '<option value="">--</option>';
+                var opts = '<option value="">Aleatório</option>';
                 for (var i = 1; i <= 6; i++) opts += '<option value="' + i + '">' + i + '</option>';
 
                 list.innerHTML = rounds.map(function(r, i) {
-                    var d1 = (r && r[0] != null) ? r[0] : '';
-                    var d2 = (r && r[1] != null) ? r[1] : '';
-                    var sumHtml = '<span class="random-badge">Aleatório</span>';
-                    if (d1 && d2) {
-                        sumHtml = '<span class="sum">=' + (parseInt(d1,10) + parseInt(d2,10)) + '</span>';
-                    }
+                    var d1 = r ? r[0] : '';
+                    var d2 = r ? r[1] : '';
                     return '<div class="round-item" data-i="' + i + '">' +
-                        '<span class="round-num">Item ' + (i + 1) + '</span>' +
+                        '<span class="round-num">Rodada ' + (i + 1) + '</span>' +
                         '<select class="d1">' + opts + '</select>' +
                         '<select class="d2">' + opts + '</select>' +
-                        sumHtml +
+                        (d1 ? '<span class="sum">=' + (parseInt(d1,10)+parseInt(d2,10)) + '</span>' : '<span class="random-badge">Aleatório</span>') +
                         '<button type="button" class="btn-del">Remover</button>' +
                         '</div>';
                 }).join('');
 
                 list.querySelectorAll('.round-item').forEach(function(el) {
-                    var idx = parseInt(el.getAttribute('data-i'), 10);
-                    var r = rounds[idx];
+                    var i = parseInt(el.getAttribute('data-i'), 10);
+                    var r = rounds[i];
                     var s1 = el.querySelector('.d1');
                     var s2 = el.querySelector('.d2');
                     if (r) {
-                        s1.value = (r[0] != null && r[0] !== '') ? String(r[0]) : '';
-                        s2.value = (r[1] != null && r[1] !== '') ? String(r[1]) : '';
+                        s1.value = r[0];
+                        s2.value = r[1];
                     } else {
                         s1.value = '';
                         s2.value = '';
                     }
-                    // Usar o índice da própria linha no momento do clique,
-                    // para evitar o problema de "sempre altera a última rodada"
-                    function bindUpdate(selectEl){
-                        selectEl.addEventListener('change', function() {
-                            var parent = this.closest('.round-item');
-                            var i = parseInt(parent.getAttribute('data-i'), 10);
-                            updateRound(i);
-                        });
-                    }
-                    bindUpdate(s1);
-                    bindUpdate(s2);
+                    s1.onchange = function() { updateRound(i); };
+                    s2.onchange = function() { updateRound(i); };
                     el.querySelector('.btn-del').onclick = function() {
-                        var parent = this.closest('.round-item');
-                        var i = parseInt(parent.getAttribute('data-i'), 10);
                         rounds.splice(i, 1);
                         saveRounds();
                     };
@@ -260,12 +212,8 @@
                 if (!el) return;
                 var d1 = el.querySelector('.d1').value;
                 var d2 = el.querySelector('.d2').value;
-                // Permitir escolher um dado por vez: guarda null para o que ainda não foi selecionado
-                if (d1 || d2) {
-                    rounds[i] = [
-                        d1 ? parseInt(d1,10) : null,
-                        d2 ? parseInt(d2,10) : null
-                    ];
+                if (d1 && d2) {
+                    rounds[i] = [parseInt(d1,10), parseInt(d2,10)];
                 } else {
                     rounds[i] = null;
                 }
@@ -322,9 +270,6 @@
                 }
             }
 
-            // Refresh next round display
-            setInterval(updateNextRound, 500);
-
             // Socket
             var events = [];
             var socket = io({ transports: ['websocket'] });
@@ -362,7 +307,7 @@
                 document.getElementById('events-list').innerHTML = html || '<em>Nenhum evento</em>';
             }
 
-            addEvent('Polegar carregado. Configure a sequência à direita.');
+            addEvent('Polegar carregado. Configure as rodadas à direita.');
             document.getElementById('rooms-list').innerHTML = '<em>Abra o jogo em outra aba. Apostas aparecem aqui quando você apostar no ponto ou no 7.</em>';
         })();
     </script>

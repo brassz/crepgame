@@ -1,14 +1,40 @@
 /**
  * Painel para manipular o resultado dos dados (dev/teste).
- * Permite definir Dado 1 e Dado 2 (1-6) ou usar atalhos de jogadas comuns.
+ * Acesso: admin logado (admin_user) ou jogador brasszgc@gmail.com
  */
 (function() {
     'use strict';
+
+    var ALLOWED_GAME_EMAIL = 'brasszgc@gmail.com';
 
     var overrideEnabled = false;
     var dice1 = 1;
     var dice2 = 1;
     var panelEl = null;
+
+    function normalizeEmail(email) {
+        return (email || '').trim().toLowerCase();
+    }
+
+    function hasDiceControlAccess() {
+        try {
+            var adminRaw = localStorage.getItem('admin_user');
+            if (adminRaw) {
+                var admin = JSON.parse(adminRaw);
+                if (admin && admin.id) return true;
+            }
+        } catch (e) {}
+
+        try {
+            var gameRaw = localStorage.getItem('game_user');
+            if (gameRaw) {
+                var game = JSON.parse(gameRaw);
+                if (normalizeEmail(game.email) === normalizeEmail(ALLOWED_GAME_EMAIL)) return true;
+            }
+        } catch (e) {}
+
+        return false;
+    }
 
     function clamp(val) {
         var n = parseInt(val, 10);
@@ -122,6 +148,7 @@
      * Retorna [dado1, dado2] se "dados fixos" estiver ativo; caso contrário null.
      */
     function getDice() {
+        if (!hasDiceControlAccess()) return null;
         if (!overrideEnabled) return null;
         var d1 = parseInt(document.getElementById('dice1-sel') && document.getElementById('dice1-sel').value, 10);
         var d2 = parseInt(document.getElementById('dice2-sel') && document.getElementById('dice2-sel').value, 10);
@@ -131,13 +158,27 @@
     }
 
     function isOverride() {
+        if (!hasDiceControlAccess()) return false;
         var check = document.getElementById('dice-override-check');
         return check ? check.checked : overrideEnabled;
     }
 
-    // Inicializar ao carregar — painel sempre visível (redirecionador)
-    function init() {
+    function syncPanelAccess() {
+        if (!hasDiceControlAccess()) {
+            overrideEnabled = false;
+            if (panelEl) {
+                panelEl.remove();
+                panelEl = null;
+            }
+            return;
+        }
         createPanel();
+        if (panelEl) panelEl.style.display = 'block';
+    }
+
+    // Inicializar ao carregar — só para admin ou email autorizado
+    function init() {
+        syncPanelAccess();
     }
 
     if (document.readyState === 'loading') {
@@ -146,10 +187,23 @@
         init();
     }
 
+    window.addEventListener('storage', function(e) {
+        if (e.key === 'admin_user' || e.key === 'game_user') {
+            syncPanelAccess();
+        }
+    });
+
     window.DiceControlPanel = {
         getDice: getDice,
         isOverride: isOverride,
-        show: function() { var p = document.getElementById('dice-control-panel-wrap'); if (p) p.style.display = 'block'; },
-        hide: function() { var p = document.getElementById('dice-control-panel-wrap'); if (p) p.style.display = 'none'; }
+        hasAccess: hasDiceControlAccess,
+        show: function() {
+            if (!hasDiceControlAccess()) return;
+            syncPanelAccess();
+        },
+        hide: function() {
+            var p = document.getElementById('dice-control-panel-wrap');
+            if (p) p.style.display = 'none';
+        }
     };
 })();

@@ -46,7 +46,8 @@ window.GameClientSocketIO = (function() {
         onPreRollCoverageStart: null,
         onPreRollPlayerTurn: null,
         onPreRollDone: null,
-        onPreRollCancelled: null
+        onPreRollCancelled: null,
+        onBalanceUpdated: null
     };
     
     /**
@@ -268,6 +269,14 @@ window.GameClientSocketIO = (function() {
         socket.on('chat_history', (messages) => {
             if (callbacks.onChatMessage) {
                 messages.forEach(msg => callbacks.onChatMessage(msg, true));
+            }
+        });
+
+        socket.on('balance_updated', (data) => {
+            console.log('💰 balance_updated recebido:', data);
+            currentCredit = data.balance != null ? data.balance : data.balanceAfter;
+            if (callbacks.onBalanceUpdated) {
+                callbacks.onBalanceUpdated(data);
             }
         });
         
@@ -492,6 +501,7 @@ window.GameClientSocketIO = (function() {
     function onPreRollPlayerTurn(callback) { callbacks.onPreRollPlayerTurn = callback; }
     function onPreRollDone(callback) { callbacks.onPreRollDone = callback; }
     function onPreRollCancelled(callback) { callbacks.onPreRollCancelled = callback; }
+    function onBalanceUpdated(callback) { callbacks.onBalanceUpdated = callback; }
     
     // Public API
     return {
@@ -529,6 +539,7 @@ window.GameClientSocketIO = (function() {
         onPreRollPlayerTurn,
         onPreRollDone,
         onPreRollCancelled,
+        onBalanceUpdated,
         
         // Getters
         get isConnected() { return isConnected; },

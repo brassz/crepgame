@@ -1,31 +1,111 @@
 const path = require('path');
+const os = require('os');
 const express = require('express');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://iwjdwpaulonjrlyvudgo.supabase.co';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3amR3cGF1bG9uanJseXZ1ZGdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxOTgxNzYsImV4cCI6MjA3NDc3NDE3Nn0.IJ8NKn2HTND1JDoQqTTmqomDdf-I3wsxjsIzoSZ-5A4';
+
 const app = express();
 const server = createServer(app);
 
+const isProduction = process.env.NODE_ENV === 'production';
+
+/** Em desenvolvimento/LAN: aceita qualquer origem (celular, outro PC na rede) */
+const corsOptions = isProduction
+  ? {
+      origin: ['https://your-domain.com'],
+      credentials: true
+    }
+  : {
+      origin: true,
+      credentials: true
+    };
+
 // Configure CORS
-app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? ['https://your-domain.com'] 
-    : ['http://localhost:3000', 'http://127.0.0.1:3000'],
-  credentials: true
-}));
+app.use(cors(corsOptions));
 
 // Socket.IO setup with CORS - FORCE WEBSOCKET ONLY FOR ZERO DELAY
 const io = new Server(server, {
   cors: {
-    origin: process.env.NODE_ENV === 'production' 
-      ? ['https://your-domain.com'] 
-      : ['http://localhost:3000', 'http://127.0.0.1:3000'],
-    methods: ['GET', 'POST'],
-    credentials: true
+    ...corsOptions,
+    methods: ['GET', 'POST']
   },
   transports: ['websocket'],
   allowUpgrades: false
+});
+
+app.use(express.json());
+
+async function verifyAdminId(adminId) {
+  if (!adminId || !SUPABASE_URL || !SUPABASE_ANON_KEY) return false;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/painel_verify_admin`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`
+      },
+      body: JSON.stringify({ p_admin_id: adminId })
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    return data === true;
+  } catch (err) {
+    console.error('Erro ao verificar admin:', err.message);
+    return false;
+  }
+}
+
+function pushBalanceUpdateToPlayer(userId, balanceAfter) {
+  const total = Math.round(parseFloat(balanceAfter) * 100) / 100;
+  if (isNaN(total) || total < 0) return 0;
+
+  for (const gameState of gameRooms.values()) {
+    const player = gameState.players.get(userId);
+    if (player) {
+      const curBet = player.currentBet || 0;
+      player.credit = Math.max(0, Math.round((total - curBet) * 100) / 100);
+    }
+  }
+
+  let notified = 0;
+  for (const [socketId, user] of connectedUsers.entries()) {
+    if (user.userId === userId) {
+      io.to(socketId).emit('balance_updated', {
+        userId,
+        balance: total,
+        balanceAfter: total
+      });
+      notified++;
+    }
+  }
+  return notified;
+}
+
+// Sincronizar saldo do painel admin → jogador online no jogo
+app.post('/api/sync-balance', async (req, res) => {
+  try {
+    const { adminId, userId, balanceAfter } = req.body || {};
+    if (!adminId || !userId || balanceAfter === undefined) {
+      return res.status(400).json({ success: false, error: 'adminId, userId e balanceAfter são obrigatórios' });
+    }
+
+    const isAdmin = await verifyAdminId(adminId);
+    if (!isAdmin) {
+      return res.status(403).json({ success: false, error: 'Admin não autorizado' });
+    }
+
+    const notified = pushBalanceUpdateToPlayer(userId, balanceAfter);
+    console.log(`💰 Saldo sincronizado para ${userId}: ${balanceAfter} (${notified} cliente(s) online)`);
+    res.json({ success: true, notified, balanceAfter: parseFloat(balanceAfter) });
+  } catch (err) {
+    console.error('Erro em /api/sync-balance:', err);
+    res.status(500).json({ success: false, error: 'Falha ao sincronizar saldo' });
+  }
 });
 
 // Static files (serve the game)
@@ -45,6 +125,11 @@ app.get('/health', (req, res) => {
 // Polegar - painel de controle (ver tudo e manipular dados)
 app.get('/polegar', (req, res) => {
   res.sendFile(path.join(__dirname, 'game', 'polegar.html'));
+});
+
+// Painel admin – jogadores, saldos e histórico
+app.get('/painel', (req, res) => {
+  res.sendFile(path.join(__dirname, 'game', 'painel.html'));
 });
 
 // Socket.IO connection handling
@@ -79,9 +164,77 @@ function createGameState(roomId) {
       currentPlayerId: null,
       shooterTimer: null,
       playerTimer: null,
-      attemptedPlayers: new Set() // jogadores que já tiveram sua vez na cobertura
+      attemptedPlayers: new Set(), // jogadores que já tiveram sua vez na cobertura
+      shooterMayRoll: false // true somente após pre_roll_done nesta rodada de aposta
     }
   };
+}
+
+/** Acrescenta ganho do shooter à aposta na mesa (fichas ficam até passar ou perder) */
+function addShooterWinToTableBet(gameState, totalMultiplier) {
+  const shooterId = gameState.currentShooter;
+  if (!shooterId) return;
+
+  const shooterPlayer = gameState.players.get(shooterId);
+  if (!shooterPlayer) return;
+
+  const betKey = `${shooterId}_main_bet`;
+  const bet = gameState.bets.get(betKey);
+  if (!bet || bet.amount <= 0) return;
+
+  const winAmount = bet.amount * (totalMultiplier - 1);
+  if (winAmount <= 0) return;
+
+  bet.amount += winAmount;
+  shooterPlayer.currentBet += winAmount;
+
+  console.log(`💰 Shooter manteve fichas na mesa: +${winAmount} (total na mesa: ${bet.amount})`);
+}
+
+/** Reinicia fase de cobertura — obriga novo APOSTAR antes de lançar */
+function resetPreRollState(gameState) {
+  if (!gameState || !gameState.preRoll) return;
+  const preRoll = gameState.preRoll;
+  if (preRoll.shooterTimer) {
+    clearTimeout(preRoll.shooterTimer);
+    preRoll.shooterTimer = null;
+  }
+  if (preRoll.playerTimer) {
+    clearTimeout(preRoll.playerTimer);
+    preRoll.playerTimer = null;
+  }
+  preRoll.phase = 'IDLE';
+  preRoll.shooterId = null;
+  preRoll.shooterBetAmount = 0;
+  preRoll.coverageRemaining = 0;
+  preRoll.coverageBets = new Map();
+  preRoll.queue = [];
+  preRoll.currentIndex = -1;
+  preRoll.currentPlayerId = null;
+  preRoll.attemptedPlayers = new Set();
+  preRoll.shooterMayRoll = false;
+}
+
+function completePreRollCoverage(roomId) {
+  const gameState = gameRooms.get(roomId);
+  if (!gameState) return;
+  const preRoll = gameState.preRoll;
+  if (preRoll.playerTimer) {
+    clearTimeout(preRoll.playerTimer);
+    preRoll.playerTimer = null;
+  }
+  preRoll.phase = 'IDLE';
+  preRoll.shooterMayRoll = true;
+  preRoll.currentPlayerId = null;
+
+  io.to(`room_${roomId}`).emit('pre_roll_done', {
+    shooterId: preRoll.shooterId,
+    shooterBetAmount: preRoll.shooterBetAmount,
+    totalCoverage: preRoll.shooterBetAmount - preRoll.coverageRemaining,
+    coverageRemaining: Math.max(0, preRoll.coverageRemaining)
+  });
+
+  console.log(`✅ Fase de cobertura encerrada na sala ${roomId}. Restante a cobrir: ${preRoll.coverageRemaining}`);
 }
 
 io.on('connection', (socket) => {
@@ -247,6 +400,8 @@ io.on('connection', (socket) => {
       preRoll.currentIndex = -1;
       preRoll.currentPlayerId = null;
       preRoll.attemptedPlayers = new Set();
+      preRoll.shooterMayRoll = false;
+      player.currentBet = shooterBet;
 
       // Garantir que timers antigos foram limpos
       if (preRoll.shooterTimer) {
@@ -274,6 +429,29 @@ io.on('connection', (socket) => {
       socket.emit('error', { message: 'Falha ao iniciar apostas pré-lançamento' });
     }
   });
+
+  // Zera fase de pré-rolagem (passar dado, trocar shooter, etc.)
+  function resetPreRollState(gameState) {
+    if (!gameState || !gameState.preRoll) return;
+    const pr = gameState.preRoll;
+    if (pr.playerTimer) {
+      clearTimeout(pr.playerTimer);
+      pr.playerTimer = null;
+    }
+    if (pr.shooterTimer) {
+      clearTimeout(pr.shooterTimer);
+      pr.shooterTimer = null;
+    }
+    pr.phase = 'IDLE';
+    pr.shooterId = null;
+    pr.shooterBetAmount = 0;
+    pr.coverageRemaining = 0;
+    pr.coverageBets = new Map();
+    pr.queue = [];
+    pr.currentIndex = -1;
+    pr.currentPlayerId = null;
+    pr.attemptedPlayers = new Set();
+  }
 
   // Função auxiliar: iniciar fase de cobertura (outros jogadores apostam contra o shooter)
   function startCoveragePhase(roomId) {
@@ -318,16 +496,7 @@ io.on('connection', (socket) => {
 
     // Se já cobriu tudo ou não há mais jogadores, finalizar fase
     if (preRoll.coverageRemaining <= 0 || !preRoll.queue || preRoll.queue.length === 0) {
-      preRoll.phase = 'IDLE';
-
-      io.to(`room_${roomId}`).emit('pre_roll_done', {
-        shooterId: preRoll.shooterId,
-        shooterBetAmount: preRoll.shooterBetAmount,
-        totalCoverage: preRoll.shooterBetAmount - preRoll.coverageRemaining,
-        coverageRemaining: Math.max(0, preRoll.coverageRemaining)
-      });
-
-      console.log(`✅ Fase de cobertura encerrada na sala ${roomId}. Restante a cobrir: ${preRoll.coverageRemaining}`);
+      completePreRollCoverage(roomId);
       return;
     }
 
@@ -389,15 +558,7 @@ io.on('connection', (socket) => {
 
         if (allTriedOnce) {
           console.log(`⏱️ Todos os jogadores já tiveram sua vez de cobertura na sala ${roomId}. Encerrando cobertura mesmo sem cobrir totalmente.`);
-          pr.phase = 'IDLE';
-
-          io.to(`room_${roomId}`).emit('pre_roll_done', {
-            shooterId: pr.shooterId,
-            shooterBetAmount: pr.shooterBetAmount,
-            totalCoverage: pr.shooterBetAmount - pr.coverageRemaining,
-            coverageRemaining: Math.max(0, pr.coverageRemaining)
-          });
-
+          completePreRollCoverage(roomId);
           return;
         }
 
@@ -438,6 +599,15 @@ io.on('connection', (socket) => {
       }
       if (!player.currentBet || player.currentBet <= 0) {
         socket.emit('error', { message: 'Você precisa fazer uma aposta antes de lançar os dados.' });
+        return;
+      }
+      const preRoll = gameState.preRoll;
+      if (preRoll && preRoll.phase === 'COVERAGE') {
+        socket.emit('error', { message: 'Aguarde a cobertura das apostas antes de lançar.' });
+        return;
+      }
+      if (preRoll && !preRoll.shooterMayRoll) {
+        socket.emit('error', { message: 'Clique em APOSTAR e aguarde a cobertura das apostas antes de lançar.' });
         return;
       }
       
@@ -501,47 +671,16 @@ io.on('connection', (socket) => {
           if (!gameState.point) {
             // Come out roll
             if (total === 7 || total === 11) {
-              // Natural win
+              // Natural win — ganho permanece na mesa até passar o dado ou perder
+              addShooterWinToTableBet(gameState, 2);
               io.to(`room_${roomId}`).emit('game_result', {
                 type: 'natural_win',
                 total,
                 message: `Natural ${total}! Lançador vence!`
               });
-            // DEVOLVER AS APOSTAS DO SHOOTER PARA O SALDO
-            const shooterId = gameState.currentShooter;
-            const shooterPlayer = shooterId ? gameState.players.get(shooterId) : null;
-            if (shooterPlayer) {
-              let refundAmount = 0;
-              const betsToRemove = [];
-
-              for (const [betKey, bet] of gameState.bets.entries()) {
-                if (bet.userId === shooterId) {
-                  refundAmount += bet.amount;
-                  betsToRemove.push(betKey);
-                }
-              }
-
-              // Remover apostas do shooter
-              betsToRemove.forEach(betKey => gameState.bets.delete(betKey));
-
-              // Devolver crédito e zerar aposta atual
-              shooterPlayer.credit += refundAmount;
-              shooterPlayer.currentBet = 0;
-
-              // Notificar shooter com evento de bets_cleared (mesma estrutura do clear_bets/pass_dice)
-              const shooterSocketId = shooterPlayer.socketId;
-              if (shooterSocketId) {
-                io.to(shooterSocketId).emit('bets_cleared', {
-                  refundAmount,
-                  remainingCredit: shooterPlayer.credit
-                });
-              }
-
-              console.log(`💰 Shooter ganhou na saída e recebeu de volta ${refundAmount} em créditos (novo saldo: ${shooterPlayer.credit})`);
-            }
-
             // Reset for next round
             gameState.point = null;
+            resetPreRollState(gameState);
             } else if (total === 2 || total === 3 || total === 12) {
               // Craps
               io.to(`room_${roomId}`).emit('game_result', {
@@ -549,6 +688,7 @@ io.on('connection', (socket) => {
                 total,
                 message: `Craps! Lançador perde!`
               });
+              resetPreRollState(gameState);
               // Pass dice to next player
               passShooter(roomId);
             } else {
@@ -563,7 +703,11 @@ io.on('connection', (socket) => {
           } else {
             // Point has been established
             if (total === gameState.point) {
-              // Made the point
+              // Made the point — ganho permanece na mesa até passar o dado ou perder
+              let pointMultiplier = 1.25;
+              if (gameState.point === 4 || gameState.point === 10) pointMultiplier = 2;
+              else if (gameState.point === 5 || gameState.point === 9) pointMultiplier = 1.5;
+              addShooterWinToTableBet(gameState, pointMultiplier);
               io.to(`room_${roomId}`).emit('game_result', {
                 type: 'point_made',
                 total,
@@ -571,6 +715,7 @@ io.on('connection', (socket) => {
                 message: `Ponto ${gameState.point} feito! Lançador vence!`
               });
               gameState.point = null;
+              resetPreRollState(gameState);
             } else if (total === 7) {
               // Seven out
               io.to(`room_${roomId}`).emit('game_result', {
@@ -579,6 +724,7 @@ io.on('connection', (socket) => {
                 message: `Sete fora! Lançador perde!`
               });
               gameState.point = null;
+              resetPreRollState(gameState);
               passShooter(roomId);
             }
           }
@@ -649,7 +795,7 @@ io.on('connection', (socket) => {
         }
 
         // Apenas o jogador atual da fila pode apostar
-        if (preRoll.currentPlayerId && preRoll.currentPlayerId !== player.userId) {
+        if (preRoll.currentPlayerId && String(preRoll.currentPlayerId) !== String(player.userId)) {
           socket.emit('error', { message: 'Aguarde a sua vez. Cada jogador tem 10 segundos para apostar contra o shooter.' });
           return;
         }
@@ -694,22 +840,8 @@ io.on('connection', (socket) => {
 
           // Se já cobriu o valor do shooter, finalizar imediatamente a fase de cobertura
           if (preRoll.coverageRemaining <= 0) {
-            // Limpar timers
-            if (preRoll.playerTimer) {
-              clearTimeout(preRoll.playerTimer);
-              preRoll.playerTimer = null;
-            }
-
-            preRoll.phase = 'IDLE';
-
-            io.to(`room_${roomId}`).emit('pre_roll_done', {
-              shooterId,
-              shooterBetAmount: preRoll.shooterBetAmount,
-              totalCoverage: preRoll.shooterBetAmount,
-              coverageRemaining: 0
-            });
-
             console.log(`✅ Cobertura COMPLETA na sala ${roomId} - liberando lançamento do shooter`);
+            completePreRollCoverage(roomId);
           }
         }
       }
@@ -833,10 +965,38 @@ io.on('connection', (socket) => {
     }
   });
   
+  // Acrescenta ganho à aposta do shooter na mesa (fichas ficam até passar o dado ou perder)
+  function addShooterWinToTableBet(gameState, payoutMultiplier) {
+    const shooterId = gameState.currentShooter;
+    if (!shooterId) return 0;
+
+    const shooterPlayer = gameState.players.get(shooterId);
+    if (!shooterPlayer) return 0;
+
+    let totalWinAdded = 0;
+    for (const [, bet] of gameState.bets.entries()) {
+      if (bet.userId === shooterId && bet.betType === 'main_bet') {
+        const winAmount = Math.round(bet.amount * (payoutMultiplier - 1) * 10) / 10;
+        if (winAmount > 0) {
+          bet.amount += winAmount;
+          shooterPlayer.currentBet += winAmount;
+          totalWinAdded += winAmount;
+        }
+      }
+    }
+
+    if (totalWinAdded > 0) {
+      console.log(`🎉 Shooter ${shooterPlayer.username} ganhou ${totalWinAdded} – fichas na mesa (total: ${shooterPlayer.currentBet})`);
+    }
+    return totalWinAdded;
+  }
+
   // Helper function to pass shooter to next player
   function passShooter(roomId) {
     const gameState = gameRooms.get(roomId);
     if (!gameState) return;
+
+    resetPreRollState(gameState);
     
     const playerIds = Array.from(gameState.players.keys());
     if (playerIds.length === 0) return;
@@ -846,6 +1006,8 @@ io.on('connection', (socket) => {
     const nextShooterId = playerIds[nextIndex];
     
     console.log(`🔄 Passing shooter from ${gameState.currentShooter} to ${nextShooterId} in room ${roomId}`);
+
+    resetPreRollState(gameState);
     
     // Update shooter
     if (gameState.currentShooter) {
@@ -892,6 +1054,8 @@ io.on('connection', (socket) => {
       
       console.log(`🎲 Jogador ${user.username} está passando o dado manualmente na sala ${roomId}`);
 
+      resetPreRollState(gameState);
+
       // DEVOLVE TODO O VALOR APOSTADO AO JOGADOR AO PASSAR O DADO
       const player = gameState.players.get(user.userId);
       if (player) {
@@ -928,7 +1092,7 @@ io.on('connection', (socket) => {
         message: `${user.username} passou o dado!`
       });
       
-      // Pass shooter to next player
+      // Pass shooter to next player (resetPreRollState é chamado dentro de passShooter)
       passShooter(roomId);
       
       console.log(`✅ Dado passou manualmente de ${user.username} para o próximo jogador`);
@@ -1173,10 +1337,37 @@ setInterval(() => {
 }, 30000); // Every 30 seconds
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Servidor ouvindo em http://localhost:${PORT}`);
+const HOST = process.env.HOST || '0.0.0.0';
+
+function getLanAddresses() {
+  const urls = [];
+  const nets = os.networkInterfaces();
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name] || []) {
+      if (net.family === 'IPv4' && !net.internal) {
+        urls.push(`http://${net.address}:${PORT}`);
+      }
+    }
+  }
+  return urls;
+}
+
+server.listen(PORT, HOST, () => {
+  console.log('');
+  console.log(`Servidor ouvindo em todas as interfaces (${HOST}:${PORT})`);
+  console.log(`  Local:  http://localhost:${PORT}`);
+  console.log(`  Local:  http://127.0.0.1:${PORT}`);
+  const lanUrls = getLanAddresses();
+  if (lanUrls.length) {
+    console.log('  LAN (outros dispositivos na mesma rede Wi‑Fi/Ethernet):');
+    lanUrls.forEach((url) => console.log(`    → ${url}`));
+  } else {
+    console.log('  LAN: nenhum IPv4 detectado — use ipconfig para ver seu IP');
+  }
+  console.log('');
   console.log('✅ Socket.IO Puro: Gerenciamento completo do jogo');
   console.log('🎮 Jogo multiplayer de Craps em tempo real pronto!');
   console.log('📊 Funcionalidades: Lançamento de dados, apostas, chat, lobby');
+  console.log('');
 });
 

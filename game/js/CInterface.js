@@ -7,6 +7,8 @@ function CInterface(){
     var _pStartPosFullscreen;
     
     var _oButExit;
+    var _oButLogout;
+    var _pStartPosLogout;
     var _oAudioToggle;
     var _oMoneyAmountText;
     var _oBetAmountText;
@@ -33,13 +35,13 @@ function CInterface(){
     var _oButBetOnPoint;
     var _oButBetOnSeven;
     var _oPointBettingContainer;
+    var _oPointBettingTitle;
     var _iParadasCount = 0; // Contador de paradas feitas
     var _iLocalPointBettingTimer = null; // Timer local para garantir que modal permaneça aberto por 8 segundos
     
     // LISTA DE JOGADORES CONECTADOS
     var _oPlayersListContainer;
     var _aPlayerTexts = [];
-    
     this._init = function(){
         
         var oMoneyBg = createBitmap(s_oSpriteLibrary.getSprite('but_bg'));
@@ -197,6 +199,11 @@ function CInterface(){
         _pStartPosExit = {x:CANVAS_WIDTH - (oSprite.width/2) - 10,y:(oSprite.height/2) + 10};
         _oButExit = new CGfxButton(_pStartPosExit.x,_pStartPosExit.y,oSprite,s_oStage);
         _oButExit.addEventListener(ON_MOUSE_UP, this._onExit, this);
+
+        _pStartPosLogout = {x: 95, y: 42};
+        var szLogoutLabel = (typeof TEXT_LOGOUT !== 'undefined') ? TEXT_LOGOUT : 'LOGOUT';
+        _oButLogout = new CTextButton(_pStartPosLogout.x, _pStartPosLogout.y, s_oSpriteLibrary.getSprite('but_bg'), szLogoutLabel, FONT1, '#fff', 14, 'center', s_oStage);
+        _oButLogout.addEventListener(ON_MOUSE_UP, this._onLogout, this);
         
         if(DISABLE_SOUND_MOBILE === false || s_bMobile === false){
             oSprite = s_oSpriteLibrary.getSprite('audio_icon');
@@ -226,6 +233,7 @@ function CInterface(){
     
     this.unload = function(){
         _oButExit.unload();
+        if (_oButLogout) { _oButLogout.unload(); }
 	if(DISABLE_SOUND_MOBILE === false || s_bMobile === false){
             _oAudioToggle.unload();
         }
@@ -261,6 +269,9 @@ function CInterface(){
             _oButFullscreen.setPosition(_pStartPosFullscreen.x + iNewX,_pStartPosFullscreen.y + iNewY);
         }
         _oButExit.setPosition(_pStartPosExit.x - iNewX,_pStartPosExit.y + iNewY);
+        if (_oButLogout) {
+            _oButLogout.setPosition(_pStartPosLogout.x + iNewX, _pStartPosLogout.y + iNewY);
+        }
         
         // Botões de sala ao lado das fichas
         if(s_bMobile){
@@ -311,21 +322,6 @@ function CInterface(){
     };
     
     this.enableRoll = function(bEnable){
-        // Proteção extra: se o jogo marcou que o shooter
-        // PODE lançar após a cobertura, não permitir que
-        // chamadas com false desabilitem o botão.
-        if (!bEnable &&
-            window.s_oGame &&
-            window.s_oGame._bForceRollAfterCoverage &&
-            window.s_oGame._bIAmShooter &&
-            window.s_oGame._bIsMyTurn &&
-            window.s_oGame._oMySeat &&
-            window.s_oGame._oMySeat.getCurBet &&
-            window.s_oGame._oMySeat.getCurBet() > 0) {
-            console.log("⚠️ Ignorando pedido para desabilitar botão de lançar (forçado após cobertura)");
-            bEnable = true;
-        }
-
         if(bEnable){
             _oRollBut.enable();
         }else{
@@ -398,10 +394,11 @@ function CInterface(){
     this.setMoney = function(iMoney){
         _oMoneyAmountText.refreshText(iMoney.toFixed(2)+TEXT_CURRENCY);
         
-        // Desabilitar fichas se saldo for zero ou negativo
         if(iMoney <= 0){
             this.disableBetFiches();
             console.log("🔒 Fichas desabilitadas - saldo zero ou negativo:", iMoney);
+        } else if(window.s_oGame && window.s_oGame.syncBettingUI){
+            window.s_oGame.syncBettingUI();
         }
     };
 
@@ -491,6 +488,10 @@ function CInterface(){
     this._onExit = function(){
         s_oGame.onExit(false);  
     };
+
+    this._onLogout = function(){
+        s_oGame.onLogout();
+    };
     
     this._onAudioToggle = function(){
         Howler.mute(s_bAudioActive);
@@ -572,8 +573,8 @@ function CInterface(){
         var oBgShape = new createjs.Shape(oBackground);
         _oPointBettingContainer.addChild(oBgShape);
         
-        // Texto de título
-        var oTitleText = new CTLText(_oPointBettingContainer, 
+        // Texto de título (atualizado conforme shooter / adversário)
+        _oPointBettingTitle = new CTLText(_oPointBettingContainer, 
                     -200, -35, 400, 30, 
                     22, "center", "#ffde00", FONT2, 1,
                     0, 0,
@@ -581,15 +582,33 @@ function CInterface(){
                     true, true, false,
                     false );
         
-        // Botão para apostar no PONTO (esquerda) - usando but_bg
+        // Botão paradas no PONTO — só o shooter (DADOS)
         _oButBetOnPoint = new CTextButton(-120, 15, s_oSpriteLibrary.getSprite('but_bg'), "PONTO: 4", FONT1, "#fff", 24, "center", _oPointBettingContainer);
         _oButBetOnPoint.addEventListener(ON_MOUSE_UP, this._onBetOnPoint, this);
         
-        // Botão para apostar no 7 (direita) - usando but_bg
+        // Botão apostar no 7 — só adversários (sem os dados)
         _oButBetOnSeven = new CTextButton(120, 15, s_oSpriteLibrary.getSprite('but_bg'), "7", FONT1, "#fff", 24, "center", _oPointBettingContainer);
         _oButBetOnSeven.addEventListener(ON_MOUSE_UP, this._onBetOnSeven, this);
         
         console.log("✅ Botões de aposta no ponto e no 7 inicializados com sucesso!");
+    };
+
+    /** Shooter → paradas no ponto | Adversário → só no 7 */
+    this._applyPointBettingRoleUI = function(iPointNumber, bIsShooter){
+        if(_oPointBettingTitle){
+            _oPointBettingTitle.refreshText(bIsShooter
+                ? "APOSTE PARADAS NO PONTO " + iPointNumber + "!"
+                : "APOSTE NO 7 CONTRA O SHOOTER!");
+        }
+        if(_oButBetOnPoint){
+            _oButBetOnPoint.changeText("PONTO: " + iPointNumber);
+            _oButBetOnPoint.setVisible(!!bIsShooter);
+            _oButBetOnPoint.setPosition(bIsShooter ? 0 : -120, 15);
+        }
+        if(_oButBetOnSeven){
+            _oButBetOnSeven.setVisible(!bIsShooter);
+            _oButBetOnSeven.setPosition(!bIsShooter ? 0 : 120, 15);
+        }
     };
     
     this.showPointBettingButtons = function(iPointNumber, bIsShooter){
@@ -611,18 +630,6 @@ function CInterface(){
             // Garantir que o container está visível
             _oPointBettingContainer.visible = true;
             _oPointBettingContainer.alpha = 1.0;
-            
-            // Garantir que todos os elementos filhos estão visíveis
-            var iNumContainerChildren = _oPointBettingContainer.getNumChildren();
-            console.log("🔍 Container tem", iNumContainerChildren, "elementos filhos");
-            for(var i = 0; i < iNumContainerChildren; i++){
-                var oChild = _oPointBettingContainer.getChildAt(i);
-                if(oChild){
-                    oChild.visible = true;
-                    oChild.alpha = 1.0;
-                    console.log("   ✅ Elemento", i, "visível:", oChild.visible, "alpha:", oChild.alpha);
-                }
-            }
             
             // CRITICAL: Garantir que container está no stage antes de mover
             if(!s_oStage.contains(_oPointBettingContainer)){
@@ -668,19 +675,28 @@ function CInterface(){
             console.log("   Visible:", _oPointBettingContainer.visible);
             console.log("   Alpha:", _oPointBettingContainer.alpha);
             
-            // Atualizar texto do botão com o número do ponto
+            // Shooter: paradas no ponto | Adversário: só no 7
+            if(_oPointBettingTitle){
+                _oPointBettingTitle.refreshText(bIsShooter
+                    ? "APOSTE PARADAS NO PONTO!"
+                    : "APOSTE NO 7 CONTRA O SHOOTER!");
+            }
             if(_oButBetOnPoint){
                 _oButBetOnPoint.changeText("PONTO: " + iPointNumber);
-                _oButBetOnPoint.setVisible(true); // Garantir que o botão está visível
-                console.log("✅ Texto do botão atualizado para: PONTO:", iPointNumber);
+                _oButBetOnPoint.setVisible(!!bIsShooter);
+                if(bIsShooter){
+                    _oButBetOnPoint.setPosition(-120, 15);
+                }
+            }
+            if(_oButBetOnSeven){
+                _oButBetOnSeven.setVisible(!bIsShooter);
+                if(!bIsShooter){
+                    _oButBetOnSeven.setPosition(0, 15);
+                }
             }
             
             // Resetar contador de paradas quando mostrar botões
             _iParadasCount = 0;
-            
-            if(_oButBetOnSeven){
-                _oButBetOnSeven.setVisible(!bIsShooter);
-            }
             
             // Forçar atualização do stage
             if(s_oStage && s_oStage.update){
@@ -911,20 +927,8 @@ function CInterface(){
                 _oPointBettingContainer.alpha = 1.0;
             }
             
-            // Garantir que todos os filhos estão visíveis
-            var iNumChildren = _oPointBettingContainer.getNumChildren();
-            for(var i = 0; i < iNumChildren; i++){
-                var oChild = _oPointBettingContainer.getChildAt(i);
-                if(oChild){
-                    if(!oChild.visible){
-                        oChild.visible = true;
-                        console.log("🔄 Filho", i, "foi tornado visível");
-                    }
-                    if(oChild.alpha < 1.0){
-                        oChild.alpha = 1.0;
-                    }
-                }
-            }
+            // Garantir visibilidade correta por papel (shooter vs adversário)
+            this.showPointBettingButtons(iPointNumber, bIAmShooter);
             
             // Forçar atualização do stage para garantir que mudanças sejam renderizadas
             if(s_oStage && s_oStage.update){
@@ -1086,6 +1090,23 @@ function CInterface(){
             
             _aPlayerTexts.push(oPlayerText);
             yOffset += 16; // Espaçamento reduzido
+        }
+        
+        // Atualizar painel "Apostas da Mesa" com as apostas de todos
+        var betsList = [];
+        for(var j = 0; j < players.length; j++){
+            var pl = players[j];
+            betsList.push({
+                username: pl.username || ("Jogador " + (j + 1)),
+                userId: pl.userId,
+                currentBet: pl.currentBet || 0,
+                pointBet: (gameBets[pl.userId] || 0),
+                pointBetNumber: pointValue,
+                sevenBet: (window.s_oGame && window.s_oGame._aSevenBets && window.s_oGame._aSevenBets[pl.userId]) || 0
+            });
+        }
+        if(window.s_oGame && window.s_oGame._oDiceHistory && window.s_oGame._oDiceHistory.updateBets){
+            window.s_oGame._oDiceHistory.updateBets(betsList, currentShooter);
         }
         
         // Atualizar painel "Apostas da Mesa" com as apostas de todos

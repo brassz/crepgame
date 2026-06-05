@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel – Jogadores e Saldos</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #eef1f6;
+            color: #1a1a2e;
+            min-height: 100vh;
+        }
+        .header {
+            background: linear-gradient(135deg, #1e3a5f 0%, #2d6a9f 100%);
+            color: #fff;
+            padding: 18px 24px;
+            box-shadow: 0 2px 12px rgba(0,0,0,.15);
+        }
+        .header-inner {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .header h1 { font-size: 22px; font-weight: 700; }
+        .header-sub { font-size: 13px; opacity: .85; margin-top: 2px; }
+        .header-actions { display: flex; align-items: center; gap: 12px; }
+        .admin-badge {
+            background: rgba(255,255,255,.15);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+        }
+        .container { max-width: 1400px; margin: 24px auto; padding: 0 20px 40px; }
+
+        /* Login */
+        #loginScreen {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #1e3a5f 0%, #2d6a9f 100%);
+        }
+        .login-box {
+            background: #fff;
+            padding: 40px;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 20px 60px rgba(0,0,0,.25);
+        }
+        .login-box h1 { font-size: 26px; margin-bottom: 6px; color: #1e3a5f; }
+        .login-box p { color: #666; margin-bottom: 28px; font-size: 14px; }
+
+        /* Stats */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .stat-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,.06);
+        }
+        .stat-card label { font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: .5px; }
+        .stat-card .val { font-size: 26px; font-weight: 700; margin-top: 6px; color: #1e3a5f; }
+        .stat-card.wins .val { color: #16a34a; }
+        .stat-card.losses .val { color: #dc2626; }
+
+        /* Toolbar */
+        .toolbar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .toolbar input {
+            flex: 1;
+            min-width: 200px;
+            padding: 10px 14px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .toolbar input:focus { outline: none; border-color: #2d6a9f; }
+
+        /* Table */
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,.06);
+            overflow: hidden;
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th {
+            background: #f8fafc;
+            text-align: left;
+            padding: 12px 14px;
+            font-weight: 600;
+            color: #475569;
+            border-bottom: 1px solid #e2e8f0;
+            white-space: nowrap;
+        }
+        td { padding: 12px 14px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: #f8fafc; }
+        .row-inactive td { opacity: .55; }
+        .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .win { color: #16a34a; font-weight: 600; }
+        .loss { color: #dc2626; font-weight: 600; }
+        .muted { color: #94a3b8; font-size: 12px; }
+        .actions { white-space: nowrap; }
+
+        /* Buttons */
+        .btn {
+            border: none;
+            border-radius: 8px;
+            padding: 10px 18px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity .2s, transform .1s;
+        }
+        .btn:hover { opacity: .9; }
+        .btn:active { transform: scale(.98); }
+        .btn:disabled { opacity: .5; cursor: not-allowed; }
+        .btn-primary { background: #2d6a9f; color: #fff; }
+        .btn-ghost { background: rgba(255,255,255,.2); color: #fff; border: 1px solid rgba(255,255,255,.3); }
+        .btn-sm { padding: 6px 10px; font-size: 12px; border-radius: 6px; margin: 2px 0; }
+        .btn-add { background: #dcfce7; color: #15803d; }
+        .btn-remove { background: #fee2e2; color: #b91c1c; }
+        .btn-history { background: #e0e7ff; color: #3730a3; }
+        .btn-add-full { background: #16a34a; color: #fff; width: 100%; }
+        .btn-remove-full { background: #dc2626; color: #fff; width: 100%; }
+
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #374151; }
+        .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+        .form-group textarea { resize: vertical; min-height: 72px; }
+        .form-group input:focus, .form-group textarea:focus { outline: none; border-color: #2d6a9f; }
+
+        .loading-cell, .empty-cell { text-align: center; color: #94a3b8; padding: 32px !important; }
+        #playersLoading { text-align: center; padding: 40px; color: #64748b; }
+        #playersEmpty { text-align: center; padding: 40px; color: #94a3b8; }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,.45);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .modal {
+            background: #fff;
+            border-radius: 14px;
+            width: 100%;
+            max-width: 440px;
+            padding: 28px;
+            box-shadow: 0 24px 48px rgba(0,0,0,.2);
+        }
+        .modal.modal-lg { max-width: 860px; max-height: 85vh; display: flex; flex-direction: column; }
+        .modal h2 { font-size: 20px; margin-bottom: 8px; color: #1e3a5f; }
+        .modal-meta { font-size: 13px; color: #64748b; margin-bottom: 20px; }
+        .modal-balance { background: #f0f9ff; padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 14px; }
+        .modal-actions { display: flex; gap: 10px; margin-top: 8px; }
+        .modal-actions .btn { flex: 1; }
+        .modal-table-wrap { overflow: auto; flex: 1; margin-top: 8px; }
+
+        /* Toast */
+        .toast {
+            display: none;
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            padding: 14px 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 2000;
+            max-width: 400px;
+            box-shadow: 0 8px 24px rgba(0,0,0,.15);
+        }
+        .toast-success { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+        .toast-error { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+        .toast-info { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+
+        @media (max-width: 768px) {
+            .actions { display: flex; flex-direction: column; gap: 4px; }
+            th:nth-child(2), td:nth-child(2) { display: none; }
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/js/auth-config.js"></script>
+</head>
+<body>
+
+<div id="loginScreen">
+    <div class="login-box">
+        <h1>Painel Admin</h1>
+        <p>Gestão de jogadores, saldos e histórico</p>
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="loginEmail">Email</label>
+                <input type="email" id="loginEmail" required autocomplete="email">
+            </div>
+            <div class="form-group">
+                <label for="loginPassword">Senha</label>
+                <input type="password" id="loginPassword" required autocomplete="current-password">
+            </div>
+            <button type="submit" class="btn btn-primary" id="loginBtn" style="width:100%">Entrar</button>
+        </form>
+    </div>
+</div>
+
+<div id="panelScreen" style="display:none">
+    <header class="header">
+        <div class="header-inner">
+            <div>
+                <h1>Painel de Jogadores</h1>
+                <div class="header-sub">Saldos, ganhos, perdas e movimentações</div>
+            </div>
+            <div class="header-actions">
+                <span class="admin-badge" id="adminName">Admin</span>
+                <button class="btn btn-ghost" id="logoutBtn">Sair</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="stats">
+            <div class="stat-card">
+                <label>Jogadores</label>
+                <div class="val" id="statPlayers">0</div>
+            </div>
+            <div class="stat-card">
+                <label>Saldo total na plataforma</label>
+                <div class="val" id="statBalance">R$ 0,00</div>
+            </div>
+            <div class="stat-card wins">
+                <label>Total ganho (todos)</label>
+                <div class="val" id="statWins">R$ 0,00</div>
+            </div>
+            <div class="stat-card losses">
+                <label>Total perdido (todos)</label>
+                <div class="val" id="statLosses">R$ 0,00</div>
+            </div>
+        </div>
+
+        <div class="toolbar">
+            <input type="search" id="searchInput" placeholder="Buscar por nome, email ou CPF...">
+            <button class="btn btn-primary" id="refreshBtn">Atualizar</button>
+        </div>
+
+        <div class="card">
+            <div id="playersLoading">Carregando jogadores...</div>
+            <div id="playersEmpty" style="display:none">Nenhum jogador encontrado</div>
+            <div id="playersTableWrap" style="display:none; overflow-x:auto">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Jogador</th>
+                            <th>Email</th>
+                            <th class="num">Saldo</th>
+                            <th class="num">Ganhos</th>
+                            <th class="num">Perdas</th>
+                            <th class="num">Partidas</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="playersTbody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal ajuste de saldo -->
+<div class="modal-overlay" id="adjustModal">
+    <div class="modal">
+        <h2 id="adjustTitle">Adicionar saldo</h2>
+        <p class="modal-meta" id="adjustPlayerName"></p>
+        <div class="modal-balance">Saldo atual: <strong id="adjustCurrentBalance">—</strong></div>
+        <form id="adjustForm">
+            <div class="form-group">
+                <label for="adjustAmount">Valor (R$)</label>
+                <input type="number" id="adjustAmount" min="0.01" step="0.01" required placeholder="0,00">
+            </div>
+            <div class="form-group">
+                <label for="adjustReason">Motivo (opcional)</label>
+                <textarea id="adjustReason" placeholder="Ex: Bônus, correção, saque manual..."></textarea>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn" id="adjustCancel" style="background:#f1f5f9;color:#475569">Cancelar</button>
+                <button type="submit" class="btn btn-add-full" id="adjustSubmit">Confirmar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal histórico -->
+<div class="modal-overlay" id="historyModal">
+    <div class="modal modal-lg">
+        <h2>Histórico de saldo – <span id="historyPlayerName"></span></h2>
+        <p class="modal-meta" id="historyPlayerMeta"></p>
+        <div class="modal-table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Tipo</th>
+                        <th class="num">Valor</th>
+                        <th class="num">Antes</th>
+                        <th class="num">Depois</th>
+                        <th>Detalhe</th>
+                    </tr>
+                </thead>
+                <tbody id="historyTbody"></tbody>
+            </table>
+        </div>
+        <div style="margin-top:16px;text-align:right">
+            <button class="btn btn-primary" id="historyClose">Fechar</button>
+        </div>
+    </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="/js/painel.js"></script>
+</body>
+</html>
