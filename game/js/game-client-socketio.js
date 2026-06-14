@@ -37,6 +37,7 @@ window.GameClientSocketIO = (function() {
         onPointEstablished: null,
         onShooterChanged: null,
         onPlayersUpdated: null,
+        onGameStateUpdated: null,
         onError: null,
         onChatMessage: null,
         onUserJoined: null,
@@ -150,10 +151,13 @@ window.GameClientSocketIO = (function() {
             
             if (update.gameState) gameState.state = update.gameState;
             if (update.point !== undefined) gameState.point = update.point;
-            if (update.currentShooter) gameState.currentShooter = update.currentShooter;
+            if (update.currentShooter !== undefined) gameState.currentShooter = update.currentShooter;
             
             if (callbacks.onGameState) {
                 callbacks.onGameState(gameState);
+            }
+            if (callbacks.onGameStateUpdated) {
+                callbacks.onGameStateUpdated(update);
             }
         });
         
@@ -236,10 +240,12 @@ window.GameClientSocketIO = (function() {
         // Player events
         socket.on('players_updated', (data) => {
             console.log('👥 Players updated:', data);
-            gameState.players = data.players;
+            if (data.players) gameState.players = data.players;
+            if (data.currentShooter !== undefined) gameState.currentShooter = data.currentShooter;
+            if (data.point !== undefined) gameState.point = data.point;
             
             if (callbacks.onPlayersUpdated) {
-                callbacks.onPlayersUpdated(data.players);
+                callbacks.onPlayersUpdated(data);
             }
         });
         
@@ -341,7 +347,7 @@ window.GameClientSocketIO = (function() {
     function updateGameState(state) {
         gameState.state = state.gameState || gameState.state;
         gameState.players = state.players || gameState.players;
-        gameState.currentShooter = state.currentShooter || gameState.currentShooter;
+        if (state.currentShooter !== undefined) gameState.currentShooter = state.currentShooter;
         gameState.point = state.point !== undefined ? state.point : gameState.point;
         gameState.lastRoll = state.lastRoll || gameState.lastRoll;
         gameState.bets = state.bets || gameState.bets;
@@ -500,6 +506,7 @@ window.GameClientSocketIO = (function() {
     function onPointEstablished(callback) { callbacks.onPointEstablished = callback; }
     function onShooterChanged(callback) { callbacks.onShooterChanged = callback; }
     function onPlayersUpdated(callback) { callbacks.onPlayersUpdated = callback; }
+    function onGameStateUpdated(callback) { callbacks.onGameStateUpdated = callback; }
     function onError(callback) { callbacks.onError = callback; }
     function onChatMessage(callback) { callbacks.onChatMessage = callback; }
     function onUserJoined(callback) { callbacks.onUserJoined = callback; }
@@ -538,6 +545,7 @@ window.GameClientSocketIO = (function() {
         onPointEstablished,
         onShooterChanged,
         onPlayersUpdated,
+        onGameStateUpdated,
         onError,
         onChatMessage,
         onUserJoined,

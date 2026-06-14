@@ -1060,6 +1060,12 @@ io.on('connection', (socket) => {
       newShooter: nextShooterId,
       shooterName: newShooter ? newShooter.username : 'Unknown'
     });
+
+    io.to(`room_${roomId}`).emit('players_updated', {
+      players: Array.from(gameState.players.values()),
+      currentShooter: gameState.currentShooter,
+      point: gameState.point
+    });
     
     console.log(`✅ Shooter changed event emitted to room ${roomId} - new shooter: ${newShooter ? newShooter.username : 'Unknown'}`);
   }

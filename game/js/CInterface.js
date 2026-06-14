@@ -1042,7 +1042,7 @@ function CInterface(){
         
         for(var i = 0; i < players.length; i++){
             var player = players[i];
-            var isShooter = player.userId === currentShooter;
+            var isShooter = currentShooter != null && String(player.userId) === String(currentShooter);
             var playerBet = player.currentBet || 0;
             
             // Verificar se apostou no ponto

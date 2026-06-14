@@ -79,7 +79,7 @@ function CDiceHistory() {
             var pointBet = p.pointBet || 0;
             var pointBetNumber = p.pointBetNumber;
             var sevenBet = p.sevenBet || 0;
-            var isDados = currentShooterId && p.userId === currentShooterId;
+            var isDados = currentShooterId && String(p.userId) === String(currentShooterId);
             var line = name + (isDados ? " (DADOS)" : "") + " — R$ " + (bet || 0).toFixed(2);
             if (pointBet > 0) line += " | " + (pointBetNumber ? "Ponto " + pointBetNumber + ": R$ " : "Ponto: R$ ") + pointBet.toFixed(2);
             if (sevenBet > 0) line += " | 7: R$ " + sevenBet.toFixed(2);

@@ -26,6 +26,17 @@
         }
         
         console.log('🎮 Configurando integração Socket.IO com o jogo...');
+
+        function refreshPlayersList() {
+            if (!window.s_oInterface || !window.s_oInterface.updatePlayersList) return;
+            const gs = gameClient.gameState || {};
+            const players = Array.isArray(gs.players) ? gs.players : [];
+            const currentShooter = gs.currentShooter != null ? gs.currentShooter : null;
+            const gameState = {
+                point: gs.point != null ? gs.point : (window.s_oGame ? window.s_oGame._iNumberPoint : null)
+            };
+            window.s_oInterface.updatePlayersList(players, currentShooter, gameState);
+        }
         
         // Override the roll button handler
         const originalOnRoll = window.s_oGame.onRoll;
@@ -97,6 +108,17 @@
                 return;
             }
 
+            if (window.s_oGame._ensureShooterFlag) {
+                window.s_oGame._ensureShooterFlag();
+            }
+            if (!window.s_oGame._bIAmShooter || !window.s_oGame._bIsMyTurn) {
+                console.warn('⚠️ Não é sua vez de lançar os dados');
+                if (window.s_oGame._oInterface) {
+                    window.s_oGame._oInterface.showMessage('AGUARDE — OUTRO JOGADOR ESTÁ COM OS DADOS');
+                }
+                return;
+            }
+            
             // Prevent double-click
             if (window.s_oGame._isRolling) {
                 console.warn('⚠️ Já está lançando, ignorando clique');
@@ -582,8 +604,11 @@
                 // Player won
                 console.log('✅ Jogador ganhou!');
             } else if (result.type === 'craps' || result.type === 'seven_out') {
-                // Player lost
+                // Player lost — aguardar shooter_changed; garantir flags locais
                 console.log('❌ Jogador perdeu');
+                if (window.s_oGame && window.s_oGame._ensureShooterFlag) {
+                    window.s_oGame._ensureShooterFlag();
+                }
             }
             
             // Reset rolling flag after game result is shown
@@ -677,6 +702,8 @@
                 window.s_oGame._bForceRollAfterCoverage = false;
                 window.s_oGame._bShooterClickedApostar = false;
             }
+
+            refreshPlayersList();
             
             const isMyTurn = String(data.newShooter) === String(gameClient.currentUserId);
             
@@ -847,29 +874,22 @@
         
         // Handle players updated
         gameClient.onPlayersUpdated((data) => {
-            const players = data.players || data;
-            console.log('👥 Jogadores na sala:', Array.isArray(players) ? players.length : 'N/A', players);
+            const players = (data && data.players) ? data.players : (Array.isArray(data) ? data : []);
+            console.log('👥 Jogadores na sala:', players.length, players);
             
             // Update player count in UI
             if (window.s_oInterface && window.s_oInterface.updateRoomInfo) {
-                const currentRoom = gameClient.currentRoomId || 'table1';
-                const roomType = 'bronze'; // Default room type, adjust if you have room selection
+                const roomType = 'bronze';
                 const playerCount = Array.isArray(players) ? players.length : 0;
                 window.s_oInterface.updateRoomInfo(roomType, playerCount);
                 console.log('✅ Contagem de jogadores atualizada na UI:', playerCount);
             }
             
-            // Update players list with detailed info
-            if (window.s_oInterface && window.s_oInterface.updatePlayersList) {
-                const currentShooter = data.currentShooter || (window.s_oGame ? window.s_oGame._bIAmShooter ? gameClient.currentUserId : null : null);
-                const gameState = {
-                    point: data.point || (window.s_oGame ? window.s_oGame._iNumberPoint : null)
-                };
-                
-                if(Array.isArray(players)){
-                    window.s_oInterface.updatePlayersList(players, currentShooter, gameState);
-                }
-            }
+            refreshPlayersList();
+        });
+
+        gameClient.onGameStateUpdated(() => {
+            refreshPlayersList();
         });
         
         // Handle game state (initial state when joining)

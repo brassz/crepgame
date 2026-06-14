@@ -1311,6 +1311,10 @@ function CGame(oData){
                 // Reset flag de aposta obrigatória ao perder
                 _bMustBetFullWin = false;
                 _iLastWinAmount = 0;
+                if(this.isMultiplayerActive()){
+                    _bIAmShooter = false;
+                    this._ensureShooterFlag();
+                }
                 this.lockRollUntilCoverage();
             } else if(iSumDices === 4 || iSumDices === 5 || iSumDices === 6 || iSumDices === 8 || iSumDices === 9 || iSumDices === 10){
                 // NÚMEROS DE PONTO: CONTINUA AUTOMATICAMENTE APOSTANDO CONTRA O 7
@@ -2363,8 +2367,8 @@ function CGame(oData){
         }
         if(shooterId){
             _bIAmShooter = String(myId) === String(shooterId);
-        } else if(_bIsMyTurn){
-            _bIAmShooter = true;
+        } else {
+            _bIAmShooter = false;
         }
     };
 
