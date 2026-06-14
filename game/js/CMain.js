@@ -171,8 +171,9 @@ function CMain(oData){
         s_oSpriteLibrary.addSprite("but_fullscreen","./sprites/but_fullscreen.png");
         s_oSpriteLibrary.addSprite("but_credits","./sprites/but_credits.png");
         
+        var aFicheSpriteFiles = ["fiche_4", "fiche_5", "fiche_6", "fiche_7"];
         for(var i=0;i<NUM_FICHES;i++){
-            s_oSpriteLibrary.addSprite("fiche_"+i,"./sprites/fiche_"+i+".png");
+            s_oSpriteLibrary.addSprite("fiche_"+i,"./sprites/"+aFicheSpriteFiles[i]+".png");
         }
         
         for(var j=0;j<NUM_DICE_ROLLING_FRAMES;j++){

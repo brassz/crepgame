@@ -11,7 +11,7 @@ function CGameSettings(){
         this._initBetMultiplier();
         
         this._setPuckPos();
-        _aFicheValues = [1,5,10,25,50,100];
+        _aFicheValues = [50, 100, 200, 500];
         NUM_FICHES = _aFicheValues.length;
     };
     

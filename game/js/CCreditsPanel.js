@@ -2,10 +2,7 @@ function CCreditsPanel(){
     
     var _oBg;
     var _oButExit;
-
     var _oHitArea;
-    
-    var _oLink;
     var _oContainer;
     var _oListener;
     var _pStartPosExit;
@@ -15,8 +12,12 @@ function CCreditsPanel(){
         _oContainer = new createjs.Container();
         s_oStage.addChild(_oContainer);
         
-        var oBgMenu = createBitmap(s_oSpriteLibrary.getSprite('bg_menu'));
-        _oContainer.addChild(oBgMenu);
+        _oHitArea = new createjs.Shape();
+        _oHitArea.graphics.beginFill("#000000").drawRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+        _oHitArea.alpha = 0.75;
+        var oParent = this;
+        _oListener = _oHitArea.on("click", function(){ oParent.unload(); });
+        _oContainer.addChild(_oHitArea);
 
         var oSprite = s_oSpriteLibrary.getSprite('msg_box');
         _oBg = createBitmap(oSprite);
@@ -24,34 +25,30 @@ function CCreditsPanel(){
         _oBg.y = CANVAS_HEIGHT/2;
         _oBg.regX = oSprite.width/2;
         _oBg.regY = oSprite.height/2;
+        _oBg.scaleX = 1.35;
+        _oBg.scaleY = 1.45;
         _oContainer.addChild(_oBg);
         
-        _oHitArea = new createjs.Shape();
-        _oHitArea.graphics.beginFill("#0f0f0f").drawRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-        _oHitArea.alpha = 0.01;
-        _oListener = _oHitArea.on("click", this._onLogoButRelease);
-        _oContainer.addChild(_oHitArea);
+        new CTLText(_oContainer,
+                    CANVAS_WIDTH/2 - 340, 72, 680, 44,
+                    28, "center", "#ffd700", FONT1, 1,
+                    0, 0,
+                    TEXT_GAME_RULES_TITLE,
+                    true, true, true,
+                    false );
+
+        new CTLText(_oContainer,
+                    CANVAS_WIDTH/2 - 340, 130, 680, 520,
+                    18, "left", "#ffffff", FONT1, 1.15,
+                    0, 0,
+                    TEXT_GAME_RULES,
+                    true, true, true,
+                    false );
                 
-        var oSprite = s_oSpriteLibrary.getSprite('but_exit');
-        _pStartPosExit = {x: CANVAS_WIDTH/2 +234, y: 254};
+        oSprite = s_oSpriteLibrary.getSprite('but_exit');
+        _pStartPosExit = {x: CANVAS_WIDTH/2 + 310, y: 88};
         _oButExit = new CGfxButton(_pStartPosExit.x, _pStartPosExit.y, oSprite, _oContainer);
         _oButExit.addEventListener(ON_MOUSE_UP, this.unload, this);
-        
-        
-		
-        oSprite = s_oSpriteLibrary.getSprite('logo_credits');
-        var oLogo = createBitmap(oSprite);
-        oLogo.regX = oSprite.width/2;
-        oLogo.regY = oSprite.height/2;
-        oLogo.x = CANVAS_WIDTH/2;
-        oLogo.y = CANVAS_HEIGHT/2;
-        _oContainer.addChild(oLogo);
-        
-        _oLink = new createjs.Text(TEXT_LINK,"30px Arial", "#ffffff");
-        _oLink.x = CANVAS_WIDTH/2;
-        _oLink.y = 500;
-        _oLink.textAlign = "center";
-        _oContainer.addChild(_oLink);
     };
     
     this.unload = function(){
@@ -63,13 +60,6 @@ function CCreditsPanel(){
         s_oStage.removeChild(_oContainer);
     };
     
-    this._onLogoButRelease = function(){
-        window.open("https://www.codethislab.com/","_blank");
-    };
-    
     this._init();
-    
-    
 };
-
 
