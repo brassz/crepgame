@@ -100,6 +100,14 @@
         .status.connected { color: #4a4; }
         .status.disconnected { color: #c44; }
         .hint { font-size: 11px; color: #888; margin-top: 8px; }
+        .btn-reset-index {
+            margin-left: 8px; padding: 4px 10px;
+            background: #444; color: #fff; border: 1px solid #666;
+            border-radius: 6px; cursor: pointer; font-size: 11px;
+        }
+        .btn-reset-index:hover { background: #556; }
+        .pending-ok { color: #4ade80; margin-left: 6px; }
+        .pending-none { color: #888; margin-left: 6px; }
     </style>
 </head>
 <body>
@@ -129,123 +137,143 @@
         </div>
 
         <div class="section">
-            <h2>🎲 Rodadas Programadas</h2>
-            <p class="hint">Defina valores por rodada. Rodada vazia = aleatório. Rodada 1 = primeiro lançamento, Rodada 2 = segundo, etc.</p>
+            <h2>🎲 Próximo Lançamento</h2>
+            <p class="hint">Defina os dados para o <strong>próximo</strong> lançamento na mesa. Após sair na mesa, o valor é limpo automaticamente.</p>
             <label style="display:flex;align-items:center;gap:8px;margin:12px 0;">
-                <input type="checkbox" id="dice-override-check"> Usar rodadas programadas
+                <input type="checkbox" id="dice-override-check"> Usar dados programados
             </label>
-            <div id="rounds-list"></div>
-            <button type="button" class="btn-add" id="btn-add-round">+ Adicionar rodada</button>
-            <p class="hint" style="margin-top:12px;">Próxima rodada: <strong id="next-round-num">1</strong> <button type="button" class="btn-reset-index" id="btn-reset-index">Zerar contador</button></p>
+            <div class="dice-row">
+                <label>Dado 1:</label>
+                <select id="dice-d1"></select>
+                <label>Dado 2:</label>
+                <select id="dice-d2"></select>
+            </div>
+            <div class="sum-box" id="dice-sum">Soma: —</div>
+            <div class="preset-btns" id="preset-btns">
+                <button type="button" data-d1="1" data-d2="1">2</button>
+                <button type="button" data-d1="1" data-d2="2">3</button>
+                <button type="button" data-d1="2" data-d2="2">4</button>
+                <button type="button" data-d1="2" data-d2="3">5</button>
+                <button type="button" data-d1="1" data-d2="5">6</button>
+                <button type="button" data-d1="3" data-d2="4">7</button>
+                <button type="button" data-d1="2" data-d2="6">8</button>
+                <button type="button" data-d1="3" data-d2="6">9</button>
+                <button type="button" data-d1="4" data-d2="6">10</button>
+                <button type="button" data-d1="5" data-d2="6">11</button>
+                <button type="button" data-d1="6" data-d2="6">12</button>
+            </div>
+            <p class="hint" style="margin-top:12px;">
+                Próxima rodada: <strong id="next-round-num">0</strong>
+                <span id="pending-status" class="pending-none"></span>
+                <button type="button" class="btn-reset-index" id="btn-reset-index">Zerar contador</button>
+            </p>
         </div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
+    <script src="js/polegar-dice.js"></script>
     <script>
         (function() {
-            var LS_KEY = 'dice_override';
-            var LS_ROUNDS = 'dice_rounds';
-            var LS_ROLL_INDEX = 'polegar_roll_index';
-
-            var rounds = [];
             var betStats = { 4:0, 5:0, 6:0, 7:0, 8:0, 9:0, 10:0 };
 
-            function loadRounds() {
-                try {
-                    var s = localStorage.getItem(LS_ROUNDS);
-                    rounds = s ? JSON.parse(s) : [];
-                    if (!Array.isArray(rounds)) rounds = [];
-                } catch (e) { rounds = []; }
+            var selD1 = document.getElementById('dice-d1');
+            var selD2 = document.getElementById('dice-d2');
+            var sumEl = document.getElementById('dice-sum');
+            var checkOverride = document.getElementById('dice-override-check');
+
+            function fillDieOptions(sel) {
+                var html = '<option value="">—</option>';
+                for (var i = 1; i <= 6; i++) html += '<option value="' + i + '">' + i + '</option>';
+                sel.innerHTML = html;
             }
 
-            function saveRounds() {
-                localStorage.setItem(LS_ROUNDS, JSON.stringify(rounds));
-                renderRounds();
-            }
-
-            function saveOverride() {
-                var check = document.getElementById('dice-override-check');
-                localStorage.setItem(LS_KEY, check.checked ? '1' : '0');
-            }
-
-            function renderRounds() {
-                var list = document.getElementById('rounds-list');
-                var opts = '<option value="">Aleatório</option>';
-                for (var i = 1; i <= 6; i++) opts += '<option value="' + i + '">' + i + '</option>';
-
-                list.innerHTML = rounds.map(function(r, i) {
-                    var d1 = r ? r[0] : '';
-                    var d2 = r ? r[1] : '';
-                    return '<div class="round-item" data-i="' + i + '">' +
-                        '<span class="round-num">Rodada ' + (i + 1) + '</span>' +
-                        '<select class="d1">' + opts + '</select>' +
-                        '<select class="d2">' + opts + '</select>' +
-                        (d1 ? '<span class="sum">=' + (parseInt(d1,10)+parseInt(d2,10)) + '</span>' : '<span class="random-badge">Aleatório</span>') +
-                        '<button type="button" class="btn-del">Remover</button>' +
-                        '</div>';
-                }).join('');
-
-                list.querySelectorAll('.round-item').forEach(function(el) {
-                    var i = parseInt(el.getAttribute('data-i'), 10);
-                    var r = rounds[i];
-                    var s1 = el.querySelector('.d1');
-                    var s2 = el.querySelector('.d2');
-                    if (r) {
-                        s1.value = r[0];
-                        s2.value = r[1];
-                    } else {
-                        s1.value = '';
-                        s2.value = '';
-                    }
-                    s1.onchange = function() { updateRound(i); };
-                    s2.onchange = function() { updateRound(i); };
-                    el.querySelector('.btn-del').onclick = function() {
-                        rounds.splice(i, 1);
-                        saveRounds();
-                    };
-                });
-            }
-
-            function updateRound(i) {
-                var list = document.getElementById('rounds-list');
-                var el = list.querySelector('[data-i="' + i + '"]');
-                if (!el) return;
-                var d1 = el.querySelector('.d1').value;
-                var d2 = el.querySelector('.d2').value;
+            function updateSum() {
+                var d1 = selD1.value;
+                var d2 = selD2.value;
                 if (d1 && d2) {
-                    rounds[i] = [parseInt(d1,10), parseInt(d2,10)];
+                    sumEl.textContent = 'Soma: ' + (parseInt(d1, 10) + parseInt(d2, 10));
+                    window.PolegarDice.setPending(d1, d2);
                 } else {
-                    rounds[i] = null;
+                    sumEl.textContent = 'Soma: —';
+                    window.PolegarDice.clearPending();
                 }
-                saveRounds();
+                updateStatus();
             }
 
-            document.getElementById('dice-override-check').addEventListener('change', saveOverride);
+            function updateStatus() {
+                document.getElementById('next-round-num').textContent = '0';
+                var statusEl = document.getElementById('pending-status');
+                var pending = window.PolegarDice.getPending();
+                if (pending && checkOverride.checked) {
+                    statusEl.textContent = '(aguardando: ' + pending[0] + '+' + pending[1] + '=' + (pending[0] + pending[1]) + ')';
+                    statusEl.className = 'pending-ok';
+                } else {
+                    statusEl.textContent = '(sem valor pendente)';
+                    statusEl.className = 'pending-none';
+                }
+            }
 
-            document.getElementById('btn-add-round').addEventListener('click', function() {
-                rounds.push(null);
-                saveRounds();
+            fillDieOptions(selD1);
+            fillDieOptions(selD2);
+
+            checkOverride.addEventListener('change', function() {
+                window.PolegarDice.setEnabled(checkOverride.checked);
+                updateStatus();
+            });
+
+            selD1.addEventListener('change', updateSum);
+            selD2.addEventListener('change', updateSum);
+
+            document.getElementById('preset-btns').querySelectorAll('button').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    selD1.value = btn.getAttribute('data-d1');
+                    selD2.value = btn.getAttribute('data-d2');
+                    if (!checkOverride.checked) {
+                        checkOverride.checked = true;
+                        window.PolegarDice.setEnabled(true);
+                    }
+                    updateSum();
+                });
             });
 
             document.getElementById('btn-reset-index').addEventListener('click', function() {
-                localStorage.setItem(LS_ROLL_INDEX, '0');
-                updateNextRound();
+                selD1.value = '';
+                selD2.value = '';
+                window.PolegarDice.clearPending();
+                sumEl.textContent = 'Soma: —';
+                updateStatus();
             });
 
-            function updateNextRound() {
-                var idx = parseInt(localStorage.getItem(LS_ROLL_INDEX) || '0', 10);
-                document.getElementById('next-round-num').textContent = idx + 1;
-            }
-
             function load() {
-                loadRounds();
-                renderRounds();
-                var v = localStorage.getItem(LS_KEY);
-                document.getElementById('dice-override-check').checked = (v === '1');
-                updateNextRound();
+                localStorage.removeItem('polegar_roll_index');
+                localStorage.removeItem('dice_rounds');
+
+                checkOverride.checked = window.PolegarDice.isEnabled();
+                var pending = window.PolegarDice.getPending();
+                if (pending) {
+                    selD1.value = String(pending[0]);
+                    selD2.value = String(pending[1]);
+                    sumEl.textContent = 'Soma: ' + (pending[0] + pending[1]);
+                } else {
+                    selD1.value = '';
+                    selD2.value = '';
+                    sumEl.textContent = 'Soma: —';
+                }
+                updateStatus();
             }
 
             load();
+
+            try {
+                var diceCh = new BroadcastChannel('polegar_dice');
+                diceCh.onmessage = function() { updateStatus(); };
+            } catch (e) {}
+
+            window.addEventListener('storage', function(e) {
+                if (e.key === 'polegar_pending_dice' || e.key === 'dice_override') {
+                    load();
+                }
+            });
 
             // Bet stats via BroadcastChannel (game tab posts)
             try {
@@ -307,7 +335,7 @@
                 document.getElementById('events-list').innerHTML = html || '<em>Nenhum evento</em>';
             }
 
-            addEvent('Polegar carregado. Configure as rodadas à direita.');
+            addEvent('Polegar carregado. Configure o próximo lançamento à direita.');
             document.getElementById('rooms-list').innerHTML = '<em>Abra o jogo em outra aba. Apostas aparecem aqui quando você apostar no ponto ou no 7.</em>';
         })();
     </script>
