@@ -593,12 +593,15 @@ function CInterface(){
         console.log("✅ Botões de aposta no ponto e no 7 inicializados com sucesso!");
     };
 
-    /** Shooter → paradas no ponto | Adversário → só no 7 */
+    /** Shooter → paradas no ponto | Adversário → paradas no 7 (100x200) */
     this._applyPointBettingRoleUI = function(iPointNumber, bIsShooter){
+        var szPonto = "100x200";
+        if(iPointNumber === 5 || iPointNumber === 9) szPonto = "100x150";
+        else if(iPointNumber === 6 || iPointNumber === 8) szPonto = "100x125";
         if(_oPointBettingTitle){
             _oPointBettingTitle.refreshText(bIsShooter
-                ? "APOSTE PARADAS NO PONTO " + iPointNumber + "!"
-                : "APOSTE NO 7 CONTRA O SHOOTER!");
+                ? "PARADAS PONTO " + iPointNumber + " (" + szPonto + ")"
+                : "PARADAS NO 7 (100x200)");
         }
         if(_oButBetOnPoint){
             _oButBetOnPoint.changeText("PONTO: " + iPointNumber);
@@ -697,6 +700,9 @@ function CInterface(){
             
             // Resetar contador de paradas quando mostrar botões
             _iParadasCount = 0;
+            if(_oButBetOnSeven){
+                _oButBetOnSeven.changeText("7");
+            }
             
             // Forçar atualização do stage
             if(s_oStage && s_oStage.update){
@@ -962,7 +968,12 @@ function CInterface(){
     this.updatePointButtonText = function(iPointNumber, iParadasCount){
         if(_oButBetOnPoint && iParadasCount > 0){
             _oButBetOnPoint.changeText("PONTO: " + iPointNumber + " (" + iParadasCount + "/10)");
-            console.log("✅ Texto do botão atualizado: PONTO " + iPointNumber + " com " + iParadasCount + " paradas");
+        }
+    };
+
+    this.updateSevenButtonText = function(iParadasCount){
+        if(_oButBetOnSeven && iParadasCount > 0){
+            _oButBetOnSeven.changeText("7 (" + iParadasCount + "/10)");
         }
     };
     
