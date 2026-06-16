@@ -46,6 +46,22 @@ function CSeat(){
         
         return true; // Retornar true para indicar sucesso
     };
+
+    /** Debita saldo sem alterar aposta na mesa (paradas no ponto / no 7) */
+    this.debitCredit = function(iAmount){
+        var iTotal = roundDecimal(iAmount, 1);
+        if(iTotal <= 0) return true;
+        if(_iCredit < iTotal){
+            console.warn("⚠️ Saldo insuficiente. Saldo:", _iCredit, "Necessário:", iTotal);
+            return false;
+        }
+        _iCredit -= iTotal;
+        _iCredit = roundDecimal(_iCredit, 1);
+        if(_iCredit < 0){
+            _iCredit = 0;
+        }
+        return true;
+    };
 		
     this.addFicheOnTable = function(iFicheValue,iIndexFicheSelected,szNameAttach){
         // Verificar saldo antes de criar fichas visuais
