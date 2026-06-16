@@ -740,10 +740,7 @@ io.on('connection', (socket) => {
             // Point has been established
             if (total === gameState.point) {
               // Made the point — ganho permanece na mesa até passar o dado ou perder
-              let pointMultiplier = 1.25;
-              if (gameState.point === 4 || gameState.point === 10) pointMultiplier = 2;
-              else if (gameState.point === 5 || gameState.point === 9) pointMultiplier = 1.5;
-              addShooterWinToTableBet(gameState, pointMultiplier);
+              addShooterWinToTableBet(gameState, 2);
               io.to(`room_${roomId}`).emit('game_result', {
                 type: 'point_made',
                 total,

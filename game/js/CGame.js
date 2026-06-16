@@ -1446,8 +1446,8 @@ function CGame(oData){
                 // ACERTOU O PONTO: SHOOTER GANHA - Total (aposta + ganho) deve ir para "APOSTE AQUI"; só pode rolar se apostar esse total
                 var iTotalActiveBets = _oMySeat.getCurBet();
                 
-                // Aposta na mesa: paga conforme o ponto (4/10=2x, 5/9=1.5x, 6/8=1.25x)
-                var iMultiplier = this._getPointPayoutPer100(_iNumberPoint) / _iParadaBaseValue;
+                // Aposta na mesa: sempre 2x ao acertar o ponto
+                var iMultiplier = _iSevenPayoutPer100 / _iParadaBaseValue;
                 
                 if(iTotalActiveBets > 0){
                     var iAutoWin = iTotalActiveBets * (iMultiplier - 1);
