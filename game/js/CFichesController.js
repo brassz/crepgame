@@ -135,11 +135,11 @@ function CFichesController(oContainer){
     };
     
     this.clearAllBetsInComePoint = function(){
-        //REMOVE ATTACHED CHILDREN
+        //REMOVE ATTACHED CHILDREN (preserva aposta principal na mesa)
         if(_aMcFichesInPos){
             var iBetToSubtract = 0;
             for(var i in _aMcFichesInPos){
-                if( i !== "pass_line" && i!== "dont_pass1" && i!== "dont_pass2"){
+                if( i !== "pass_line" && i !== "dont_pass1" && i !== "dont_pass2" && i !== "main_bet"){
                     iBetToSubtract += _aValueFichesInPos[i];
                     for(var j=0;j<_aMcFichesInPos[i].length;j++){
                         _oContainer.removeChild(_aMcFichesInPos[i][j].getSprite());

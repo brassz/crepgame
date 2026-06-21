@@ -153,11 +153,11 @@ function CSeat(){
         _iCredit += iBetToSubtract;
         _iCredit = roundDecimal(_iCredit, 1);
         
-        // GARANTIR que o saldo nunca fique negativo
         if(_iCredit < 0){
             console.error("❌ ERRO: Saldo ficou negativo ao limpar apostas no come point! Corrigindo para 0");
             _iCredit = 0;
         }
+        this.syncCurBetWithMainBet();
     };
     
     this.showWin = function(iWin){
@@ -198,6 +198,41 @@ function CSeat(){
     this.getBetAmountInPos = function(szName){
         return _oFicheController.getBetAmountInPos(szName);
     };
-    
+
+    /** Garante que _iCurBet reflete pelo menos a aposta em APOSTE AQUI */
+    this.syncCurBetWithMainBet = function(){
+        var iMain = this.getBetAmountInPos("main_bet") || 0;
+        if(iMain > _iCurBet){
+            _iCurBet = roundDecimal(iMain, 1);
+        }
+    };
+
+    /** Coloca ganho na mesa sem debitar crédito (valor já creditado via showWin) */
+    this.placeWinOnMainBet = function(iWinAmount){
+        var iAmount = Math.round(roundDecimal(iWinAmount, 1));
+        if(iAmount <= 0) return true;
+        var aDenoms = [500, 200, 100, 50];
+        var aIndices = [3, 2, 1, 0];
+        var remaining = iAmount;
+        var iPlaced = 0;
+        for(var i = 0; i < aDenoms.length && remaining > 0; i++){
+            var count = Math.floor(remaining / aDenoms[i]);
+            for(var j = 0; j < count; j++){
+                var aFichesMc = [];
+                _oFicheController.setFicheOnButton(aIndices[i], "main_bet", aFichesMc);
+                remaining -= aDenoms[i];
+                iPlaced += aDenoms[i];
+            }
+        }
+        if(iPlaced > 0){
+            _iCurBet += iPlaced;
+            _iCurBet = roundDecimal(_iCurBet, 1);
+            _iCredit -= iPlaced;
+            _iCredit = roundDecimal(_iCredit, 1);
+            if(_iCredit < 0) _iCredit = 0;
+        }
+        return remaining === 0;
+    };
+
     this._init();
 }

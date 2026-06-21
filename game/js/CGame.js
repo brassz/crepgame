@@ -1203,11 +1203,38 @@ function CGame(oData){
         $(s_oMain).trigger("save_score", [_oMySeat.getTotalWealth()]);
     };
 
+    this._getMainBetAmount = function(){
+        var iMain = _oMySeat.getBetAmountInPos("main_bet");
+        if(iMain && iMain > 0){
+            return roundDecimal(iMain, 1);
+        }
+        return roundDecimal(_oMySeat.getCurBet(), 1);
+    };
+
+    /** Paga aposta principal na mesa (2x ou multiplicador informado) — independente das paradas */
+    this._payMainBetWin = function(iMultiplier){
+        var iMainBet = this._getMainBetAmount();
+        if(iMainBet <= 0){
+            return { paid: false, mainBet: 0, profit: 0, totalOnTable: 0, placed: false };
+        }
+        if(!iMultiplier || iMultiplier < 1){
+            iMultiplier = _iSevenPayoutPer100 / _iParadaBaseValue;
+        }
+        _oMySeat.syncCurBetWithMainBet();
+        var iProfit = roundDecimal(iMainBet * (iMultiplier - 1), 1);
+        var iTotalOnTable = roundDecimal(iMainBet + iProfit, 1);
+        var bPlaced = this._addWinningsToTable(iProfit);
+        return { paid: true, mainBet: iMainBet, profit: iProfit, totalOnTable: iTotalOnTable, placed: bPlaced };
+    };
+
     /** Acrescenta ganho à aposta já na mesa (fichas ficam até passar o dado ou perder) */
     this._addWinningsToTable = function(iWinAmount){
         if(iWinAmount <= 0) return false;
         _oMySeat.showWin(iWinAmount);
         var bPlaced = _oMySeat.placeBetAmountOnButton(iWinAmount, "main_bet");
+        if(!bPlaced){
+            bPlaced = _oMySeat.placeWinOnMainBet(iWinAmount);
+        }
         this._refreshWalletUI();
         if(bPlaced){
             var isMultiplayer = window.GameClientSocketIO &&
@@ -1315,24 +1342,23 @@ function CGame(oData){
         if(_iState === STATE_GAME_COME_OUT){
             // PRIMEIRO LANÇAMENTO
             if(iSumDices === 7 || iSumDices === 11){
-                // 7-11: GANHA DOBRO - Total (aposta + ganho) deve ir para "APOSTE AQUI"; só pode rolar se apostar esse total
-                var iTotalActiveBets = _oMySeat.getCurBet();
-                if(iTotalActiveBets > 0){
-                    var iWinAmount = iTotalActiveBets; // Natural: ganho = aposta (total dobra na mesa)
-                    var iTotalOnTable = iTotalActiveBets + iWinAmount;
-                    var bAutoPlaced = this._addWinningsToTable(iWinAmount);
+                // 7-11: GANHA DOBRO - Total (aposta + ganho) deve ir para "APOSTE AQUI"
+                var oMainWin = this._payMainBetWin(_iSevenPayoutPer100 / _iParadaBaseValue);
+                if(oMainWin.paid){
+                    var iTotalOnTable = oMainWin.totalOnTable;
+                    var bAutoPlaced = oMainWin.placed;
                     _iLockedBalance = 0;
                     _bMustBetFullWin = false;
                     _iLastWinAmount = 0;
                     
                     if(bAutoPlaced){
                         _oInterface.refreshMsgHelp("GANHOU! FICHAS NA MESA – CLIQUE EM APOSTAR!", true);
-                        new CScoreText("GANHOU! " + iTotalOnTable + TEXT_CURRENCY + "\nFICHAS NA MESA!", CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
+                        new CScoreText("NATURAL! MESA " + iTotalOnTable + TEXT_CURRENCY + " (100x200)", CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
                     } else {
                         _iLastWinAmount = iTotalOnTable;
                         _bMustBetFullWin = true;
-                        _oInterface.refreshMsgHelp("COLOQUE MAIS " + iWinAmount + TEXT_CURRENCY + " EM APOSTE AQUI PARA MANTER O GANHO NA MESA!", true);
-                        new CScoreText("GANHOU! FALTAM " + iWinAmount + TEXT_CURRENCY + "\nPARA COMPLETAR NA MESA!", CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
+                        _oInterface.refreshMsgHelp("COLOQUE MAIS " + oMainWin.profit + TEXT_CURRENCY + " EM APOSTE AQUI PARA MANTER O GANHO NA MESA!", true);
+                        new CScoreText("NATURAL! FALTAM " + oMainWin.profit + TEXT_CURRENCY + "\nPARA COMPLETAR NA MESA!", CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
                     }
                     playSound("win", 0.2, false);
                     this._afterShooterWin();
@@ -1340,9 +1366,9 @@ function CGame(oData){
                 this.afterRoundEnds();
             } else if(iSumDices === 2 || iSumDices === 3 || iSumDices === 12){
                 // 2-3-12: PERDE TUDO
-                var iTotalActiveBets = _oMySeat.getCurBet();
-                if(iTotalActiveBets > 0){
-                    _oMySeat.decreaseBet(iTotalActiveBets);
+                var iMainBet = this._getMainBetAmount();
+                if(iMainBet > 0){
+                    _oMySeat.decreaseBet(iMainBet);
                     playSound("lose", 0.2, false);
                     new CScoreText("PERDEU TUDO!", CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
                 }
@@ -1376,11 +1402,11 @@ function CGame(oData){
             // FASE DE PONTO - APOSTA CONTRA O 7
             if(iSumDices === 7){
                 // SAIU 7: SHOOTER PERDE, mas quem apostou no 7 ganha!
-                var iTotalActiveBets = _oMySeat.getCurBet();
+                var iMainBet = this._getMainBetAmount();
                 
-                // Se o shooter tinha apostas ativas, ele perde
-                if(iTotalActiveBets > 0){
-                    _oMySeat.decreaseBet(iTotalActiveBets);
+                // Se o shooter tinha aposta principal na mesa, ele perde
+                if(_bIAmShooter && iMainBet > 0){
+                    _oMySeat.decreaseBet(iMainBet);
                     playSound("lose", 0.2, false);
                 }
                 
@@ -1395,8 +1421,8 @@ function CGame(oData){
                     this._creditParadaWin(iSevenWin);
                     new CScoreText("SAIU 7! RECEBEU " + iSevenWin + TEXT_CURRENCY + " (100x200)", CANVAS_WIDTH/2, CANVAS_HEIGHT/2 - 50);
                     playSound("win", 0.5, false);
-                } else if(iTotalActiveBets > 0) {
-                    new CScoreText("7 - SHOOTER PERDEU!", CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
+                } else if(_bIAmShooter && iMainBet > 0) {
+                    new CScoreText("7 - SHOOTER PERDEU A MESA!", CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
                 }
                 
                 // PROCESSAR APOSTAS NO PONTO (perdem quando sai 7)
@@ -1452,26 +1478,26 @@ function CGame(oData){
                 _oTableController.enableMainBetButton();
                 this.lockRollUntilCoverage();
             } else if(iSumDices === _iNumberPoint){
-                // ACERTOU O PONTO: SHOOTER GANHA - Total (aposta + ganho) deve ir para "APOSTE AQUI"; só pode rolar se apostar esse total
-                var iTotalActiveBets = _oMySeat.getCurBet();
+                // ACERTOU O PONTO: aposta principal (mesa) + paradas pagam separadamente
+                var oMainWin = this._payMainBetWin(_iSevenPayoutPer100 / _iParadaBaseValue);
+                var bAutoPlaced = false;
+                var iAutoWin = 0;
                 
-                // Aposta na mesa: sempre 2x ao acertar o ponto
-                var iMultiplier = _iSevenPayoutPer100 / _iParadaBaseValue;
-                
-                if(iTotalActiveBets > 0){
-                    var iAutoWin = iTotalActiveBets * (iMultiplier - 1);
-                    var iTotalOnTable = iTotalActiveBets + iAutoWin;
-                    var bAutoPlaced = this._addWinningsToTable(iAutoWin);
+                if(oMainWin.paid){
+                    bAutoPlaced = oMainWin.placed;
+                    iAutoWin = oMainWin.profit;
                     _iLockedBalance = 0;
                     _bMustBetFullWin = false;
                     _iLastWinAmount = 0;
                     
                     if(bAutoPlaced){
                         _oInterface.refreshMsgHelp("GANHOU! FICHAS NA MESA – CLIQUE EM LANÇAR!", true);
+                        new CScoreText("MESA! " + oMainWin.totalOnTable + TEXT_CURRENCY + " (100x200)", CANVAS_WIDTH/2, CANVAS_HEIGHT/2 - 80);
                     } else {
-                        _iLastWinAmount = iTotalOnTable;
+                        _iLastWinAmount = oMainWin.totalOnTable;
                         _bMustBetFullWin = true;
-                        _oInterface.refreshMsgHelp("COLOQUE MAIS " + iAutoWin + TEXT_CURRENCY + " EM APOSTE AQUI PARA MANTER O GANHO NA MESA!", true);
+                        _oInterface.refreshMsgHelp("COLOQUE MAIS " + oMainWin.profit + TEXT_CURRENCY + " EM APOSTE AQUI PARA MANTER O GANHO NA MESA!", true);
+                        new CScoreText("MESA! FALTAM " + oMainWin.profit + TEXT_CURRENCY + " EM APOSTE AQUI", CANVAS_WIDTH/2, CANVAS_HEIGHT/2 - 80);
                     }
                     
                     playSound("win", 0.2, false);
@@ -1486,8 +1512,8 @@ function CGame(oData){
                     
                     new CScoreText("PONTO " + _iNumberPoint + "! " + iNumParadas + " PARADA(S)!\nRECEBEU " + iTotalGanho + TEXT_CURRENCY + " (" + this._getPointPayoutLabel(_iNumberPoint) + ")", CANVAS_WIDTH/2, CANVAS_HEIGHT/2 - 50);
                     playSound("win", 0.5, false);
-                } else if(iTotalActiveBets > 0) {
-                    new CScoreText(bAutoPlaced ? "PONTO " + _iNumberPoint + "! FICHAS NA MESA – CLIQUE EM APOSTAR!" : "PONTO " + _iNumberPoint + "! APOSTE " + (iTotalActiveBets + iAutoWin) + TEXT_CURRENCY + " EM 'APOSTE AQUI' PARA ROLAR!", CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
+                } else if(!oMainWin.paid) {
+                    new CScoreText("PONTO " + _iNumberPoint + "!", CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
                 }
                 
                 if(_iSevenParadas > 0){
@@ -2061,6 +2087,7 @@ function CGame(oData){
             return;
         }
         
+        _oMySeat.syncCurBetWithMainBet();
         _oInterface.setMoney(_oMySeat.getCredit());
         _oInterface.setCurBet(_oMySeat.getCurBet());
         TOTAL_MONEY = _oMySeat.getTotalWealth();
@@ -2127,6 +2154,7 @@ function CGame(oData){
             return;
         }
         
+        _oMySeat.syncCurBetWithMainBet();
         _oInterface.setMoney(_oMySeat.getCredit());
         _oInterface.setCurBet(_oMySeat.getCurBet());
         TOTAL_MONEY = _oMySeat.getTotalWealth();
@@ -2218,7 +2246,7 @@ function CGame(oData){
         if(_iState === STATE_GAME_COME_POINT){
             _oMySeat.clearAllBetsInComePoint();
             for(var i in _aBetHistory){
-                if( i !== "pass_line" && i!== "dont_pass1" && i!== "dont_pass2"){
+                if( i !== "pass_line" && i !== "dont_pass1" && i !== "dont_pass2" && i !== "main_bet"){
                     delete _aBetHistory[i];
                 }
             }
