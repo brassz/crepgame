@@ -207,7 +207,31 @@ function CSeat(){
         }
     };
 
-    /** Coloca ganho na mesa sem debitar crédito (valor já creditado via showWin) */
+    /** Só fichas na mesa — não mexe no saldo (ganho já creditado) */
+    this.addWinChipsToMainBetNoDebit = function(iWinAmount){
+        var iAmount = Math.round(roundDecimal(iWinAmount, 1));
+        if(iAmount <= 0) return true;
+        var aDenoms = [500, 200, 100, 50];
+        var aIndices = [3, 2, 1, 0];
+        var remaining = iAmount;
+        var iPlaced = 0;
+        for(var i = 0; i < aDenoms.length && remaining > 0; i++){
+            var count = Math.floor(remaining / aDenoms[i]);
+            for(var j = 0; j < count; j++){
+                var aFichesMc = [];
+                _oFicheController.setFicheOnButton(aIndices[i], "main_bet", aFichesMc);
+                remaining -= aDenoms[i];
+                iPlaced += aDenoms[i];
+            }
+        }
+        if(iPlaced > 0){
+            _iCurBet += iPlaced;
+            _iCurBet = roundDecimal(_iCurBet, 1);
+        }
+        return remaining === 0;
+    };
+
+    /** Coloca ganho na mesa debitando do saldo (fluxo normal sem parada) */
     this.placeWinOnMainBet = function(iWinAmount){
         var iAmount = Math.round(roundDecimal(iWinAmount, 1));
         if(iAmount <= 0) return true;
