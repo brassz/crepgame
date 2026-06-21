@@ -106,14 +106,15 @@ function CSeat(){
     // Coloca automaticamente um valor total na mesa (APOSTE AQUI) - usado após ganho do shooter
     this.placeBetAmountOnButton = function(iTotalAmount, szNameAttach){
         var iAmount = Math.round(roundDecimal(iTotalAmount, 1));
-        if(iAmount <= 0 || _iCredit < iAmount) return false;
+        if(iAmount <= 0) return true;
         var aDenoms = [500, 200, 100, 50];
         var aIndices = [3, 2, 1, 0];
         var remaining = iAmount;
         for(var i = 0; i < aDenoms.length && remaining > 0; i++){
             var count = Math.floor(remaining / aDenoms[i]);
             for(var j = 0; j < count; j++){
-                if(!this.addFicheOnButton(aDenoms[i], aIndices[i], szNameAttach)) return false;
+                if(_iCredit < aDenoms[i]) break;
+                if(!this.addFicheOnButton(aDenoms[i], aIndices[i], szNameAttach)) break;
                 remaining -= aDenoms[i];
             }
         }
@@ -163,11 +164,15 @@ function CSeat(){
         _iCredit += iWin;
         _iCredit = roundDecimal(_iCredit, 1);
         
-        // GARANTIR que o saldo nunca fique negativo (mesmo ao ganhar, por segurança)
         if(_iCredit < 0){
             console.error("❌ ERRO: Saldo ficou negativo ao ganhar! Corrigindo para 0");
             _iCredit = 0;
         }
+    };
+
+    /** Saldo livre + fichas na mesa */
+    this.getTotalWealth = function(){
+        return roundDecimal(_iCredit + _iCurBet, 1);
     };
     
     this.recharge = function(iMoney) {

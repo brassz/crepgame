@@ -308,7 +308,7 @@ io.on('connection', (socket) => {
           userId,
           username,
           socketId: socket.id,
-          credit: credit || 1000,
+          credit: (credit != null && !isNaN(parseFloat(credit))) ? Math.max(0, parseFloat(credit)) : 0,
           currentBet: 0,
           isShooter: false,
           joinedAt: new Date()

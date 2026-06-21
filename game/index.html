@@ -163,9 +163,14 @@
                      
                      console.log('✅ Usuário autenticado, iniciando jogo para:', currentUser.username || currentUser.email);
                      
+                     function parseBalance(val){
+                         var n = parseFloat(val);
+                         return (isNaN(n) || n < 0) ? 0 : n;
+                     }
+
                      function startWithBalance(balance){
                          var oMain = new CMain({
-                                           money: balance,        //STARTING CREDIT FROM PROFILE
+                                           money: parseBalance(balance),
                                            min_bet: 50,      //MINIMUM BET (BRONZE)
                                            max_bet: 1000,     //LIMITE MÁXIMO (BRONZE)  
                                             win_occurrence: 30,//Win occurrence percentage (100 = always win). 
@@ -182,15 +187,7 @@
                                             // http://codecanyon.net/item/ctl-arcade-wordpress-plugin/13856421 ///////////
                                 });
 
-                     
-                    $(oMain).on("recharge", function(evt) {
-                            var iMoney = 1000;
-                            if(s_oGame !== null){
-                                s_oGame.onRecharge(iMoney);
-                            }
-                     });
-                     
-                    $(oMain).on("bet_placed", function (evt, iTotBet) {
+                     $(oMain).on("bet_placed", function (evt, iTotBet) {
 
                         //...ADD YOUR CODE HERE EVENTUALLY
                     });
@@ -254,12 +251,12 @@
                      console.log('🎮 Sistema Socket.IO Puro - Iniciando com saldo do usuário');
                      if (window.customAuth.refreshUserBalance) {
                          window.customAuth.refreshUserBalance(currentUser.id).then(function (balance) {
-                             startWithBalance(balance != null ? balance : (currentUser.balance || 1000));
+                             startWithBalance(balance != null ? balance : currentUser.balance);
                          }).catch(function () {
-                             startWithBalance(currentUser.balance || 1000);
+                             startWithBalance(currentUser.balance);
                          });
                      } else {
-                         startWithBalance(currentUser.balance || 1000);
+                         startWithBalance(currentUser.balance);
                      }
            });
 

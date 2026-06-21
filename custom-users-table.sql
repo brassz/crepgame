@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS public.users (
     username TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
     full_name TEXT,
-    balance NUMERIC(12,2) DEFAULT 1000.00,
+    balance NUMERIC(12,2) DEFAULT 0.00,
     total_winnings NUMERIC(12,2) DEFAULT 0.00,
     total_losses NUMERIC(12,2) DEFAULT 0.00,
     games_played INTEGER DEFAULT 0,
@@ -75,7 +75,7 @@ BEGIN
     
     -- Criar novo usuário
     INSERT INTO public.users (email, username, password_hash, full_name, balance)
-    VALUES (p_email, p_username, p_password_hash, p_full_name, 1000.00)
+    VALUES (p_email, p_username, p_password_hash, p_full_name, 0.00)
     RETURNING id, email, username, full_name, balance, created_at INTO new_user;
     
     RETURN json_build_object(

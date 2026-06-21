@@ -9,7 +9,7 @@ window.GameClientSocketIO = (function() {
     let currentUserId = null;
     let currentUsername = null;
     let currentRoomId = null;
-    let currentCredit = 1000;
+    let currentCredit = 0;
     
     // Game state
     let gameState = {
@@ -366,7 +366,7 @@ window.GameClientSocketIO = (function() {
         currentUserId = userId;
         currentUsername = username;
         currentRoomId = roomId;
-        currentCredit = credit || 1000;
+        currentCredit = (credit != null && !isNaN(parseFloat(credit))) ? Math.max(0, parseFloat(credit)) : 0;
         
         console.log(`Authenticating: ${username} in room ${roomId}`);
         

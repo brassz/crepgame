@@ -1,6 +1,6 @@
 // Sistema de Profile usando autenticação customizada
 (function(){
-    var DEFAULT_BALANCE = 1000;
+    var DEFAULT_BALANCE = 0;
 
     function getUserId(){
         var user = window.customAuth ? window.customAuth.getCurrentUser() : null;

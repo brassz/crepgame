@@ -1,5 +1,5 @@
 (function(){
-    var DEFAULT_BALANCE = 1000;
+    var DEFAULT_BALANCE = 0;
 
     function getUserId(){
         return sb && sb.auth && sb.auth.getUser ? sb.auth.getUser().then(function(r){ return r.data && r.data.user ? r.data.user.id : null; }) : Promise.resolve(null);

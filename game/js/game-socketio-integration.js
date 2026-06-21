@@ -807,17 +807,12 @@
             });
         }
         
-        // Handle bet confirmed
+        // Handle bet confirmed — manter saldo local (servidor não debita fichas)
         gameClient.onBetConfirmed((confirmation) => {
             console.log('✅ Aposta confirmada:', confirmation);
-            
-            // Update credit display
-            if (window.s_oGame._oInterface) {
-                window.s_oGame._oInterface.setMoney(confirmation.remainingCredit);
+            if (window.s_oGame && window.s_oGame._refreshWalletUI) {
+                window.s_oGame._refreshWalletUI();
             }
-            // NÃO tocar no crédito interno do CSeat aqui, nem no botão de lançar.
-            // O fluxo de CGame/CSeat já atualiza o saldo localmente, e o botão
-            // de lançar é controlado por onTurnChange/_bIAmShooter.
         });
 
         // Saldo atualizado pelo painel admin
@@ -996,12 +991,17 @@
             }
         });
         
+        function parseUserBalance(val){
+            var n = parseFloat(val);
+            return (isNaN(n) || n < 0) ? 0 : n;
+        }
+
         // Auto-connect on game start
         function autoConnect() {
             // Obter informações do usuário do cadastro (game_user)
             let userId = null;
             let username = null;
-            let credit = 1000;
+            let credit = 0;
             
             try {
                 const userDataStr = localStorage.getItem('game_user');
@@ -1009,7 +1009,7 @@
                     const userData = JSON.parse(userDataStr);
                     userId = userData.id || userData.userId || localStorage.getItem('playerId') || 'player_' + Math.random().toString(36).substr(2, 9);
                     username = userData.username || userData.email || 'Jogador ' + Math.floor(Math.random() * 1000);
-                    credit = userData.balance || 1000;
+                    credit = parseUserBalance(userData.balance);
                 }
             } catch (e) {
                 console.warn('Erro ao obter dados do usuário do cadastro:', e);

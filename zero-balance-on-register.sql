@@ -1,23 +1,9 @@
--- ============================================
--- ADICIONAR CAMPO CPF NA TABELA DE USUÁRIOS
--- ============================================
+-- Novos cadastros começam com saldo zero; crédito só via painel admin.
+-- Execute no Supabase SQL Editor.
 
--- Adicionar coluna CPF se não existir
-DO $$ 
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 
-        FROM information_schema.columns 
-        WHERE table_schema = 'public' 
-        AND table_name = 'users' 
-        AND column_name = 'cpf'
-    ) THEN
-        ALTER TABLE public.users ADD COLUMN cpf TEXT UNIQUE;
-        CREATE INDEX IF NOT EXISTS idx_users_cpf ON public.users(cpf);
-    END IF;
-END $$;
+ALTER TABLE public.users
+    ALTER COLUMN balance SET DEFAULT 0.00;
 
--- Atualizar função register_user para aceitar CPF
 CREATE OR REPLACE FUNCTION register_user(
     p_email TEXT,
     p_username TEXT,
@@ -33,31 +19,27 @@ DECLARE
     new_user RECORD;
     existing_user RECORD;
 BEGIN
-    -- Verificar se email já existe
     SELECT * INTO existing_user FROM public.users WHERE email = p_email;
     IF FOUND THEN
         RETURN json_build_object('success', false, 'error', 'Email já cadastrado');
     END IF;
-    
-    -- Verificar se username já existe
+
     SELECT * INTO existing_user FROM public.users WHERE username = p_username;
     IF FOUND THEN
         RETURN json_build_object('success', false, 'error', 'Nome de usuário já existe');
     END IF;
-    
-    -- Verificar se CPF já existe (se fornecido)
+
     IF p_cpf IS NOT NULL AND p_cpf != '' THEN
         SELECT * INTO existing_user FROM public.users WHERE cpf = p_cpf;
         IF FOUND THEN
             RETURN json_build_object('success', false, 'error', 'CPF já cadastrado');
         END IF;
     END IF;
-    
-    -- Criar novo usuário
+
     INSERT INTO public.users (email, username, password_hash, full_name, cpf, balance)
     VALUES (p_email, p_username, p_password_hash, p_full_name, p_cpf, 0.00)
     RETURNING id, email, username, full_name, cpf, balance, created_at INTO new_user;
-    
+
     RETURN json_build_object(
         'success', true,
         'user', json_build_object(
@@ -72,4 +54,3 @@ BEGIN
     );
 END;
 $$;
-

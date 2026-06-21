@@ -1,7 +1,6 @@
 function CGameOver(){
     var _oTextTitle;
     var _oTextMsg;
-    var _ButRecharge;
     var _oButExit;
     var _oContainer;
     
@@ -28,12 +27,7 @@ function CGameOver(){
                     true, true, true,
                     false );
 
-        
-        _ButRecharge = new CTextButton(CANVAS_WIDTH/2 + 170,510,s_oSpriteLibrary.getSprite('but_bg'),TEXT_RECHARGE,FONT1,"#fff",18,"center",s_oStage);
-        _ButRecharge.addEventListener(ON_MOUSE_UP, this._onRecharge, this);
-        _oContainer.addChild(_ButRecharge.getSprite());
-        
-        _oButExit = new CTextButton(CANVAS_WIDTH/2 - 170,510,s_oSpriteLibrary.getSprite('but_bg'),TEXT_EXIT,FONT1,"#fff",18,"center",s_oStage);
+        _oButExit = new CTextButton(CANVAS_WIDTH/2,510,s_oSpriteLibrary.getSprite('but_bg'),TEXT_EXIT,FONT1,"#fff",18,"center",s_oStage);
         _oButExit.addEventListener(ON_MOUSE_UP, this._onExit, this);
         _oContainer.addChild(_oButExit.getSprite());
         
@@ -41,8 +35,7 @@ function CGameOver(){
     };
 	
     this.unload = function(){
-            _ButRecharge.unload();
-            _oButExit.unload();
+        _oButExit.unload();
     };
     
     this.show = function(){
@@ -51,10 +44,6 @@ function CGameOver(){
     
     this.hide = function(){
         _oContainer.visible = false;
-    };
-    
-    this._onRecharge = function(){
-        $(s_oMain).trigger("recharge");
     };
     
     this._onExit = function(){

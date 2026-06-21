@@ -659,7 +659,7 @@ function CGame(oData){
         }
         
         
-        _oInterface.setMoney(_oMySeat.getCredit());
+        this._refreshWalletUI();
         if(Object.keys(_aBetHistory).length > 0){
             if(!_bPointBettingOpen && _bIAmShooter){
                 this._updateRollButtonState(_bIsMyTurn);
@@ -1189,14 +1189,27 @@ function CGame(oData){
     */
 
     
+    this._refreshWalletUI = function(){
+        _oInterface.setMoney(_oMySeat.getCredit());
+        _oInterface.setCurBet(_oMySeat.getCurBet());
+        TOTAL_MONEY = _oMySeat.getTotalWealth();
+    };
+
+    /** Credita prêmio de parada (valor total de volta — aposta já foi debitada) */
+    this._creditParadaWin = function(iTotalPayout){
+        if(iTotalPayout <= 0) return;
+        _oMySeat.showWin(iTotalPayout);
+        this._refreshWalletUI();
+        $(s_oMain).trigger("save_score", [_oMySeat.getTotalWealth()]);
+    };
+
     /** Acrescenta ganho à aposta já na mesa (fichas ficam até passar o dado ou perder) */
     this._addWinningsToTable = function(iWinAmount){
         if(iWinAmount <= 0) return false;
         _oMySeat.showWin(iWinAmount);
-        _oInterface.setMoney(_oMySeat.getCredit());
         var bPlaced = _oMySeat.placeBetAmountOnButton(iWinAmount, "main_bet");
+        this._refreshWalletUI();
         if(bPlaced){
-            _oInterface.setCurBet(_oMySeat.getCurBet());
             var isMultiplayer = window.GameClientSocketIO &&
                                window.GameClientSocketIO.isConnected &&
                                window.GameClientSocketIO.isAuthenticated;
@@ -1204,6 +1217,7 @@ function CGame(oData){
                 window.GameClientSocketIO.placeBet('main_bet', iWinAmount);
             }
         }
+        $(s_oMain).trigger("save_score", [_oMySeat.getTotalWealth()]);
         return bPlaced;
     };
 
@@ -1372,18 +1386,14 @@ function CGame(oData){
                 
                 // PROCESSAR APOSTAS NO 7 — sempre 2x
                 if(_iSevenParadas > 0){
-                    var iSevenProfit = this._getParadasTotalProfitForSeven(_iSevenParadas);
                     var iSevenWin = this._getParadasTotalPayoutForSeven(_iSevenParadas);
-                    _oMySeat.showWin(iSevenProfit);
-                    _oInterface.setMoney(_oMySeat.getCredit());
-                    new CScoreText("SAIU 7! " + _iSevenParadas + " PARADA(S)!\nGANHOU " + iSevenWin + TEXT_CURRENCY + " (100x200)", CANVAS_WIDTH/2, CANVAS_HEIGHT/2 - 50);
+                    this._creditParadaWin(iSevenWin);
+                    new CScoreText("SAIU 7! " + _iSevenParadas + " PARADA(S)!\nRECEBEU " + iSevenWin + TEXT_CURRENCY + " (100x200)", CANVAS_WIDTH/2, CANVAS_HEIGHT/2 - 50);
                     playSound("win", 0.5, false);
                 } else if(_aSevenBets['seven'] && _aSevenBets['seven'] > 0){
-                    var iSevenStake = _aSevenBets['seven'];
-                    var iSevenWin = this._getSevenPayout(iSevenStake);
-                    _oMySeat.showWin(iSevenWin - iSevenStake);
-                    _oInterface.setMoney(_oMySeat.getCredit());
-                    new CScoreText("SAIU 7! GANHOU " + iSevenWin + TEXT_CURRENCY + " (100x200)", CANVAS_WIDTH/2, CANVAS_HEIGHT/2 - 50);
+                    var iSevenWin = this._getSevenPayout(_aSevenBets['seven']);
+                    this._creditParadaWin(iSevenWin);
+                    new CScoreText("SAIU 7! RECEBEU " + iSevenWin + TEXT_CURRENCY + " (100x200)", CANVAS_WIDTH/2, CANVAS_HEIGHT/2 - 50);
                     playSound("win", 0.5, false);
                 } else if(iTotalActiveBets > 0) {
                     new CScoreText("7 - SHOOTER PERDEU!", CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
@@ -1471,12 +1481,10 @@ function CGame(oData){
                 if(_aParadas[_iNumberPoint] && _aParadas[_iNumberPoint] > 0){
                     var iNumParadas = _aParadas[_iNumberPoint];
                     var iTotalGanho = this._getParadasTotalPayoutForPoint(iNumParadas, _iNumberPoint);
-                    var iTotalProfit = this._getParadasTotalProfitForPoint(iNumParadas, _iNumberPoint);
                     
-                    _oMySeat.showWin(iTotalProfit);
-                    _oInterface.setMoney(_oMySeat.getCredit());
+                    this._creditParadaWin(iTotalGanho);
                     
-                    new CScoreText("PONTO " + _iNumberPoint + "! " + iNumParadas + " PARADA(S)!\nGANHOU " + iTotalGanho + TEXT_CURRENCY + " (" + this._getPointPayoutLabel(_iNumberPoint) + ")", CANVAS_WIDTH/2, CANVAS_HEIGHT/2 - 50);
+                    new CScoreText("PONTO " + _iNumberPoint + "! " + iNumParadas + " PARADA(S)!\nRECEBEU " + iTotalGanho + TEXT_CURRENCY + " (" + this._getPointPayoutLabel(_iNumberPoint) + ")", CANVAS_WIDTH/2, CANVAS_HEIGHT/2 - 50);
                     playSound("win", 0.5, false);
                 } else if(iTotalActiveBets > 0) {
                     new CScoreText(bAutoPlaced ? "PONTO " + _iNumberPoint + "! FICHAS NA MESA – CLIQUE EM APOSTAR!" : "PONTO " + _iNumberPoint + "! APOSTE " + (iTotalActiveBets + iAutoWin) + TEXT_CURRENCY + " EM 'APOSTE AQUI' PARA ROLAR!", CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
@@ -1556,12 +1564,10 @@ function CGame(oData){
     };
     
     this.onRecharge = function(iMoney) {
-        _oMySeat.recharge(iMoney);
-        _oInterface.setMoney(_oMySeat.getCredit());
-
-        this._setState(STATE_GAME_WAITING_FOR_BET);
-        
-        _oGameOverPanel.hide();
+        // Recarga desativada — saldo só via painel admin
+        if(_oMsgBox){
+            _oMsgBox.show("SALDO INSUFICIENTE.\nSOLICITE CRÉDITO AO ADMINISTRADOR.");
+        }
     };
 
     /** Atualiza carteira total (painel admin / servidor) — credit = total − fichas na mesa */
@@ -1574,8 +1580,14 @@ function CGame(oData){
         var newCredit = roundDecimal(Math.max(0, total - curBet), 1);
 
         _oMySeat.recharge(newCredit);
-        _oInterface.setMoney(_oMySeat.getCredit());
-        TOTAL_MONEY = total;
+        this._refreshWalletUI();
+
+        if(_oGameOverPanel && newCredit >= s_oGameSettings.getFicheValues(0)){
+            _oGameOverPanel.hide();
+            if(_iState === -1){
+                this._setState(STATE_GAME_WAITING_FOR_BET);
+            }
+        }
 
         if (window.customAuth && window.customAuth.getCurrentUser && window.customAuth.updateCurrentUser) {
             var user = window.customAuth.getCurrentUser();
@@ -1929,9 +1941,7 @@ function CGame(oData){
             }
         }
         
-        var iCurrentCredit = _oMySeat.getCredit();
-        _oInterface.setMoney(iCurrentCredit);
-        _oInterface.setCurBet(_oMySeat.getCurBet());
+        this._refreshWalletUI();
         
         if(_oDiceHistory && _oDiceHistory.updateBets){
             var ptBet = (_iNumberPoint > 0 && _aPointBets[_iNumberPoint]) ? _aPointBets[_iNumberPoint] : 0;
@@ -2052,16 +2062,17 @@ function CGame(oData){
         }
         
         _oInterface.setMoney(_oMySeat.getCredit());
+        _oInterface.setCurBet(_oMySeat.getCurBet());
+        TOTAL_MONEY = _oMySeat.getTotalWealth();
         
-        // Calcular ganho potencial
+        // Calcular ganho potencial (valor total de volta)
         var iGanhoPotencial = this._getPayoutForBetAmount(iParadaValue, this._getPointPayoutPer100(_iNumberPoint));
-        var iLucroPotencial = iGanhoPotencial - iParadaValue;
         
         if(_oInterface && _oInterface.updatePointButtonText){
             _oInterface.updatePointButtonText(_iNumberPoint, iParadaNumber);
         }
         
-        new CScoreText("PARADA " + iParadaNumber + " NO PONTO " + _iNumberPoint + "\n" + this._getPointPayoutLabel(_iNumberPoint) + " (lucro " + iLucroPotencial + TEXT_CURRENCY + ")", CANVAS_WIDTH/2, CANVAS_HEIGHT/2 + 30);
+        new CScoreText("PARADA " + iParadaNumber + " NO PONTO " + _iNumberPoint + "\n" + this._getPointPayoutLabel(_iNumberPoint) + " → " + iGanhoPotencial + TEXT_CURRENCY, CANVAS_WIDTH/2, CANVAS_HEIGHT/2 + 30);
         playSound("chip", 1, false);
         
         console.log("✅ Parada " + iParadaNumber + " no ponto " + _iNumberPoint + " registrada:", iParadaValue, "Total no ponto:", _aPointBets[_iNumberPoint]);
@@ -2117,14 +2128,15 @@ function CGame(oData){
         }
         
         _oInterface.setMoney(_oMySeat.getCredit());
+        _oInterface.setCurBet(_oMySeat.getCurBet());
+        TOTAL_MONEY = _oMySeat.getTotalWealth();
         
         var iGanhoPotencial = this._getSevenPayout(iParadaValue);
-        var iLucroPotencial = iGanhoPotencial - iParadaValue;
         if(_oInterface && _oInterface.updateSevenButtonText){
             _oInterface.updateSevenButtonText(iParadaNumber);
         }
         
-        new CScoreText("PARADA " + iParadaNumber + " NO 7\n100x200 (lucro " + iLucroPotencial + TEXT_CURRENCY + ")", CANVAS_WIDTH/2, CANVAS_HEIGHT/2 + 30);
+        new CScoreText("PARADA " + iParadaNumber + " NO 7\n100x200 → " + iGanhoPotencial + TEXT_CURRENCY, CANVAS_WIDTH/2, CANVAS_HEIGHT/2 + 30);
         playSound("chip", 1, false);
         
         console.log("✅ Parada " + iParadaNumber + " no 7 registrada:", iParadaValue, "Total no 7:", _aSevenBets['seven']);
