@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Test Dice Game Fixes</title>
+    <title>Teste das Correções do Jogo de Dados</title>
     <script>
         // Mock global objects for testing
         window.s_oStage = { addChild: function() {}, removeAllChildren: function() {} };
@@ -106,7 +106,7 @@
     </script>
 </head>
 <body>
-    <h1>Dice Game Fix Test</h1>
+    <h1>Teste das Correções do Jogo de Dados</h1>
     <div id="results"></div>
     
     <!-- Load the fixed JavaScript files -->
@@ -120,9 +120,9 @@
             var success = testFixes();
             
             if (success) {
-                results.innerHTML = '<p style="color: green;">✓ All fixes verified successfully!</p>';
+                results.innerHTML = '<p style="color: green;">✓ Todas as correções foram verificadas com sucesso!</p>';
             } else {
-                results.innerHTML = '<p style="color: red;">✗ Some tests failed. Check console for details.</p>';
+                results.innerHTML = '<p style="color: red;">✗ Alguns testes falharam. Verifique o console para detalhes.</p>';
             }
         };
     </script>
