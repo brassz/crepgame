@@ -10,6 +10,7 @@
     var selectedPlayer = null;
     var adjustOperation = 'add';
     var selectedIds = new Set();
+    var adminSocket = null;
 
     var els = {};
 
@@ -39,6 +40,51 @@
             });
         } catch (e) {
             console.warn('Falha ao desconectar jogadores online:', e.message);
+        }
+    }
+
+    function updatePlayerLiveBalance(data) {
+        if (!data || !data.userId) return;
+        var changed = false;
+        for (var i = 0; i < players.length; i++) {
+            if (String(players[i].id) === String(data.userId)) {
+                if (data.totalWealth != null) {
+                    players[i].balance = data.totalWealth;
+                    changed = true;
+                }
+                break;
+            }
+        }
+        if (changed) {
+            renderPlayers();
+            updateSummary();
+            if (selectedPlayer && String(selectedPlayer.id) === String(data.userId)) {
+                $('adjustCurrentBalance').textContent = formatMoney(data.totalWealth);
+            }
+        }
+    }
+
+    function connectAdminSocket() {
+        if (!adminUser || !adminUser.id || typeof io === 'undefined') return;
+        if (adminSocket && adminSocket.connected) return;
+
+        adminSocket = io();
+        adminSocket.on('connect', function () {
+            adminSocket.emit('admin_panel_join', { adminId: adminUser.id });
+            console.log('Painel admin: socket conectado');
+        });
+        adminSocket.on('player_wealth_update', function (data) {
+            updatePlayerLiveBalance(data);
+        });
+        adminSocket.on('disconnect', function () {
+            console.log('Painel admin: socket desconectado');
+        });
+    }
+
+    function disconnectAdminSocket() {
+        if (adminSocket) {
+            adminSocket.disconnect();
+            adminSocket = null;
         }
     }
 
@@ -107,6 +153,7 @@
         $('panelScreen').style.display = 'block';
         $('adminName').textContent = adminUser.full_name || adminUser.email;
         loadPlayers();
+        connectAdminSocket();
     }
 
     async function handleLogin(e) {
@@ -150,6 +197,7 @@
     }
 
     function logout() {
+        disconnectAdminSocket();
         localStorage.removeItem('admin_user');
         adminUser = null;
         players = [];

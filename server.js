@@ -885,7 +885,14 @@ io.on('connection', (socket) => {
         username: user.username,
         betType,
         amount: newBetAmount,
-        remainingCredit: player.credit
+        remainingCredit: player.credit,
+        totalBet: player.currentBet
+      });
+
+      io.to(`room_${roomId}`).emit('players_updated', {
+        players: Array.from(gameState.players.values()),
+        currentShooter: gameState.currentShooter,
+        point: gameState.point
       });
       
       // Send confirmation to player
@@ -1253,6 +1260,53 @@ io.on('connection', (socket) => {
   });
   
   // Handle disconnection
+  // Painel admin: receber saldo em tempo real dos jogadores na mesa
+  socket.on('admin_panel_join', async (data) => {
+    try {
+      const adminId = data && data.adminId;
+      if (!adminId || !(await verifyAdminId(adminId))) {
+        socket.emit('error', { message: 'Admin não autorizado' });
+        return;
+      }
+      socket.join('admin_panel');
+      console.log(`📊 Painel admin conectado: ${adminId}`);
+    } catch (err) {
+      console.error('Erro admin_panel_join:', err);
+    }
+  });
+
+  socket.on('report_player_wealth', (data) => {
+    try {
+      const user = connectedUsers.get(socket.id);
+      if (!user || !data || String(data.userId) !== String(user.userId)) return;
+
+      const totalWealth = Math.round(parseFloat(data.totalWealth) * 100) / 100;
+      const credit = Math.round(parseFloat(data.credit) * 100) / 100;
+      const currentBet = Math.round(parseFloat(data.currentBet) * 100) / 100;
+
+      const gameState = user.roomId ? gameRooms.get(user.roomId) : null;
+      if (gameState) {
+        const player = gameState.players.get(user.userId);
+        if (player) {
+          player.credit = Math.max(0, credit);
+          player.currentBet = Math.max(0, currentBet);
+        }
+      }
+
+      io.to('admin_panel').emit('player_wealth_update', {
+        userId: data.userId,
+        username: user.username,
+        totalWealth: isNaN(totalWealth) ? 0 : totalWealth,
+        credit: isNaN(credit) ? 0 : credit,
+        currentBet: isNaN(currentBet) ? 0 : currentBet,
+        bets: data.bets || null,
+        roomId: user.roomId || null
+      });
+    } catch (err) {
+      console.error('Erro report_player_wealth:', err);
+    }
+  });
+
   socket.on('disconnect', (reason) => {
     console.log(`Socket desconectado: ${socket.id} (${reason})`);
     

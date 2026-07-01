@@ -1191,9 +1191,104 @@ function CGame(oData){
 
     
     this._refreshWalletUI = function(){
+        _oMySeat.syncCurBetWithMainBet();
         _oInterface.setMoney(_oMySeat.getCredit());
         _oInterface.setCurBet(_oMySeat.getCurBet());
         TOTAL_MONEY = _oMySeat.getTotalWealth();
+        this._refreshMesaBetsPanel();
+        this._scheduleBalanceSync();
+    };
+
+    /** Apostas locais para painéis (lista de jogadores + Apostas da Mesa) */
+    this.getLocalPlayerBetsForPanel = function(){
+        var iMain = this._getMainBetAmount();
+        return {
+            currentBet: iMain > 0 ? iMain : _oMySeat.getCurBet(),
+            pointBet: (_iNumberPoint > 0 && _aPointBets[_iNumberPoint]) ? _aPointBets[_iNumberPoint] : 0,
+            pointBetNumber: _iNumberPoint > 0 ? _iNumberPoint : null,
+            sevenBet: _aSevenBets['seven'] || 0
+        };
+    };
+
+    /** Atualiza painel "Apostas da Mesa" e lista lateral em tempo real */
+    this._refreshMesaBetsPanel = function(){
+        var localBets = this.getLocalPlayerBetsForPanel();
+        var me = window.customAuth && window.customAuth.getCurrentUser ? window.customAuth.getCurrentUser() : null;
+        var myId = me ? me.id : "local";
+        var myName = me ? (me.username || me.full_name || "Você") : "Você";
+        var isMultiplayer = window.GameClientSocketIO &&
+            window.GameClientSocketIO.isConnected &&
+            window.GameClientSocketIO.isAuthenticated;
+        var gs = isMultiplayer && window.GameClientSocketIO.gameState ? window.GameClientSocketIO.gameState : null;
+        var currentShooter = gs && gs.currentShooter != null ? gs.currentShooter : (_bIAmShooter ? myId : null);
+        var pointValue = gs && gs.point != null ? gs.point : (_iNumberPoint > 0 ? _iNumberPoint : null);
+        var playersList = [];
+
+        if(isMultiplayer && gs && Array.isArray(gs.players) && gs.players.length > 0){
+            for(var i = 0; i < gs.players.length; i++){
+                var p = gs.players[i];
+                var isMe = String(p.userId) === String(myId);
+                playersList.push({
+                    username: p.username || ("Jogador " + (i + 1)),
+                    userId: p.userId,
+                    currentBet: isMe ? localBets.currentBet : (p.currentBet || 0),
+                    pointBet: isMe ? localBets.pointBet : 0,
+                    pointBetNumber: pointValue,
+                    sevenBet: isMe ? localBets.sevenBet : 0
+                });
+            }
+        } else {
+            playersList.push({
+                username: myName,
+                userId: myId,
+                currentBet: localBets.currentBet,
+                pointBet: localBets.pointBet,
+                pointBetNumber: localBets.pointBetNumber,
+                sevenBet: localBets.sevenBet
+            });
+        }
+
+        if(_oInterface && _oInterface.updatePlayersList){
+            _oInterface.updatePlayersList(playersList, currentShooter, { point: pointValue });
+        }
+    };
+
+    var _balanceSyncTimer = null;
+    this._scheduleBalanceSync = function(){
+        if(_balanceSyncTimer) clearTimeout(_balanceSyncTimer);
+        var self = this;
+        _balanceSyncTimer = setTimeout(function(){
+            _balanceSyncTimer = null;
+            self._pushBalanceToServer();
+        }, 400);
+    };
+
+    /** Envia saldo total (livre + mesa) ao servidor / painel admin */
+    this._pushBalanceToServer = function(){
+        var total = _oMySeat.getTotalWealth();
+        $(s_oMain).trigger("save_score", [total]);
+
+        if(window.customAuth && window.customAuth.getCurrentUser && window.customAuth.updateCurrentUser){
+            var user = window.customAuth.getCurrentUser();
+            if(user){
+                user.balance = total;
+                window.customAuth.updateCurrentUser(user);
+            }
+        }
+
+        var gc = window.GameClientSocketIO;
+        if(gc && gc.isConnected && gc.isAuthenticated && gc.socket && gc.socket.connected){
+            var me = window.customAuth && window.customAuth.getCurrentUser ? window.customAuth.getCurrentUser() : null;
+            if(me && me.id){
+                gc.socket.emit('report_player_wealth', {
+                    userId: me.id,
+                    totalWealth: total,
+                    credit: _oMySeat.getCredit(),
+                    currentBet: _oMySeat.getCurBet(),
+                    bets: this.getLocalPlayerBetsForPanel()
+                });
+            }
+        }
     };
 
     /** Credita prêmio de parada (valor total de volta — aposta já foi debitada) */
@@ -1201,7 +1296,6 @@ function CGame(oData){
         if(iTotalPayout <= 0) return;
         _oMySeat.showWin(iTotalPayout);
         this._refreshWalletUI();
-        $(s_oMain).trigger("save_score", [_oMySeat.getTotalWealth()]);
     };
 
     this._getMainBetAmount = function(){
@@ -1225,8 +1319,8 @@ function CGame(oData){
         }
     };
 
-    /** Paga aposta principal — bCreditProfitToWallet: lucro fica no saldo (ex.: quando também ganhou parada) */
-    this._payMainBetWin = function(iMultiplier, bCreditProfitToWallet){
+    /** Paga aposta principal — lucro vai para fichas em APOSTE AQUI (100x200) */
+    this._payMainBetWin = function(iMultiplier){
         var iMainBet = this._getMainBetAmount();
         if(iMainBet <= 0){
             return { paid: false, mainBet: 0, profit: 0, totalOnTable: 0, totalPayout: 0, placed: false };
@@ -1237,18 +1331,9 @@ function CGame(oData){
         _oMySeat.syncCurBetWithMainBet();
         var iProfit = roundDecimal(iMainBet * (iMultiplier - 1), 1);
         var iTotalOnTable = roundDecimal(iMainBet + iProfit, 1);
-        var iTotalPayout = iTotalOnTable;
-        var bPlaced = false;
+        var bPlaced = this._addWinningsToTable(iProfit);
 
-        if(bCreditProfitToWallet){
-            _oMySeat.showWin(iProfit);
-            bPlaced = _oMySeat.addWinChipsToMainBetNoDebit(iProfit);
-            this._refreshWalletUI();
-        } else {
-            bPlaced = this._addWinningsToTable(iProfit);
-        }
-
-        return { paid: true, mainBet: iMainBet, profit: iProfit, totalOnTable: iTotalOnTable, totalPayout: iTotalPayout, placed: bPlaced };
+        return { paid: true, mainBet: iMainBet, profit: iProfit, totalOnTable: iTotalOnTable, totalPayout: iTotalOnTable, placed: bPlaced };
     };
 
     /** Acrescenta ganho à aposta já na mesa (fichas ficam até passar o dado ou perder) */
@@ -1544,7 +1629,7 @@ function CGame(oData){
             } else if(iSumDices === _iNumberPoint){
                 // ACERTOU O PONTO: mesa + paradas pagam separadamente
                 var bHasParadaWin = _aParadas[_iNumberPoint] && _aParadas[_iNumberPoint] > 0;
-                var oMainWin = this._payMainBetWin(_iSevenPayoutPer100 / _iParadaBaseValue, bHasParadaWin);
+                var oMainWin = this._payMainBetWin(_iSevenPayoutPer100 / _iParadaBaseValue);
                 var iParadaPayout = 0;
 
                 if(oMainWin.paid){
@@ -1574,12 +1659,12 @@ function CGame(oData){
                     iParadaPayout = this._getParadasTotalPayoutForPointStakes(aPointStakes, _iNumberPoint);
                     this._creditParadaWin(iParadaPayout);
 
-                    var iTotalRecebido = (oMainWin.paid ? oMainWin.profit : 0) + iParadaPayout;
+                    var iTotalRecebido = (oMainWin.paid ? oMainWin.totalOnTable : 0) + iParadaPayout;
                     new CScoreText(
                         "PONTO " + _iNumberPoint + "! " + iNumParadas + " PARADA(S)!\n" +
                         "MESA: " + (oMainWin.paid ? oMainWin.totalOnTable : 0) + TEXT_CURRENCY + " (100x200)\n" +
                         "PARADAS: APOSTADO " + iParadaBet + TEXT_CURRENCY + " → GANHOU " + iParadaProfit + TEXT_CURRENCY + " | RECEBEU " + iParadaPayout + TEXT_CURRENCY + " (" + this._getPointPayoutLabel(_iNumberPoint) + ")\n" +
-                        "TOTAL RECEBIDO: " + iTotalRecebido + TEXT_CURRENCY,
+                        "TOTAL: " + iTotalRecebido + TEXT_CURRENCY + " (mesa + paradas no saldo)",
                         CANVAS_WIDTH/2, CANVAS_HEIGHT/2 - 50
                     );
                     playSound("win", 0.5, false);
@@ -1786,11 +1871,9 @@ function CGame(oData){
     this._onSitDown = function(){
         this._setState(STATE_GAME_WAITING_FOR_BET);
         _oMySeat.setInfo(TOTAL_MONEY, _oTableController.getContainer());
-        _oInterface.setMoney(TOTAL_MONEY);
-        _oInterface.setCurBet(0);
+        this._refreshWalletUI();
         
         // Inicializar saldo travado (usa a caixa de aposta atual)
-        _oInterface.setCurBet(0);
         
         // Inicialmente desabilitar botão de passar (até confirmar que é seu turno)
         _oInterface.enablePassDice(false);
@@ -2047,15 +2130,6 @@ function CGame(oData){
         this._syncMainTableBet();
         this._refreshWalletUI();
         
-        if(_oDiceHistory && _oDiceHistory.updateBets){
-            var ptBet = (_iNumberPoint > 0 && _aPointBets[_iNumberPoint]) ? _aPointBets[_iNumberPoint] : 0;
-            _oDiceHistory.updateBets([{
-                username: "Você", userId: "local", currentBet: _oMySeat.getCurBet(),
-                pointBet: ptBet, pointBetNumber: _iNumberPoint > 0 ? _iNumberPoint : undefined,
-                sevenBet: _aSevenBets['seven'] || 0
-            }], "local");
-        }
-        
         // Atualizar botão: APOSTAR (quando shooter tem aposta mas ainda não clicou) ou LANÇAR
         var isShooterOrSingle = !isMultiplayer || _bIAmShooter;
         if(isShooterOrSingle && _iState === STATE_GAME_WAITING_FOR_BET && _oMySeat.getCurBet() > 0){
@@ -2166,10 +2240,7 @@ function CGame(oData){
         _aParadasStakes[_iNumberPoint].push(iParadaValue);
         _aParadas[_iNumberPoint] = _aParadasStakes[_iNumberPoint].length;
         
-        _oMySeat.syncCurBetWithMainBet();
-        _oInterface.setMoney(_oMySeat.getCredit());
-        _oInterface.setCurBet(_oMySeat.getCurBet());
-        TOTAL_MONEY = _oMySeat.getTotalWealth();
+        this._refreshWalletUI();
         
         // Ganho acumulado das paradas neste ponto
         var aPointStakes = _aParadasStakes[_iNumberPoint];
@@ -2245,10 +2316,7 @@ function CGame(oData){
         _aSevenParadasStakes.push(iParadaValue);
         _iSevenParadas = _aSevenParadasStakes.length;
         
-        _oMySeat.syncCurBetWithMainBet();
-        _oInterface.setMoney(_oMySeat.getCredit());
-        _oInterface.setCurBet(_oMySeat.getCurBet());
-        TOTAL_MONEY = _oMySeat.getTotalWealth();
+        this._refreshWalletUI();
         
         var iTotalApostado = this._getParadasTotalBetFromStakes(_aSevenParadasStakes);
         var iGanhoTotal = this._getParadasTotalProfitForSevenStakes(_aSevenParadasStakes);
@@ -2360,19 +2428,10 @@ function CGame(oData){
         _bMustBetFullWin = false;
         _iLastWinAmount = 0;
         
-        _oInterface.setMoney(_oMySeat.getCredit());
-        _oInterface.setCurBet(_oMySeat.getCurBet());
         _oInterface.enableRoll(false);
         _oInterface.disableClearButton();
+        this._refreshWalletUI();
         
-        if(_oDiceHistory && _oDiceHistory.updateBets){
-            var ptBet = (_iNumberPoint > 0 && _aPointBets[_iNumberPoint]) ? _aPointBets[_iNumberPoint] : 0;
-            _oDiceHistory.updateBets([{
-                username: "Você", userId: "local", currentBet: _oMySeat.getCurBet(),
-                pointBet: ptBet, pointBetNumber: _iNumberPoint > 0 ? _iNumberPoint : undefined,
-                sevenBet: _aSevenBets['seven'] || 0
-            }], "local");
-        }
         if(_iState === STATE_GAME_WAITING_FOR_BET && (!window.GameClientSocketIO || !window.GameClientSocketIO.isConnected || _bIsMyTurn)){
             _oInterface.setRollButtonLabel(typeof TEXT_APOSTAR !== 'undefined' ? TEXT_APOSTAR : "APOSTAR");
         } else {

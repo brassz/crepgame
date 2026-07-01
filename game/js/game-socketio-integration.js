@@ -28,6 +28,10 @@
         console.log('🎮 Configurando integração Socket.IO com o jogo...');
 
         function refreshPlayersList() {
+            if (window.s_oGame && window.s_oGame._refreshMesaBetsPanel) {
+                window.s_oGame._refreshMesaBetsPanel();
+                return;
+            }
             if (!window.s_oInterface || !window.s_oInterface.updatePlayersList) return;
             const gs = gameClient.gameState || {};
             const players = Array.isArray(gs.players) ? gs.players : [];
@@ -810,9 +814,40 @@
         // Handle bet confirmed — manter saldo local (servidor não debita fichas)
         gameClient.onBetConfirmed((confirmation) => {
             console.log('✅ Aposta confirmada:', confirmation);
+            var me = window.customAuth && window.customAuth.getCurrentUser
+                ? window.customAuth.getCurrentUser() : null;
+            if (me && confirmation && gameClient.gameState && Array.isArray(gameClient.gameState.players)) {
+                for (var i = 0; i < gameClient.gameState.players.length; i++) {
+                    var p = gameClient.gameState.players[i];
+                    if (String(p.userId) === String(me.id)) {
+                        if (confirmation.totalBet != null) {
+                            p.currentBet = confirmation.totalBet;
+                        }
+                        break;
+                    }
+                }
+            }
             if (window.s_oGame && window.s_oGame._refreshWalletUI) {
                 window.s_oGame._refreshWalletUI();
             }
+        });
+
+        gameClient.onBetPlaced((betData) => {
+            console.log('💰 Aposta na sala:', betData);
+            if (betData && betData.userId && gameClient.gameState && Array.isArray(gameClient.gameState.players)) {
+                for (var i = 0; i < gameClient.gameState.players.length; i++) {
+                    var p = gameClient.gameState.players[i];
+                    if (String(p.userId) === String(betData.userId)) {
+                        if (betData.totalBet != null) {
+                            p.currentBet = betData.totalBet;
+                        } else if (betData.amount != null) {
+                            p.currentBet = betData.amount;
+                        }
+                        break;
+                    }
+                }
+            }
+            refreshPlayersList();
         });
 
         // Saldo atualizado pelo painel admin
@@ -851,11 +886,8 @@
                 }
             }
 
-            if (window.s_oGame._oInterface && window.s_oGame._oMySeat && window.s_oGame._oMySeat.getCredit) {
-                window.s_oGame._oInterface.setMoney(window.s_oGame._oMySeat.getCredit());
-            }
-            if (window.s_oGame._oInterface && window.s_oGame._oMySeat && window.s_oGame._oMySeat.getCurBet) {
-                window.s_oGame._oInterface.setCurBet(window.s_oGame._oMySeat.getCurBet());
+            if (window.s_oGame._oInterface && window.s_oGame._oMySeat && window.s_oGame._refreshWalletUI) {
+                window.s_oGame._refreshWalletUI();
             }
 
             // Após passar/limpar, deixar o controle do botão de lançar para onTurnChange

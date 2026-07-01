@@ -1045,20 +1045,26 @@ function CInterface(){
         var maxWidth = 270; // Largura disponível (280px - 10px de margem)
         var maxHeight = 65; // Altura disponível (95px - 25px do título - 5px de margem)
         
-        // Obter informações de apostas do servidor/estado do jogo
-        var gameBets = {};
-        if(window.s_oGame && window.s_oGame._aPointBets){
-            gameBets = window.s_oGame._aPointBets;
-        }
+        // Obter apostas locais do jogador atual (paradas + mesa)
+        var myUser = window.customAuth && window.customAuth.getCurrentUser ? window.customAuth.getCurrentUser() : null;
+        var localBets = window.s_oGame && window.s_oGame.getLocalPlayerBetsForPanel
+            ? window.s_oGame.getLocalPlayerBetsForPanel() : null;
         
         for(var i = 0; i < players.length; i++){
             var player = players[i];
             var isShooter = currentShooter != null && String(player.userId) === String(currentShooter);
+            var isMe = myUser && String(player.userId) === String(myUser.id);
             var playerBet = player.currentBet || 0;
-            
-            // Verificar se apostou no ponto
-            var pointBet = gameBets[player.userId] || 0;
-            var sevenBet = (window.s_oGame && window.s_oGame._aSevenBets && window.s_oGame._aSevenBets[player.userId]) || 0;
+            var pointBet = player.pointBet || 0;
+            var sevenBet = player.sevenBet || 0;
+            var rowPoint = player.pointBetNumber != null ? player.pointBetNumber : pointValue;
+
+            if(isMe && localBets){
+                if(localBets.currentBet > 0) playerBet = localBets.currentBet;
+                pointBet = localBets.pointBet;
+                sevenBet = localBets.sevenBet;
+                if(localBets.pointBetNumber) rowPoint = localBets.pointBetNumber;
+            }
             
             // Montar texto do jogador
             var playerText = "• " + (player.username || "Jogador " + i);
@@ -1073,13 +1079,19 @@ function CInterface(){
                 playerText += " | Aposta: R$ " + playerBet.toFixed(2);
             }
             
-            if(pointBet > 0 && pointValue){
-                playerText += " | Ponto " + pointValue + ": R$ " + pointBet.toFixed(2);
+            if(pointBet > 0 && rowPoint){
+                playerText += " | Ponto " + rowPoint + ": R$ " + pointBet.toFixed(2);
             }
             
             if(sevenBet > 0){
                 playerText += " | 7: R$ " + sevenBet.toFixed(2);
             }
+            
+            // Guardar valores mesclados para o painel inferior
+            player._panelCurrentBet = playerBet;
+            player._panelPointBet = pointBet;
+            player._panelSevenBet = sevenBet;
+            player._panelPointNumber = rowPoint;
             
             // Cor diferente para o shooter
             var textColor = isShooter ? "#ffff00" : "#ffffff";
@@ -1103,34 +1115,17 @@ function CInterface(){
             yOffset += 16; // Espaçamento reduzido
         }
         
-        // Atualizar painel "Apostas da Mesa" com as apostas de todos
+        // Atualizar painel "Apostas da Mesa"
         var betsList = [];
         for(var j = 0; j < players.length; j++){
             var pl = players[j];
             betsList.push({
                 username: pl.username || ("Jogador " + (j + 1)),
                 userId: pl.userId,
-                currentBet: pl.currentBet || 0,
-                pointBet: (gameBets[pl.userId] || 0),
-                pointBetNumber: pointValue,
-                sevenBet: (window.s_oGame && window.s_oGame._aSevenBets && window.s_oGame._aSevenBets[pl.userId]) || 0
-            });
-        }
-        if(window.s_oGame && window.s_oGame._oDiceHistory && window.s_oGame._oDiceHistory.updateBets){
-            window.s_oGame._oDiceHistory.updateBets(betsList, currentShooter);
-        }
-        
-        // Atualizar painel "Apostas da Mesa" com as apostas de todos
-        var betsList = [];
-        for(var j = 0; j < players.length; j++){
-            var pl = players[j];
-            betsList.push({
-                username: pl.username || ("Jogador " + (j + 1)),
-                userId: pl.userId,
-                currentBet: pl.currentBet || 0,
-                pointBet: (gameBets[pl.userId] || 0),
-                pointBetNumber: pointValue,
-                sevenBet: (window.s_oGame && window.s_oGame._aSevenBets && window.s_oGame._aSevenBets[pl.userId]) || 0
+                currentBet: pl._panelCurrentBet != null ? pl._panelCurrentBet : (pl.currentBet || 0),
+                pointBet: pl._panelPointBet != null ? pl._panelPointBet : (pl.pointBet || 0),
+                pointBetNumber: pl._panelPointNumber != null ? pl._panelPointNumber : pointValue,
+                sevenBet: pl._panelSevenBet != null ? pl._panelSevenBet : (pl.sevenBet || 0)
             });
         }
         if(window.s_oGame && window.s_oGame._oDiceHistory && window.s_oGame._oDiceHistory.updateBets){
