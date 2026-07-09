@@ -594,8 +594,15 @@
             const roundEnded = result.type === 'natural_win' || result.type === 'craps' ||
                 result.type === 'seven_out' || result.type === 'point_made';
 
-            if (window.s_oGame && roundEnded && window.s_oGame.afterRoundEnds) {
-                window.s_oGame.afterRoundEnds();
+            if (window.s_oGame && roundEnded) {
+                if (window.s_oGame.afterRoundEnds) {
+                    window.s_oGame.afterRoundEnds();
+                } else if (window.s_oGame._closePointBettingPeriod) {
+                    window.s_oGame._closePointBettingPeriod();
+                }
+                if (window.s_oInterface && window.s_oInterface.hidePointBettingButtons) {
+                    window.s_oInterface.hidePointBettingButtons(true);
+                }
             }
             
             // Show message to player

@@ -600,48 +600,16 @@ function CGame(oData){
                 //PASS LINE WINS - Rodada terminou, ponto acertado (em lançamento subsequente)
                 console.log("🎯 Ponto acertado em lançamento subsequente - rodada terminou");
                 _oPuck.switchOff();
-                
-                // FECHAR período de apostas do POINT (rodada terminou)
-                // Limpar timer se ainda existir (por segurança)
-                if(_iPointBettingTimer){
-                    clearTimeout(_iPointBettingTimer);
-                    _iPointBettingTimer = null;
-                }
-                if(_iVisibilityCheckInterval){
-                    clearInterval(_iVisibilityCheckInterval);
-                    _iVisibilityCheckInterval = null;
-                }
-                
-                // OCULTAR BOTÕES E REABILITAR BOTÃO "APOSTE AQUI"
-                // FORÇAR esconder porque a rodada terminou (ponto acertado)
-                _oInterface.hidePointBettingButtons(true);
+                this._closePointBettingPeriod();
                 _oTableController.enableMainBetButton();
-                
                 this._setState(STATE_GAME_WAITING_FOR_BET);
                 
             }else if(iSumDices === 7 && !_bPointBettingOpen && !bTimerStillActive){
                 //END TURN (SEVEN OUT) - Rodada terminou, 7 out (em lançamento subsequente)
-                // CRÍTICO: Só verificar 7 out se o período de apostas NÃO está aberto
-                // Se o período está aberto, significa que o ponto foi estabelecido recentemente
                 console.log("🎯 7 out em lançamento subsequente - rodada terminou");
                 _oPuck.switchOff();
-                
-                // FECHAR período de apostas do POINT (rodada terminou)
-                // Limpar timer se ainda existir (por segurança)
-                if(_iPointBettingTimer){
-                    clearTimeout(_iPointBettingTimer);
-                    _iPointBettingTimer = null;
-                }
-                if(_iVisibilityCheckInterval){
-                    clearInterval(_iVisibilityCheckInterval);
-                    _iVisibilityCheckInterval = null;
-                }
-                
-                // OCULTAR BOTÕES E REABILITAR BOTÃO "APOSTE AQUI"
-                // FORÇAR esconder porque a rodada terminou (7 out)
-                _oInterface.hidePointBettingButtons(true);
+                this._closePointBettingPeriod();
                 _oTableController.enableMainBetButton();
-                
                 this._setState(STATE_GAME_WAITING_FOR_BET);
             } else {
                 // QUALQUER OUTRO NÚMERO: Continua a rodada
@@ -680,29 +648,18 @@ function CGame(oData){
         // CRÍTICO: NÃO esconder o block se estiver no período de apostas no ponto
         // O block pode interferir com os botões de aposta, mas não devemos fechá-lo
         // se o período de apostas ainda estiver aberto para outros jogadores
-        if(_bPointBettingOpen){
+        if(_bPointBettingOpen && _iNumberPoint > 0){
             // Período de apostas no ponto: usar só os botões do modal
-            if(_oInterface && _iNumberPoint > 0){
+            if(_oInterface){
                 _oInterface.showPointBettingButtons(_iNumberPoint, _bIAmShooter);
                 if(_oInterface.ensurePointBettingButtonsVisible){
                     _oInterface.ensurePointBettingButtonsVisible();
                 }
             }
         } else {
-            // Período de apostas fechado OU é o shooter - esconder block normalmente
-            // CRÍTICO: NÃO fechar o modal aqui em dicesAnimEnded!
-            // O modal só deve ser fechado pelo timer de 8 segundos ou quando a rodada terminar
-            // Se fecharmos aqui, pode fechar antes do timer expirar
-            // Deixar o timer gerenciar o fechamento do modal
-            if(_bPointBettingOpen === undefined){
-                // Se ainda não foi inicializado, não fazer nada com o modal
-                // (pode estar em uma transição de estado)
-                console.log("⚠️ _bPointBettingOpen é undefined - não fechando modal ainda");
-            } else if(_bPointBettingOpen === false){
-                // Período fechou - mas NÃO fechar modal aqui
-                // O timer já vai fechar quando necessário
-                // OU a rodada terminou e já foi fechado em outro lugar
-                console.log("ℹ️ Período de apostas fechou, mas não fechando modal aqui (deixar timer gerenciar)");
+            // Período fechado ou rodada acabou — SEMPRE esconder modal do 7/ponto
+            if(_oInterface && _oInterface.hidePointBettingButtons){
+                _oInterface.hidePointBettingButtons(true);
             }
             _oInterface.hideBlock();
         }
@@ -1103,16 +1060,8 @@ function CGame(oData){
             console.log("   _bPointBettingOpen ANTES de fechar:", _bPointBettingOpen);
             
             // FECHAR período de apostas
-            _bPointBettingOpen = false;
             clearInterval(countdownInterval);
-            if(_iVisibilityCheckInterval){
-                clearInterval(_iVisibilityCheckInterval);
-                _iVisibilityCheckInterval = null;
-            }
-            
-            if(_oInterface && _oInterface.hidePointBettingButtons){
-                _oInterface.hidePointBettingButtons(true);
-            }
+            s_oGame._closePointBettingPeriod();
             
             // CRÍTICO: Só limpar o timer se ainda for o timer ativo
             if(_iPointBettingTimer === timerId){
@@ -1375,6 +1324,46 @@ function CGame(oData){
         }
     };
 
+    /** Fecha período de paradas (ponto/7) e esconde o modal — chamar ao sair ponto ou 7 */
+    this._closePointBettingPeriod = function(){
+        _bPointBettingOpen = false;
+        _assignNumberStartTime = null;
+
+        if(_iPointBettingTimer){
+            clearTimeout(_iPointBettingTimer);
+            _iPointBettingTimer = null;
+        }
+        if(_iVisibilityCheckInterval){
+            clearInterval(_iVisibilityCheckInterval);
+            _iVisibilityCheckInterval = null;
+        }
+
+        // Esconder em todas as referências da interface
+        if(_oInterface && _oInterface.hidePointBettingButtons){
+            _oInterface.hidePointBettingButtons(true);
+        }
+        if(window.s_oInterface && window.s_oInterface !== _oInterface && window.s_oInterface.hidePointBettingButtons){
+            window.s_oInterface.hidePointBettingButtons(true);
+        }
+        if(_oInterface && _oInterface.hideMessage){
+            _oInterface.hideMessage();
+        }
+    };
+
+    /** Chamado quando a rodada termina (ponto feito / 7 out / craps) — multiplayer e local */
+    this.afterRoundEnds = function(){
+        _bPointBettingOpen = false;
+        _iNumberPoint = -1;
+        this._closePointBettingPeriod();
+        if(_oPuck && _oPuck.switchOff){
+            try { _oPuck.switchOff(); } catch(e) {}
+        }
+        if(_oTableController && _oTableController.enableMainBetButton){
+            _oTableController.enableMainBetButton();
+        }
+        this.syncBettingUI();
+    };
+
     this._getParadasStakesForPoint = function(iPoint){
         var p = parseInt(iPoint, 10);
         return _aParadasStakes[p] || _aParadasStakes[iPoint] || [];
@@ -1621,9 +1610,9 @@ function CGame(oData){
                 _bIAmShooter = false;
                 console.log("🔄 Rodada terminou (7) - _bIAmShooter = false");
                 
-                // OCULTAR BOTÕES E REABILITAR BOTÃO "APOSTE AQUI"
-                // FORÇAR esconder porque a rodada terminou (7 out)
-                _oInterface.hidePointBettingButtons(true);
+                // Fechar período de paradas + esconder modal do 7/ponto
+                this._closePointBettingPeriod();
+                this.afterRoundEnds();
                 _oTableController.enableMainBetButton();
                 this.lockRollUntilCoverage();
             } else if(iSumDices === _iNumberPoint){
@@ -1701,13 +1690,13 @@ function CGame(oData){
                 
                 // Ponto acertado: shooter continua com o dado; fichas na mesa até passar ou perder
                 _iNumberPoint = -1;
+                this._closePointBettingPeriod();
+                this.afterRoundEnds();
                 this._afterShooterWin();
                 
                 // Shooter MANTÉM o dado (não passa)
                 // _bIAmShooter permanece true
                 
-                // OCULTAR BOTÕES DE PARADAS
-                _oInterface.hidePointBettingButtons(true);
                 this.lockRollUntilCoverage();
             } else {
                 // QUALQUER OUTRO NÚMERO: CONTINUA JOGANDO
@@ -2560,6 +2549,20 @@ function CGame(oData){
     Object.defineProperty(this, '_iNumberPoint', {
         get: function() { return _iNumberPoint; },
         set: function(value) { _iNumberPoint = value; }
+    });
+
+    Object.defineProperty(this, '_bPointBettingOpen', {
+        get: function() { return _bPointBettingOpen; },
+        set: function(value) { _bPointBettingOpen = !!value; }
+    });
+
+    Object.defineProperty(this, '_iPointBettingTimer', {
+        get: function() { return _iPointBettingTimer; }
+    });
+
+    Object.defineProperty(this, '_bIAmShooter', {
+        get: function() { return _bIAmShooter; },
+        set: function(value) { _bIAmShooter = !!value; }
     });
     
     this._ensureShooterFlag = function(){
