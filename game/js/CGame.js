@@ -66,6 +66,7 @@ function CGame(oData){
     var _iParadaBaseValue = 100;
     var _iSevenPayoutPer100 = 200;  // Contra o lançador (7): sempre 100x200
     var _iMainTableBet = 0;         // Aposta principal rastreada (independente das paradas)
+    var _iCoverageBet = 0;          // Valor que o jogador cobriu contra o shooter (pré-rolagem)
     
     // CONTROLE DE QUEM É O SHOOTER (quem lançou os dados e estabeleceu o ponto)
     var _bIAmShooter = false;  // Flag: eu sou o shooter que lançou os dados?
@@ -829,6 +830,7 @@ function CGame(oData){
         this._endPreRollBettingPeriod();
         _bPreRollCoverageOpen = false;
         _bForceRollAfterCoverage = false;
+        _iCoverageBet = 0;
         if(_oInterface && _oInterface.setRollButtonLabel){
             _oInterface.setRollButtonLabel(typeof TEXT_APOSTAR !== 'undefined' ? TEXT_APOSTAR : "APOSTAR");
         }
@@ -840,8 +842,12 @@ function CGame(oData){
             window.GameClientSocketIO.isConnected &&
             window.GameClientSocketIO.isAuthenticated;
         if(!isMultiplayer) return true;
-        if(_iState === STATE_GAME_COME_POINT) return true;
-        return _bForceRollAfterCoverage === true;
+        // Com ponto aberto: aposta principal já foi coberta no come-out
+        if(_iState === STATE_GAME_COME_POINT && _iNumberPoint > 0 && !_bPreRollCoverageOpen){
+            return !_bPointBettingOpen;
+        }
+        // Come-out / nova aposta: SÓ após cobertura 100%
+        return _bForceRollAfterCoverage === true && !_bPreRollCoverageOpen;
     };
 
     /** Após ganhar/perder: exige nova cobertura; botão APOSTAR fica clicável */
@@ -1247,6 +1253,41 @@ function CGame(oData){
         this._refreshWalletUI();
     };
 
+    /** Paga cobertura do come-out: recebe o dobro do valor coberto (aposta + lucro 1:1) */
+    this._payCoverageWinDouble = function(){
+        var iCovered = roundDecimal(_iCoverageBet, 1);
+        if(iCovered <= 0){
+            // Fallback: se cobriu via fichas na mesa e não é shooter
+            if(!_bIAmShooter){
+                iCovered = this._getMainBetAmount();
+            }
+        }
+        if(iCovered <= 0) return { paid: false, covered: 0, received: 0 };
+
+        var iReceived = roundDecimal(iCovered * 2, 1);
+        // Remove fichas da cobertura da mesa (já debitadas) e credita o dobro no saldo
+        if(_oMySeat.clearAllBetsVisualOnly){
+            _oMySeat.clearAllBetsVisualOnly();
+        } else if(_oMySeat.clearAllBets){
+            _oMySeat.clearAllBets();
+        }
+        _iMainTableBet = 0;
+        _aBetHistory = {};
+        _oMySeat.showWin(iReceived);
+        _iCoverageBet = 0;
+        this._refreshWalletUI();
+        playSound("win", 0.5, false);
+        new CScoreText(
+            "SAIU 7! COBERTURA PAGOU O DOBRO!\nAPOSTADO " + iCovered + TEXT_CURRENCY + " → RECEBEU " + iReceived + TEXT_CURRENCY,
+            CANVAS_WIDTH/2, CANVAS_HEIGHT/2 - 50
+        );
+        return { paid: true, covered: iCovered, received: iReceived };
+    };
+
+    this._clearCoverageBet = function(){
+        _iCoverageBet = 0;
+    };
+
     this._getMainBetAmount = function(){
         var iMain = _oMySeat.getBetAmountInPos("main_bet");
         if(typeof iMain === "number" && iMain > 0){
@@ -1470,8 +1511,44 @@ function CGame(oData){
         // NOVA LÓGICA CONFORME ESPECIFICAÇÕES
         if(_iState === STATE_GAME_COME_OUT){
             // PRIMEIRO LANÇAMENTO
-            if(iSumDices === 7 || iSumDices === 11){
-                // 7-11: GANHA DOBRO - Total (aposta + ganho) deve ir para "APOSTE AQUI"
+            if(iSumDices === 7){
+                // SAIU 7 NO COME-OUT: quem cobriu a aposta ganha o dobro; lançador perde a mesa
+                if(_bIAmShooter){
+                    var iMainBet = this._getMainBetAmount();
+                    if(iMainBet > 0){
+                        _oMySeat.decreaseBet(iMainBet);
+                        playSound("lose", 0.2, false);
+                    }
+                    _oMySeat.clearAllBets();
+                    _iMainTableBet = 0;
+                    _aBetHistory = {};
+                    _iLockedBalance = 0;
+                    _bMustBetFullWin = false;
+                    _iLastWinAmount = 0;
+                    this._refreshWalletUI();
+                    new CScoreText("7 NO COME-OUT!\nLANÇADOR PERDEU A MESA", CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
+                    if(this.isMultiplayerActive()){
+                        _bIAmShooter = false;
+                        this._ensureShooterFlag();
+                    }
+                } else {
+                    // Quem cobriu: recebe o dobro do valor coberto
+                    var oCovWin = this._payCoverageWinDouble();
+                    if(!oCovWin.paid){
+                        // Sem cobertura registrada — limpar fichas se houver
+                        if(_oMySeat.getCurBet() > 0){
+                            _oMySeat.clearAllBets();
+                            _iMainTableBet = 0;
+                            _aBetHistory = {};
+                            this._refreshWalletUI();
+                        }
+                    }
+                }
+                this._clearCoverageBet();
+                this.lockRollUntilCoverage();
+                this.afterRoundEnds();
+            } else if(iSumDices === 11){
+                // 11: NATURAL — lançador ganha dobro na mesa
                 var oMainWin = this._payMainBetWin(_iSevenPayoutPer100 / _iParadaBaseValue);
                 if(oMainWin.paid){
                     var iTotalOnTable = oMainWin.totalOnTable;
@@ -1492,33 +1569,60 @@ function CGame(oData){
                     playSound("win", 0.2, false);
                     this._afterShooterWin();
                 }
+                // Quem cobriu perde a cobertura no 11
+                if(!_bIAmShooter && (_iCoverageBet > 0 || this._getMainBetAmount() > 0)){
+                    if(_oMySeat.clearAllBetsVisualOnly){
+                        _oMySeat.clearAllBetsVisualOnly();
+                    } else {
+                        _oMySeat.clearAllBets();
+                    }
+                    _iMainTableBet = 0;
+                    _aBetHistory = {};
+                    this._refreshWalletUI();
+                    new CScoreText("NATURAL 11! COBERTURA PERDEU", CANVAS_WIDTH/2, CANVAS_HEIGHT/2 + 40);
+                }
+                this._clearCoverageBet();
                 this.afterRoundEnds();
             } else if(iSumDices === 2 || iSumDices === 3 || iSumDices === 12){
-                // 2-3-12: PERDE TUDO
-                var iMainBet = this._getMainBetAmount();
-                if(iMainBet > 0){
-                    _oMySeat.decreaseBet(iMainBet);
-                    playSound("lose", 0.2, false);
-                    new CScoreText("PERDEU TUDO!", CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
+                // 2-3-12 CRAPS: perde a aposta, mas MANTÉM os dados e pode jogar de novo
+                if(_bIAmShooter){
+                    var iMainBet = this._getMainBetAmount();
+                    if(iMainBet > 0){
+                        _oMySeat.decreaseBet(iMainBet);
+                        playSound("lose", 0.2, false);
+                    }
+                    _oMySeat.clearAllBets();
+                    _iMainTableBet = 0;
+                    _aBetHistory = {};
+                    _iLockedBalance = 0;
+                    _bMustBetFullWin = false;
+                    _iLastWinAmount = 0;
+                    this._refreshWalletUI();
+                    new CScoreText("CRAPS " + iSumDices + "!\nPERDEU A APOSTA — MANTÉM OS DADOS\nAPOSTE DE NOVO!", CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
+                } else {
+                    // Cobertura: no craps não paga (só o 7 no come-out paga) — limpa fichas
+                    if(_iCoverageBet > 0 || this._getMainBetAmount() > 0){
+                        if(_oMySeat.clearAllBetsVisualOnly){
+                            _oMySeat.clearAllBetsVisualOnly();
+                        } else {
+                            _oMySeat.clearAllBets();
+                        }
+                        _iMainTableBet = 0;
+                        _aBetHistory = {};
+                        this._refreshWalletUI();
+                    }
+                    new CScoreText("CRAPS " + iSumDices + "!\nLANÇADOR PERDEU — MANTÉM OS DADOS", CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
                 }
-                // Remove todas as apostas ativas
-                _oMySeat.clearAllBets();
-                _iMainTableBet = 0;
-                _aBetHistory = {};
-                _oInterface.setCurBet(_oMySeat.getCurBet());
-                
-                // PERDER também perde o saldo travado
-                _iLockedBalance = 0;
-                _oInterface.setCurBet(0);
-                
-                // Reset flag de aposta obrigatória ao perder
-                _bMustBetFullWin = false;
-                _iLastWinAmount = 0;
-                if(this.isMultiplayerActive()){
-                    _bIAmShooter = false;
-                    this._ensureShooterFlag();
-                }
+                this._clearCoverageBet();
+
+                // Nova rodada de aposta/cobertura, sem passar o dado
                 this.lockRollUntilCoverage();
+                this.afterRoundEnds();
+                this._setState(STATE_GAME_WAITING_FOR_BET);
+                if(_bIAmShooter && _oInterface){
+                    _oInterface.setRollButtonLabel(typeof TEXT_APOSTAR !== 'undefined' ? TEXT_APOSTAR : "APOSTAR");
+                    _oInterface.refreshMsgHelp("CRAPS! Aposte de novo e clique em APOSTAR", true);
+                }
             } else if(iSumDices === 4 || iSumDices === 5 || iSumDices === 6 || iSumDices === 8 || iSumDices === 9 || iSumDices === 10){
                 console.log("Número de ponto detectado:", iSumDices, "- continuando automaticamente");
                 _iNumberPoint = iSumDices;
@@ -1794,9 +1898,6 @@ function CGame(oData){
             return;
         }
 
-        // Ao iniciar um novo lançamento, limpar a flag de forçar lançamento após cobertura
-        _bForceRollAfterCoverage = false;
-        
         if (_oMySeat.getCurBet() === 0) {
                 return;
         }
@@ -1808,6 +1909,23 @@ function CGame(oData){
             _oInterface.enableRoll(false);
             return;
         }
+
+        // Multiplayer come-out: NUNCA lançar sem cobertura total
+        var isMultiplayerRoll = window.GameClientSocketIO &&
+            window.GameClientSocketIO.isConnected &&
+            window.GameClientSocketIO.isAuthenticated;
+        var inPointPhase = (_iState === STATE_GAME_COME_POINT && _iNumberPoint > 0);
+        if(isMultiplayerRoll && _bIAmShooter && !inPointPhase){
+            if(!_bForceRollAfterCoverage || _bPreRollCoverageOpen){
+                _oMsgBox.show("AS APOSTAS PRECISAM ESTAR 100% COBERTAS!\nCLIQUE EM APOSTAR E AGUARDE OS OUTROS JOGADORES.");
+                playSound("lose", 0.3, false);
+                this.syncActionButton();
+                return;
+            }
+        }
+
+        // Ao iniciar um novo lançamento, limpar a flag de forçar lançamento após cobertura
+        _bForceRollAfterCoverage = false;
 
         if(_oMySeat.getCurBet() < MIN_BET){
             _oMsgBox.show(TEXT_ERROR_MIN_BET);
@@ -2101,12 +2219,13 @@ function CGame(oData){
             return;
         }
 
-        // Multiplayer: enviar apostas para o servidor (para validar roll e registrar cobertura)
+                // Multiplayer: enviar apostas para o servidor (para validar roll e registrar cobertura)
         if (isMultiplayer && window.GameClientSocketIO && window.GameClientSocketIO.placeBet) {
             try {
                 if (isMyCoverageTurn) {
                     console.log("📤 Enviando aposta de COBERTURA ao servidor:", iFicheValue);
                     window.GameClientSocketIO.placeBet('coverage', iFicheValue);
+                    _iCoverageBet = roundDecimal((_iCoverageBet || 0) + iFicheValue, 1);
                 } else {
                     console.log("📤 Enviando aposta PRINCIPAL ao servidor:", iFicheValue);
                     window.GameClientSocketIO.placeBet('main_bet', iFicheValue);
@@ -2114,6 +2233,8 @@ function CGame(oData){
             } catch (e) {
                 console.error("❌ Erro ao enviar aposta para o servidor:", e);
             }
+        } else if(isMyCoverageTurn){
+            _iCoverageBet = roundDecimal((_iCoverageBet || 0) + iFicheValue, 1);
         }
 
         this._syncMainTableBet();
@@ -2408,6 +2529,7 @@ function CGame(oData){
             _oMySeat.clearAllBets();
             _aBetHistory = new Object();
             _iMainTableBet = 0;
+            _iCoverageBet = 0;
             _oInterface.enableRoll(false);
         }
         
@@ -2677,6 +2799,7 @@ function CGame(oData){
         _bForceRollAfterCoverage = false;
         _sPreRollCurrentPlayerId = null;
         _bShooterClickedApostar = false;
+        _iCoverageBet = 0;
         if(_iPreRollBettingTimer){
             clearTimeout(_iPreRollBettingTimer);
             _iPreRollBettingTimer = null;
@@ -2685,6 +2808,9 @@ function CGame(oData){
         if(_oInterface){
             _oInterface.hideBlock();
             if(_oInterface.hideMessage) _oInterface.hideMessage();
+            if(_oInterface.setRollButtonLabel){
+                _oInterface.setRollButtonLabel(typeof TEXT_APOSTAR !== 'undefined' ? TEXT_APOSTAR : "APOSTAR");
+            }
         }
         if(_oTableController && _oTableController.enableMainBetButton){
             _oTableController.enableMainBetButton();

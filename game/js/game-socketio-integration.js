@@ -93,16 +93,30 @@
                 return;
             }
 
-            // Bloquear LANÇAR sem cobertura concluída
+            // Bloquear LANÇAR sem cobertura 100% concluída (exceto fase de ponto)
             const STATE_GAME_COME_POINT = 2;
-            if (window.s_oGame._bIAmShooter &&
-                !window.s_oGame._bForceRollAfterCoverage &&
-                window.s_oGame._iState !== STATE_GAME_COME_POINT) {
-                console.warn('⚠️ Cobertura pendente — use APOSTAR primeiro');
-                if (window.s_oGame._updateRollButtonState) {
-                    window.s_oGame._updateRollButtonState(window.s_oGame._bIsMyTurn === true);
+            const inPointPhase = window.s_oGame._iState === STATE_GAME_COME_POINT &&
+                window.s_oGame._iNumberPoint > 0;
+            if (window.s_oGame._bIAmShooter && !inPointPhase) {
+                if (!window.s_oGame._bForceRollAfterCoverage) {
+                    console.warn('⚠️ Cobertura pendente — use APOSTAR e aguarde cobertura total');
+                    if (window.s_oGame._oMsgBox) {
+                        window.s_oGame._oMsgBox.show("AS APOSTAS PRECISAM ESTAR COBERTAS!\nCLIQUE EM APOSTAR E AGUARDE OS OUTROS JOGADORES COBRIREM.");
+                    } else if (window.s_oGame._oInterface) {
+                        window.s_oGame._oInterface.showMessage("AGUARDE A COBERTURA TOTAL DAS APOSTAS!");
+                    }
+                    if (window.s_oGame._updateRollButtonState) {
+                        window.s_oGame._updateRollButtonState(window.s_oGame._bIsMyTurn === true);
+                    }
+                    return;
                 }
-                return;
+                if (window.s_oGame._bPreRollCoverageOpen) {
+                    console.warn('⚠️ Cobertura ainda aberta — não pode lançar');
+                    if (window.s_oGame._oMsgBox) {
+                        window.s_oGame._oMsgBox.show("AGUARDE A COBERTURA TOTAL DAS APOSTAS!");
+                    }
+                    return;
+                }
             }
             
             // Check if player has bets
@@ -438,17 +452,33 @@
 
             const myId = gameClient.currentUserId;
             const isShooter = myId && String(data.shooterId) === String(myId);
+            const remaining = data && data.coverageRemaining != null ? Number(data.coverageRemaining) : 0;
+            const fullyCovered = data && data.fullyCovered === true || remaining <= 0;
 
-            // Encerrar fase de cobertura
+            // Encerrar fase de cobertura só se cobertura total
+            if (!fullyCovered) {
+                console.warn('⚠️ pre_roll_done sem cobertura total — mantendo bloqueio');
+                window.s_oGame._bForceRollAfterCoverage = false;
+                window.s_oGame._bPreRollCoverageOpen = true;
+                if (window.s_oGame.setPreRollCoverageState) {
+                    window.s_oGame.setPreRollCoverageState(true, null);
+                }
+                window.s_oGame._oInterface.enableRoll(false);
+                if (window.s_oGame._oMsgBox) {
+                    window.s_oGame._oMsgBox.show(
+                        "COBERTURA INCOMPLETA!\nAINDA FALTAM R$ " + remaining.toFixed(2) + "\nNÃO É POSSÍVEL LANÇAR."
+                    );
+                }
+                return;
+            }
+
             if (window.s_oGame.setPreRollCoverageState) {
                 window.s_oGame.setPreRollCoverageState(false, null);
             }
 
-            // Garantir que nenhum período de pré-rolagem ainda esteja marcado como aberto
             window.s_oGame._bPreRollBettingOpen = false;
             window.s_oGame._bPreRollCoverageOpen = false;
 
-            // Mostrar modal informando que as apostas foram cobertas / encerradas
             if (window.s_oGame._oMsgBox) {
                 if (isShooter) {
                     window.s_oGame._oMsgBox.show("AS APOSTAS FORAM COBERTAS!\nVOCÊ PODE LANÇAR OS DADOS.");
@@ -463,9 +493,6 @@
                 }
             }
 
-            // FORÇAR estado correto do botão de lançar neste momento:
-            // - Shooter: habilitado
-            // - Demais jogadores: desabilitado
             if (isShooter) {
                 window.s_oGame._bIsMyTurn = true;
                 window.s_oGame._bIAmShooter = true;
@@ -482,6 +509,30 @@
                 window.s_oGame.syncBettingUI();
             }
         });
+
+        // Cobertura incompleta — manter bloqueio de lançamento
+        if (gameClient.socket) {
+            gameClient.socket.on('pre_roll_coverage_incomplete', (data) => {
+                console.warn('⛔ Cobertura incompleta:', data);
+                if (!window.s_oGame) return;
+                window.s_oGame._bForceRollAfterCoverage = false;
+                window.s_oGame._bPreRollCoverageOpen = true;
+                if (window.s_oGame.setPreRollCoverageState) {
+                    window.s_oGame.setPreRollCoverageState(true, null);
+                }
+                if (window.s_oGame._oInterface) {
+                    window.s_oGame._oInterface.enableRoll(false);
+                    if (window.s_oGame._oInterface.showMessage) {
+                        window.s_oGame._oInterface.showMessage(
+                            (data && data.message) || 'AGUARDE A COBERTURA TOTAL DAS APOSTAS!'
+                        );
+                    }
+                }
+                if (window.s_oGame._oMsgBox && data && data.message) {
+                    window.s_oGame._oMsgBox.show(data.message);
+                }
+            });
+        }
 
         // ===== PRÉ-ROLAGEM: CANCELADA =====
         gameClient.onPreRollCancelled((data) => {
@@ -592,7 +643,8 @@
             console.log('🎯 Resultado do jogo:', result);
 
             const roundEnded = result.type === 'natural_win' || result.type === 'craps' ||
-                result.type === 'seven_out' || result.type === 'point_made';
+                result.type === 'seven_out' || result.type === 'point_made' ||
+                result.type === 'come_out_seven';
 
             if (window.s_oGame && roundEnded) {
                 if (window.s_oGame.afterRoundEnds) {
@@ -612,11 +664,25 @@
             
             // Update game state based on result type
             if (result.type === 'natural_win' || result.type === 'point_made') {
-                // Player won
                 console.log('✅ Jogador ganhou!');
-            } else if (result.type === 'craps' || result.type === 'seven_out') {
-                // Player lost — aguardar shooter_changed; garantir flags locais
-                console.log('❌ Jogador perdeu');
+            } else if (result.type === 'craps') {
+                // Craps: lançador perde a aposta mas mantém os dados
+                console.log('🎲 Craps — lançador mantém os dados');
+                if (window.s_oGame) {
+                    if (window.s_oGame._ensureShooterFlag) {
+                        window.s_oGame._ensureShooterFlag();
+                    }
+                    if (window.s_oGame.lockRollUntilCoverage) {
+                        window.s_oGame.lockRollUntilCoverage();
+                    }
+                    if (window.s_oGame._oInterface && window.s_oGame._oInterface.setRollButtonLabel) {
+                        window.s_oGame._oInterface.setRollButtonLabel(
+                            typeof TEXT_APOSTAR !== 'undefined' ? TEXT_APOSTAR : 'APOSTAR'
+                        );
+                    }
+                }
+            } else if (result.type === 'seven_out' || result.type === 'come_out_seven') {
+                console.log('❌ Lançador perdeu / cobertura paga');
                 if (window.s_oGame && window.s_oGame._ensureShooterFlag) {
                     window.s_oGame._ensureShooterFlag();
                 }
@@ -818,6 +884,15 @@
             });
         }
         
+        // Cobertura paga no come-out 7 (dobro para quem cobriu)
+        if (gameClient.socket) {
+            gameClient.socket.on('coverage_paid', (data) => {
+                console.log('💰 Cobertura paga:', data);
+                // Pagamento já aplicado localmente em _checkWinForBet (_payCoverageWinDouble).
+                // Não sobrescrever saldo com o crédito do servidor.
+            });
+        }
+
         // Handle bet confirmed — manter saldo local (servidor não debita fichas)
         gameClient.onBetConfirmed((confirmation) => {
             console.log('✅ Aposta confirmada:', confirmation);
