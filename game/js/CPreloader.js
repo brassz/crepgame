@@ -85,17 +85,22 @@ function CPreloader() {
     };
 
     this.refreshLoader = function (iPerc) {
-        _oLoadingText.text = iPerc + "%";
+        if (_oLoadingText) {
+            _oLoadingText.text = iPerc + "%";
+        }
         
-        if (iPerc === 100) {
+        if (iPerc >= 100) {
+            if (_oLoadingText) _oLoadingText.visible = false;
+            if (_oProgressBar) _oProgressBar.visible = false;
             s_oMain._onRemovePreloader();
-            _oLoadingText.visible = false;
-            _oProgressBar.visible = false;
-        };     
+            return;
+        }
 
-        _oMaskPreloader.graphics.clear();
-        var iNewMaskWidth = Math.floor((iPerc * _iMaskWidth) / 100);
-        _oMaskPreloader.graphics.beginFill("rgba(0,0,0,0.01)").drawRect(_oProgressBar.x, _oProgressBar.y, iNewMaskWidth, _iMaskHeight);
+        if (_oMaskPreloader && _iMaskWidth) {
+            _oMaskPreloader.graphics.clear();
+            var iNewMaskWidth = Math.floor((iPerc * _iMaskWidth) / 100);
+            _oMaskPreloader.graphics.beginFill("rgba(0,0,0,0.01)").drawRect(_oProgressBar.x, _oProgressBar.y, iNewMaskWidth, _iMaskHeight);
+        }
     };
 
     this._init();

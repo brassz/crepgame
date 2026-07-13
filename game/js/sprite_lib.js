@@ -54,16 +54,28 @@ function CSpriteLibrary(){
             
             _oSpritesToLoad[szKey].oSprite["oSpriteLibrary"] = this;
             _oSpritesToLoad[szKey].oSprite["szKey"] = szKey;
+            _oSpritesToLoad[szKey].oSprite["_retryCount"] = 0;
             _oSpritesToLoad[szKey].oSprite.onload = function(){
                 this.oSpriteLibrary.setLoaded(this.szKey);
                 this.oSpriteLibrary._onSpriteLoaded(this.szKey);
             };
             _oSpritesToLoad[szKey].oSprite.onerror  = function(evt){
-                var oSpriteToRestore = evt.currentTarget;
+                var oSpriteToRestore = evt.currentTarget || this;
+                oSpriteToRestore._retryCount = (oSpriteToRestore._retryCount || 0) + 1;
                 
+                // Após 3 tentativas, conta como carregada para não travar na tela preta
+                if (oSpriteToRestore._retryCount >= 3) {
+                    console.warn('⚠️ Sprite falhou após retries:', oSpriteToRestore.szKey);
+                    oSpriteToRestore.oSpriteLibrary.setLoaded(oSpriteToRestore.szKey);
+                    oSpriteToRestore.oSpriteLibrary._onSpriteLoaded(oSpriteToRestore.szKey);
+                    return;
+                }
+
                 setTimeout(function(){
-                        _oSpritesToLoad[oSpriteToRestore.szKey].oSprite.src = _oSpritesToLoad[oSpriteToRestore.szKey].szPath;
-                },500);
+                    if (_oSpritesToLoad[oSpriteToRestore.szKey]) {
+                        _oSpritesToLoad[oSpriteToRestore.szKey].oSprite.src = _oSpritesToLoad[oSpriteToRestore.szKey].szPath + '?r=' + oSpriteToRestore._retryCount;
+                    }
+                }, 400);
             };
             _oSpritesToLoad[szKey].oSprite.src = _oSpritesToLoad[szKey].szPath;
         } 

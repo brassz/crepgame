@@ -3,6 +3,8 @@ function CMain(oData){
     var _iCurResource = 0;
     var RESOURCE_TO_LOAD = 0;
     var _iState = STATE_LOADING;
+    var _bLoadingFinished = false;
+    var _iLoadWatchdog = null;
     
     var _oData;
     var _oPreloader;
@@ -39,7 +41,30 @@ function CMain(oData){
     this.soundLoaded = function(){
          _iCurResource++;
          var iPerc = Math.floor(_iCurResource/RESOURCE_TO_LOAD *100);
-         _oPreloader.refreshLoader(iPerc);
+         if(_oPreloader){
+             _oPreloader.refreshLoader(iPerc);
+         }
+         this._checkLoadComplete(iPerc);
+    };
+
+    this._checkLoadComplete = function(iPerc){
+         if(iPerc >= 100 || (RESOURCE_TO_LOAD > 0 && _iCurResource >= RESOURCE_TO_LOAD)){
+             this._forceFinishLoading();
+         }
+    };
+
+    this._forceFinishLoading = function(){
+         if(_bLoadingFinished) return;
+         _bLoadingFinished = true;
+         if(_iLoadWatchdog){
+             clearTimeout(_iLoadWatchdog);
+             _iLoadWatchdog = null;
+         }
+         if(_oPreloader && _oPreloader.refreshLoader){
+             _oPreloader.refreshLoader(100);
+         } else {
+             this._onRemovePreloader();
+         }
     };
     
     this._initSounds = function(){
@@ -74,14 +99,11 @@ function CMain(oData){
                                                             volume: oSoundInfo.volume,
                                                             onload: s_oMain.soundLoaded,
                                                             onloaderror: function(szId,szMsg){
-                                                                                for(var i=0; i < s_aSoundsInfo.length; i++){
-                                                                                    if ( s_aSounds[s_aSoundsInfo[i].ingamename]._sounds.length>0 && szId === s_aSounds[s_aSoundsInfo[i].ingamename]._sounds[0]._id){
-                                                                                        s_oMain.tryToLoadSound(s_aSoundsInfo[i], true);
-                                                                                        break;
-                                                                                    }else{
-                                                                                        document.querySelector("#block_game").style.display = "none";
-                                                                                    }
-                                                                               }
+                                                                                console.warn('⚠️ Erro ao carregar som:', oSoundInfo.filename, szMsg);
+                                                                                // Conta como carregado para não travar na tela preta
+                                                                                s_oMain.soundLoaded();
+                                                                                var block = document.querySelector("#block_game");
+                                                                                if(block){ block.style.display = "none"; }
                                                                         },
                                                             onplayerror: function(szId) {
                                                                 for(var i=0; i < s_aSoundsInfo.length; i++){
@@ -190,8 +212,10 @@ function CMain(oData){
         _iCurResource++;
 
         var iPerc = Math.floor(_iCurResource/RESOURCE_TO_LOAD *100);
-        _oPreloader.refreshLoader(iPerc);
-        
+        if(_oPreloader){
+            _oPreloader.refreshLoader(iPerc);
+        }
+        this._checkLoadComplete(iPerc);
     };
     
     this._onAllImagesLoaded = function(){
@@ -210,17 +234,46 @@ function CMain(oData){
         }
         
         _bUpdate = true;
+
+        // Se sons/imagens travarem, abre o menu mesmo assim (evita tela preta eterna)
+        if(_iLoadWatchdog) clearTimeout(_iLoadWatchdog);
+        _iLoadWatchdog = setTimeout(function(){
+            console.warn('⚠️ Timeout de carregamento — forçando menu');
+            s_oMain._forceFinishLoading();
+        }, 12000);
     };
     
     this._onRemovePreloader = function(){
-        _oPreloader.unload(); 
+        if(_bLoadingFinished && _oMenu){
+            return;
+        }
+        if(_iLoadWatchdog){
+            clearTimeout(_iLoadWatchdog);
+            _iLoadWatchdog = null;
+        }
+        _bLoadingFinished = true;
+        if(_oPreloader){
+            try { _oPreloader.unload(); } catch(e) {}
+            _oPreloader = null;
+        }
 
         s_oMain.gotoMenu();
+        try {
+            if(typeof sizeHandler === 'function'){ sizeHandler(); }
+            if(s_oStage){ s_oStage.update(); }
+        } catch(e) {}
     };
     
     this.gotoMenu = function(){
+        if(_oMenu){
+            try { _oMenu.unload(); } catch(e) {}
+            _oMenu = null;
+        }
         _oMenu = new CMenu();
         _iState = STATE_MENU;
+        try {
+            if(s_oStage){ s_oStage.update(); }
+        } catch(e) {}
     };
     
     this.gotoGame = function(){

@@ -147,119 +147,129 @@
             <div class="canvas-container">
           <script>
             $(document).ready(function(){
-                     // CRITICAL: Verificar autenticação novamente antes de iniciar
-                     if (!window.customAuth) {
-                         console.error('❌ Sistema de autenticação não disponível');
-                         window.location.replace('login.html');
-                         return;
-                     }
-                     
-                     const currentUser = window.customAuth.getCurrentUser();
-                     if (!currentUser) {
-                         console.log('❌ Usuário não autenticado - redirecionando para login');
-                         window.location.replace('login.html');
-                         return;
-                     }
-                     
-                     console.log('✅ Usuário autenticado, iniciando jogo para:', currentUser.username || currentUser.email);
-                     
-                     function parseBalance(val){
-                         var n = parseFloat(val);
-                         return (isNaN(n) || n < 0) ? 0 : n;
-                     }
+                function waitAuthAndStart(attempt){
+                    attempt = attempt || 0;
+                    if (!window.customAuth) {
+                        if (attempt < 50) {
+                            setTimeout(function(){ waitAuthAndStart(attempt + 1); }, 100);
+                            return;
+                        }
+                        console.error('❌ Sistema de autenticação não disponível');
+                        window.location.replace('login.html');
+                        return;
+                    }
 
-                     function startWithBalance(balance){
-                         var oMain = new CMain({
-                                           money: parseBalance(balance),
-                                           min_bet: 50,      //MINIMUM BET (BRONZE)
-                                           max_bet: 1000,     //LIMITE MÁXIMO (BRONZE)  
-                                            win_occurrence: 30,//Win occurrence percentage (100 = always win). 
-                                            time_show_dice_result: 1500, //TIME IN MILLISECONDS OF DICE RESULT SHOWING - REDUCED FOR FASTER GAMEPLAY                    
-                                            casino_cash:400,   //The starting casino cash that is recharged by the money lost by the user
-                                            show_credits:true, //SET THIS VALUE TO FALSE IF YOU DON'T WANT TO SHOW CREDITS BUTTON
-                                            audio_enable_on_startup:false, //ENABLE/DISABLE AUDIO WHEN GAME STARTS 
-                                            fullscreen:true, //SET THIS TO FALSE IF YOU DON'T WANT TO SHOW FULLSCREEN BUTTON
-                                            check_orientation:false,     //SET TO FALSE IF YOU DON'T WANT TO SHOW ORIENTATION ALERT ON MOBILE DEVICES
-                                            num_hand_before_ads:10    //NUMBER OF DICE ROLLING TO COMPLETE, BEFORE TRIGGERING SAVE_SCORE EVENT. USEFUL FOR INTER-LEVEL AD EVENTUALLY.
-                                            //
-                                            //// THIS FUNCTIONALITY IS ACTIVATED ONLY WITH CTL ARCADE PLUGIN.///////////////////////////
-                                            /////////////////// YOU CAN GET IT AT: /////////////////////////////////////////////////////////
-                                            // http://codecanyon.net/item/ctl-arcade-wordpress-plugin/13856421 ///////////
-                                });
+                    var currentUser = window.customAuth.getCurrentUser();
+                    if (!currentUser) {
+                        if (attempt < 20) {
+                            setTimeout(function(){ waitAuthAndStart(attempt + 1); }, 100);
+                            return;
+                        }
+                        console.log('❌ Usuário não autenticado - redirecionando para login');
+                        window.location.replace('login.html');
+                        return;
+                    }
 
-                     $(oMain).on("bet_placed", function (evt, iTotBet) {
+                    console.log('✅ Usuário autenticado, iniciando jogo para:', currentUser.username || currentUser.email);
 
-                        //...ADD YOUR CODE HERE EVENTUALLY
-                    });
-                    
-                    $(oMain).on("clear_bet", function (evt, iTotBet) {
-                        //...ADD YOUR CODE HERE EVENTUALLY
-                    });
-                    
-                     $(oMain).on("start_session", function(evt) {
-                            if(getParamValue('ctl-arcade') === "true"){
-                                parent.__ctlArcadeStartSession();
-                            }
-                            //...ADD YOUR CODE HERE EVENTUALLY
-                    });
-                    
-                    $(oMain).on("end_session", function(evt) {
-                            if(getParamValue('ctl-arcade') === "true"){
-                                parent.__ctlArcadeEndSession();
-                            }
-                            // Socket.IO system - no profile persistence needed
-                            // Balance is managed in server memory
-                            console.log('Game session ended');
-                    });
-                     
-                     $(oMain).on("save_score", function(evt,iMoney) {
-                            if(getParamValue('ctl-arcade') === "true"){
-                                parent.__ctlArcadeSaveScore({score:iMoney});
-                            }
-                            // Socket.IO system - balance managed server-side
-                            console.log('Score saved:', iMoney);
-                     });
-                     
-                     $(oMain).on("show_interlevel_ad", function(evt) {
-                            if(getParamValue('ctl-arcade') === "true"){
-                                parent.__ctlArcadeShowInterlevelAD();
-                            }
-                            //...ADD YOUR CODE HERE EVENTUALLY
-                     });
-                     
-                     $(oMain).on("share_event", function(evt,iMoney) {
-                            if(getParamValue('ctl-arcade') === "true"){
-                                parent.__ctlArcadeShareEvent({ img:"200x200.jpg",
-                                                                title:TEXT_CONGRATULATIONS,
-                                                                msg:TEXT_SHARE_1 + iMoney + TEXT_SHARE_2,
-                                                                msg_share:TEXT_SHARE_3 + iMoney + TEXT_SHARE_4
-                                                            });
-                            }
-                            //...ADD YOUR CODE HERE EVENTUALLY
-                     });
-                     
-                     if(isIOS()){
-                         setTimeout(function(){sizeHandler();},200);
-                     }else{
-                         sizeHandler();
-                     }
-                     
-                     console.log('✅ Jogo inicializado com sucesso!');
-                     }
-                     
-                     // Iniciar o jogo após todas as configurações (atualiza saldo se voltou do depósito)
-                     console.log('🎮 Sistema Socket.IO Puro - Iniciando com saldo do usuário');
-                     if (window.customAuth.refreshUserBalance) {
-                         window.customAuth.refreshUserBalance(currentUser.id).then(function (balance) {
-                             startWithBalance(balance != null ? balance : currentUser.balance);
-                         }).catch(function () {
-                             startWithBalance(currentUser.balance);
-                         });
-                     } else {
-                         startWithBalance(currentUser.balance);
-                     }
-           });
+                    function parseBalance(val){
+                        var n = parseFloat(val);
+                        return (isNaN(n) || n < 0) ? 0 : n;
+                    }
 
+                    var _bGameStarted = false;
+
+                    function startWithBalance(balance){
+                        if (_bGameStarted || window.s_oMain) {
+                            console.warn('⚠️ Jogo já iniciado — ignorando nova tentativa');
+                            return;
+                        }
+                        _bGameStarted = true;
+
+                        try {
+                            var oMain = new CMain({
+                                money: parseBalance(balance),
+                                min_bet: 50,
+                                max_bet: 1000,
+                                win_occurrence: 30,
+                                time_show_dice_result: 1500,
+                                casino_cash: 400,
+                                show_credits: true,
+                                audio_enable_on_startup: false,
+                                fullscreen: true,
+                                check_orientation: false,
+                                num_hand_before_ads: 10
+                            });
+
+                            $(oMain).on("bet_placed", function () {});
+                            $(oMain).on("clear_bet", function () {});
+                            $(oMain).on("start_session", function() {
+                                if(getParamValue('ctl-arcade') === "true"){
+                                    parent.__ctlArcadeStartSession();
+                                }
+                            });
+                            $(oMain).on("end_session", function() {
+                                if(getParamValue('ctl-arcade') === "true"){
+                                    parent.__ctlArcadeEndSession();
+                                }
+                                console.log('Game session ended');
+                            });
+                            $(oMain).on("save_score", function(evt,iMoney) {
+                                if(getParamValue('ctl-arcade') === "true"){
+                                    parent.__ctlArcadeSaveScore({score:iMoney});
+                                }
+                                console.log('Score saved:', iMoney);
+                            });
+                            $(oMain).on("show_interlevel_ad", function() {
+                                if(getParamValue('ctl-arcade') === "true"){
+                                    parent.__ctlArcadeShowInterlevelAD();
+                                }
+                            });
+                            $(oMain).on("share_event", function(evt,iMoney) {
+                                if(getParamValue('ctl-arcade') === "true"){
+                                    parent.__ctlArcadeShareEvent({
+                                        img:"200x200.jpg",
+                                        title:TEXT_CONGRATULATIONS,
+                                        msg:TEXT_SHARE_1 + iMoney + TEXT_SHARE_2,
+                                        msg_share:TEXT_SHARE_3 + iMoney + TEXT_SHARE_4
+                                    });
+                                }
+                            });
+
+                            if(isIOS()){
+                                setTimeout(function(){ sizeHandler(); }, 200);
+                            } else {
+                                sizeHandler();
+                            }
+
+                            console.log('✅ Jogo inicializado com sucesso!');
+                        } catch (err) {
+                            _bGameStarted = false;
+                            console.error('❌ Falha ao iniciar CMain:', err);
+                            setTimeout(function(){ startWithBalance(balance); }, 500);
+                        }
+                    }
+
+                    // Inicia imediatamente com saldo em cache (não espera rede)
+                    console.log('🎮 Iniciando jogo com saldo em cache');
+                    startWithBalance(currentUser.balance);
+
+                    if (window.customAuth.refreshUserBalance) {
+                        var balanceTimeout = setTimeout(function(){
+                            console.warn('⚠️ Timeout ao atualizar saldo — mantendo valor em cache');
+                        }, 4000);
+                        window.customAuth.refreshUserBalance(currentUser.id).then(function (balance) {
+                            clearTimeout(balanceTimeout);
+                            if (balance == null || !window.s_oGame || !window.s_oGame.syncWalletBalance) return;
+                            window.s_oGame.syncWalletBalance(balance);
+                        }).catch(function () {
+                            clearTimeout(balanceTimeout);
+                        });
+                    }
+                }
+
+                waitAuthAndStart(0);
+            });
         </script>
         
         <div class="check-fonts">
